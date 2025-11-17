@@ -15,7 +15,8 @@
     "build": "turbo run build",
     "clean": "turbo run clean",
     "test": "turbo run test",
-    "deploy": "turbo run deploy"
+    "deploy": "turbo run deploy",
+    "lint": "eslint"
   },
   "dependencies": {
     "@effect/platform": "^0.92.1",
