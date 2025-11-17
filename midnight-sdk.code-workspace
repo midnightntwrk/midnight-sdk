@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "platform-js"
+		},
+		{
+			"path": "compact-js"
+		}
+	],
+	"settings": {}
+}

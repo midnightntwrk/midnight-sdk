@@ -1,0 +1,38 @@
+{
+  "$schema": "https://turbo.build/schema.v2.json",
+  "envMode": "loose",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputLogs": "new-only",
+      "inputs": ["src/**/*.ts", "!src/**/*.test.ts", "src/**/*.compact"],
+      "outputs": ["dist/**", "build/**", "src/**/managed/**"]
+    },
+    "clean": {
+      "cache": false
+    },
+    "clean-build": {
+      "cache": false,
+      "dependsOn": [
+        "clean",
+        "build"
+      ]
+    },
+    "test": {
+      "outputLogs": "new-only",
+      "dependsOn": ["^build"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "compose.yml"],
+      "outputs": ["reports/**", "coverage/**", "logs/**"]
+    },
+    "it": {
+      "outputLogs": "new-only",
+      "dependsOn": ["^build"],
+      "inputs": ["src/**/*.ts", "compose.yml"],
+      "outputs": ["reports/**", "coverage/**", "logs/**"]
+    },
+    "deploy": {
+      "cache": false,
+      "dependsOn": ["build"]
+    }
+  }
+}

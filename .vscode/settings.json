@@ -1,0 +1,7 @@
+{
+  "files.exclude": {
+    // Exclude (hide) the folders that are included in the multi-root workspace.
+    "platform-js/": true,
+    "compact-js/": true
+  }
+}
