@@ -49,14 +49,14 @@ jobs:
     needs: ci
     name: Build, Lint and Test Platform.js
     with:
-      should_run: ${{ needs.ci.outputs.build_p_js == 'true'
-    uses: ./.github/workflows/ci-platform-js.yml
+      should_run: ${{ needs.ci.outputs.build_p_js }}
+    uses: ./.github/workflows/ci-platform-js.yaml
     secrets: inherit
 
   ci-compactjs:
     needs: ci
     name: Build, Lint and Test Compact.js
     with:
-      should_run: ${{ needs.ci.outputs.build_c_js == 'true'
-    uses: ./.github/workflows/ci-compact-js.yml
+      should_run: ${{ needs.ci.outputs.build_c_js }}
+    uses: ./.github/workflows/ci-compact-js.yaml
     secrets: inherit

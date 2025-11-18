@@ -13,12 +13,13 @@ on:
   workflow_call:
     inputs:
       workspace:
-        type: choice
-        options:
-          - platform-js
-          - compact-js
-        description: The workspace that should be the target of the workflow.
+        type: string
+        description: The workspace folder that should be the target of the workflow.
         required: true
+      node-version-file:
+        type: string
+        required: false
+        default: '.nvmrc' # Default to the Node.js version defined in the repo root.
 
 jobs:
   ci:
@@ -27,7 +28,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: ${{ inputs.workspace }}
+        working-directory: ./${{ inputs.workspace }}
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
 
@@ -51,8 +52,7 @@ jobs:
           always-auth: true
           registry-url: https://npm.pkg.github.com/
           scope: '@midnight-ntwrk'
-          node-version-file: '.nvmrc'
-          cache: 'yarn'
+          node-version-file: ${{ inputs.node-version-file }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 

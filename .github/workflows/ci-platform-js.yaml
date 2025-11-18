@@ -25,12 +25,15 @@ concurrency:
 jobs:
   ci:
     if: inputs.should_run == 'true'
-    uses: ./.github/workflows/ci-base.yml
+    uses: ./.github/workflows/ci-base.yaml
     with:
       workspace: platform-js
     secrets: inherit
 
   publish_test_coverage:
+    name: Publish Test Coverage
+    needs: ci
+    runs-on: ubuntu-latest
     if: inputs.should_run == 'true'
     defaults:
       run:
