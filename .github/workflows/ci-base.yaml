@@ -90,8 +90,11 @@ jobs:
 
       - name: Aggregate coverage reports
         run: |
-          npx --yes istanbul-merge --out coverage.json $(find . -type f -name 'coverage-final.json' | sort -u | tr '\n' ' ')
-          npx --yes istanbul report --include coverage.json --dir coverage html
+          mkdir -p .nyc_output
+          find . -type f -name 'coverage-final.json' -exec cp {} .nyc_output/ \;
+          npx --yes nyc merge .nyc_output coverage.json
+          npx --yes nyc report --reporter=html --report-dir=coverage --temp-dir=.nyc_output
+          rm -rf .nyc_output
 
       - name: Merge report as ZIP
         run: |
