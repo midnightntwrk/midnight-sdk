@@ -10,5 +10,10 @@
 			"path": "compact-js"
 		}
 	],
-	"settings": {}
+	"settings": {
+		"eslint.workingDirectories": [
+			"./platform-js",
+			"./compact-js"
+		]
+	}
 }
