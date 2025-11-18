@@ -1,0 +1,47 @@
+name: CI - Compact.js
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+permissions:
+  contents: read
+  issues: read
+  id-token: write
+  packages: write
+  checks: write
+  pull-requests: write
+  
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      should_run:
+        required: true
+        type: string
+
+concurrency:
+  group: compact-js-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    if: inputs.should_run == 'true'
+    uses: ./.github/workflows/ci-base.yml
+    with:
+      workspace: compact-js
+    secrets: inherit
+
+  publish_test_coverage:
+    if: inputs.should_run == 'true'
+    defaults:
+      run:
+        working-directory: compact-js
+    steps:
+      - name: Publish Test Coverage
+        uses: MishaKav/jest-coverage-comment@174f9cbf582b7cc2a7a3acce14dcfc8362e9d37f # ratchet:MishaKav/jest-coverage-comment@v1
+        with:
+          hide-comment: false
+          unique-id-for-comment: 'compact-js-coverage'
+          multiple-files: |
+            compact-js, ./compact-js/coverage/coverage-summary.json
+            compact-js-command, ./compact-js-command/coverage/coverage-summary.json
+            compact-js-node, ./compact-js-node/coverage/coverage-summary.json
