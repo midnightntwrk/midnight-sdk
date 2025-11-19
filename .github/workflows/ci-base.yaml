@@ -20,6 +20,10 @@ on:
         type: string
         required: false
         default: '.nvmrc' # Default to the Node.js version defined in the repo root.
+      coverage-files:
+        type: string
+        required: false
+        default: ''
 
 jobs:
   ci:
@@ -107,3 +111,10 @@ jobs:
         with:
           name: Coverage Report ${{ inputs.workspace }}
           path: ${{ inputs.workspace }}/coverage-${{ inputs.workspace }}.zip
+
+      - name: Publish Test Coverage
+        uses: MishaKav/jest-coverage-comment@174f9cbf582b7cc2a7a3acce14dcfc8362e9d37f # ratchet:MishaKav/jest-coverage-comment@v1
+        with:
+          hide-comment: false
+          unique-id-for-comment: ${{ inputs.workspace }}-coverage
+          multiple-files: ${{ inputs.coverage-files }}
