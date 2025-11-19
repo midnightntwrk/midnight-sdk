@@ -106,4 +106,4 @@ jobs:
         uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # ratchet:actions/upload-artifact@v4
         with:
           name: Coverage Report ${{ inputs.workspace }}
-          path: coverage-${{ inputs.workspace }}.zip
+          path: ${{ inputs.workspace }}/coverage-${{ inputs.workspace }}.zip
