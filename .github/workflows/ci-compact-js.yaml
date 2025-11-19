@@ -45,6 +45,6 @@ jobs:
           hide-comment: false
           unique-id-for-comment: 'compact-js-coverage'
           multiple-files: |
-            compact-js, ./compact-js/coverage/coverage-summary.json
-            compact-js-command, ./compact-js-command/coverage/coverage-summary.json
-            compact-js-node, ./compact-js-node/coverage/coverage-summary.json
+            compact-js, compact-js/compact-js/coverage/coverage-summary.json
+            compact-js-command, compact-js/compact-js-command/coverage/coverage-summary.json
+            compact-js-node, compact-js/compact-js-node/coverage/coverage-summary.json

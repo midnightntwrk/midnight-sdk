@@ -45,4 +45,4 @@ jobs:
           hide-comment: false
           unique-id-for-comment: 'platform-js-coverage'
           multiple-files: |
-            platform-js, ./platform-js/coverage/coverage-summary.json
+            platform-js, platform-js/platform-js/coverage/coverage-summary.json
