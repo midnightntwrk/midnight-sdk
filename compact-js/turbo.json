@@ -24,7 +24,7 @@
       "inputs": ["src/**/*.ts", "test/**/*.ts", "compose.yml"],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
     },
-    "deploy": {
+    "pack": {
       "cache": false,
       "dependsOn": ["build"]
     }

@@ -36,7 +36,7 @@
     "build-esm": "tsc -b tsconfig.build.json",
     "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
     "test": "vitest run --passWithNoTests",
-    "deploy": "shx rm -rf ./dist/src && (cd ./dist; npm publish)"
+    "pack": "shx rm -rf ./dist/src && (cd ./dist; npm pack)"
   },
   "files": [
     "dist/"

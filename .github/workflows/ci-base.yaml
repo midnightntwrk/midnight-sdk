@@ -24,6 +24,11 @@ on:
         type: string
         required: false
         default: ''
+      create-package-artifacts:
+        type: boolean
+        description: A flag indicating whether the compiled packages should be created and attached to the build.
+        required: false
+        default: false
 
 jobs:
   ci:
@@ -32,7 +37,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: ./${{ inputs.workspace }}
+        working-directory: ./${{ inputs.workspace }} # Workspace name has affinity to a folder in the root of the repo.
     steps:
       - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
 
@@ -113,8 +118,15 @@ jobs:
           path: ${{ inputs.workspace }}/coverage-${{ inputs.workspace }}.zip
 
       - name: Publish Test Coverage
+        if: ${{ inputs.coverage-files }} # Publish the comment if we have received coverage files
         uses: MishaKav/jest-coverage-comment@174f9cbf582b7cc2a7a3acce14dcfc8362e9d37f # ratchet:MishaKav/jest-coverage-comment@v1
         with:
           hide-comment: false
           unique-id-for-comment: ${{ inputs.workspace }}-coverage
           multiple-files: ${{ inputs.coverage-files }}
+
+      - name: Pack and Upload Package Artifacts
+        if: ${{ inputs.create-package-artifacts }}
+        uses: ./.github/actions/create-package-artifacts
+        with:
+          package-archive-name: ${{ inputs.workspace }}
