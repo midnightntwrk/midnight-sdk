@@ -1,0 +1,19 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "platform-js"
+		},
+		{
+			"path": "compact-js"
+		}
+	],
+	"settings": {
+		"eslint.workingDirectories": [
+			"./platform-js",
+			"./compact-js"
+		]
+	}
+}

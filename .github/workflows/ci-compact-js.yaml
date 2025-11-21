@@ -1,0 +1,35 @@
+name: CI - Compact.js
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+permissions:
+  contents: read
+  issues: read
+  id-token: write
+  packages: write
+  checks: write
+  pull-requests: write
+  
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      should_run:
+        required: true
+        type: string
+
+concurrency:
+  group: compact-js-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    if: inputs.should_run == 'true'
+    uses: ./.github/workflows/ci-base.yaml
+    with:
+      workspace: compact-js
+      coverage-files: |
+        compact-js, ./compact-js/compact-js/coverage/coverage-summary.json
+        compact-js-command, ./compact-js/compact-js-command/coverage/coverage-summary.json
+        compact-js-node, ./compact-js/compact-js-node/coverage/coverage-summary.json
+    secrets: inherit

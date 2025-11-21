@@ -1,0 +1,34 @@
+name: CI - Platform.js
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+permissions:
+  contents: read
+  issues: read
+  id-token: write
+  packages: write
+  checks: write
+  pull-requests: write
+  
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      should_run:
+        required: true
+        type: string
+
+concurrency:
+  group: platform-js-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    if: inputs.should_run == 'true'
+    uses: ./.github/workflows/ci-base.yaml
+    with:
+      workspace: platform-js
+      coverage-files: |
+        platform-js, ./platform-js/platform-js/coverage/coverage-summary.json
+    secrets: inherit
+

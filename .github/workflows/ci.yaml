@@ -1,0 +1,62 @@
+name: CI
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 4 * * *"
+
+permissions:
+  contents: read
+  issues: read
+  id-token: write
+  packages: write
+  checks: write
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    outputs:
+      build_c_js: ${{ steps.build-targets.outputs.compact-js }}
+      build_p_js: ${{ steps.build-targets.outputs.platform-js }}
+
+    steps:
+      - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8  # ratchet:actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Determine Build Targets
+        uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36
+        id: build-targets
+        with:
+          filters: |
+            compact-js:
+              - 'compact-js/**'
+            platform-js:
+              - 'platform-js/**'
+
+  ci-platformjs:
+    needs: ci
+    name: Build, Lint and Test Platform.js
+    with:
+      should_run: ${{ needs.ci.outputs.build_p_js }}
+    uses: ./.github/workflows/ci-platform-js.yaml
+    secrets: inherit
+
+  ci-compactjs:
+    needs: ci
+    name: Build, Lint and Test Compact.js
+    with:
+      should_run: ${{ needs.ci.outputs.build_c_js }}
+    uses: ./.github/workflows/ci-compact-js.yaml
+    secrets: inherit

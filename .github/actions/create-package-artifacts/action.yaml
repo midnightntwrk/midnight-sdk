@@ -1,0 +1,44 @@
+name: 'Create Package Artifacts'
+description: 'Creates versioned packages that can be published to a package registry'
+
+inputs:
+  package-archive-name:
+    required: true
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Determine Version
+      id: vars
+      run: |
+        on_release_branch=$(jq --arg b "$(git rev-parse --abbrev-ref HEAD)" '(.v_info.releaseBranches | join("|")) as $p | ($b | test("^(" + $p + ")$"))' version.json)
+        
+        source_commit=$(git log --format=%h -1 -- version.json)
+        commit_height=$(($(git log --format=%h $source_commit.. | wc -l)))
+        version=$(jq -r '.v_info.version' version.json)
+        preRelease=$(jq -r '.v_info.preRelease' version.json)
+        tag=$(jq -r '.v_info.tag' version.json)
+        target_version="$version$preRelease.$commit_height"
+
+        echo "target_version=${target_version}" >> "$GITHUB_OUTPUT"
+        echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+        echo "on_release_branch=${on_release_branch}" >> "$GITHUB_OUTPUT"
+
+    - name: Bump versions
+      if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
+      run: yarn workspaces foreach -A version ${{ steps.vars.outputs.target_version }}
+
+    - name: Create packages
+      if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
+      run: yarn pack
+
+    - name: Create packages archive
+      if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
+      run: find . -type f -name '*.tgz' | zip ${{ inputs.package-archive-name }}-${{ steps.vars.outputs.target_version }}.zip -j -@
+
+    - name: Upload packages artifact
+      if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # ratchet:actions/upload-artifact@v4
+      with:
+        name: Packages ${{ inputs.package-archive-name }}
+        path: ${{ inputs.package-archive-name }}-${{ steps.vars.outputs.target_version }}.zip
