@@ -39,4 +39,5 @@ jobs:
       - name: Publish Package Artifacts
         uses: ./.github/actions/publish-package-artifacts
         with:
-          package-archive-name: 'compact-js'   
+          package-archive-name: 'compact-js'
+          working-directory: './compact-js'

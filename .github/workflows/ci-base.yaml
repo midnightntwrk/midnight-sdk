@@ -130,3 +130,4 @@ jobs:
         uses: ./.github/actions/create-package-artifacts
         with:
           package-archive-name: ${{ inputs.workspace }}
+          working-directory: ${{ inputs.workspace }}
