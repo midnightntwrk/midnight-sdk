@@ -43,3 +43,4 @@ jobs:
         with:
           package-archive-name: 'platform-js'
           working-directory: './platform-js'
+        secrets: inherit

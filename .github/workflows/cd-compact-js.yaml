@@ -43,3 +43,4 @@ jobs:
         with:
           package-archive-name: 'compact-js'
           working-directory: './compact-js'
+        secrets: inherit
