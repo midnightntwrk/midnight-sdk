@@ -15,7 +15,7 @@
     "build": "turbo run build",
     "clean": "turbo run clean",
     "test": "turbo run test",
-    "pack": "turbo run pack",
+    "package": "turbo run package",
     "lint": "eslint"
   },
   "dependencies": {

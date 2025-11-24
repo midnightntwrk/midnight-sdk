@@ -40,7 +40,7 @@ runs:
       shell: bash
       working-directory: ./${{ inputs.working-directory }}
       if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
-      run: yarn pack
+      run: yarn package
 
     - name: Create packages archive
       shell: bash
