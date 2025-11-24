@@ -41,7 +41,6 @@ runs:
       run: find . -type f -name '*.tgz' | zip ${{ inputs.package-archive-name }}-${{ steps.vars.outputs.target_version }}.zip -j -@
 
     - name: Upload packages artifact
-      shell: bash
       if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
       uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # ratchet:actions/upload-artifact@v4
       with:
