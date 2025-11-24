@@ -3,6 +3,10 @@ description: 'Publishes packages to a package registry'
 
 inputs:
   package-archive-name:
+    type: string
+    required: true
+  auth-token:
+    type: string
     required: true
 
 runs:
@@ -23,5 +27,5 @@ runs:
       working-directory: ./${{ inputs.working-directory }}
       run: find . -type f -name '*.tgz' | npm publish --access public -@
       env:
-        GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-        NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+        GITHUB_TOKEN: ${{ inputs.auth-token }}
+        NODE_AUTH_TOKEN: ${{ inputs.auth-token }}

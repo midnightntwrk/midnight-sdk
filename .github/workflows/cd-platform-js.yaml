@@ -43,4 +43,4 @@ jobs:
         with:
           package-archive-name: 'platform-js'
           working-directory: './platform-js'
-        secrets: inherit
+          auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

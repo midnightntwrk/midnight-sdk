@@ -43,4 +43,4 @@ jobs:
         with:
           package-archive-name: 'compact-js'
           working-directory: './compact-js'
-        secrets: inherit
+          auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
