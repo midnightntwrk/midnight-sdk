@@ -2,6 +2,9 @@ name: 'Publish Package Artifacts'
 description: 'Publishes packages to a package registry'
 
 inputs:
+  working-directory:
+    type: string
+    required: true
   package-archive-name:
     type: string
     required: true
@@ -15,17 +18,27 @@ runs:
     - name: Download packages artifact
       uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # ratchet:actions/download-artifact@v4
       with:
-        pattern: ${{ inputs.package-archive-name }}-*.zip
+        pattern: Packages ${{ inputs.package-archive-name }}
+        path: ${{ inputs.working-directory }}
 
     - name: Extract packages archive
       shell: bash
-      working-directory: ./${{ inputs.working-directory }}
-      run: find . -type f -name '${{ inputs.package-archive-name }}-*.zip' | unzip -@
+      working-directory: ${{ inputs.working-directory }}
+      run: find "./Packages ${{ inputs.package-archive-name }}" -type f -name '*.zip' -execdir unzip '{}' ';'
+
+    - name: Determine Tag
+      id: vars
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        tag=$(jq -r '.v_info.tag' version.json)
+        
+        echo "tag=${tag}" >> "$GITHUB_OUTPUT"
 
     - name: Publish packages
       shell: bash
-      working-directory: ./${{ inputs.working-directory }}
-      run: find . -type f -name '*.tgz' | npm publish --access public -@
+      working-directory: ${{ inputs.working-directory }}
+      run: find "./Packages ${{ inputs.package-archive-name }}" -type f -name '*.tgz' -execdir npm publish '{}' --tag ${{ steps.vars.outputs.tag }} --access public ';'
       env:
         GITHUB_TOKEN: ${{ inputs.auth-token }}
         NODE_AUTH_TOKEN: ${{ inputs.auth-token }}
