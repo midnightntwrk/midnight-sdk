@@ -14,9 +14,11 @@ runs:
         pattern: ${{ inputs.package-archive-name }}-*.zip
 
     - name: Extract packages archive
+      shell: bash
       run: find . -type f -name '${{ inputs.package-archive-name }}-*.zip' | unzip -@
 
     - name: Publish packages
+      shell: bash
       run: find . -type f -name '*.tgz' | npm publish --access public -@
       env:
         GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

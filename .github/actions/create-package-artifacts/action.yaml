@@ -10,6 +10,7 @@ runs:
   steps:
     - name: Determine Version
       id: vars
+      shell: bash
       run: |
         on_release_branch=$(jq --arg b "$(git rev-parse --abbrev-ref HEAD)" '(.v_info.releaseBranches | join("|")) as $p | ($b | test("^(" + $p + ")$"))' version.json)
         
@@ -25,18 +26,22 @@ runs:
         echo "on_release_branch=${on_release_branch}" >> "$GITHUB_OUTPUT"
 
     - name: Bump versions
+      shell: bash
       if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
       run: yarn workspaces foreach -A version ${{ steps.vars.outputs.target_version }}
 
     - name: Create packages
+      shell: bash
       if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
       run: yarn pack
 
     - name: Create packages archive
+      shell: bash
       if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
       run: find . -type f -name '*.tgz' | zip ${{ inputs.package-archive-name }}-${{ steps.vars.outputs.target_version }}.zip -j -@
 
     - name: Upload packages artifact
+      shell: bash
       if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
       uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # ratchet:actions/upload-artifact@v4
       with:
