@@ -1,11 +1,12 @@
 {
   "v_info": {
     "version": "2.4.0",
-    "preRelease": "-pre",
-    "tag": "pre",
+    "preRelease": "-test",
+    "tag": "test",
     "releaseBranches": [
       "main",
-      "release/compact-js/.*"
+      "release/compact-js/.*",
+      "fix/timjroberts/.*"
     ]
   }
 }
