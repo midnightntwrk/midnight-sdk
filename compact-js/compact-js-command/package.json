@@ -47,7 +47,7 @@
     "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
     "test": "vitest run",
     "cmd": "NODE_OPTIONS='--loader ts-node/esm --no-warnings' ts-node ./src/index.ts",
-    "pack": "shx rm -rf ./dist/src && (cd ./dist; npm pack)"
+    "package": "shx rm -rf ./dist/src && (cd ./dist; npm pack)"
   },
   "files": [
     "dist/"
