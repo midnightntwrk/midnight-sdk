@@ -1,8 +1,8 @@
 {
   "v_info": {
     "version": "2.4.0",
-    "preRelease": "-pre",
-    "tag": "pre",
+    "preRelease": "-alpha",
+    "tag": "alpha",
     "releaseBranches": [
       "main",
       "release/compact-js/.*"
