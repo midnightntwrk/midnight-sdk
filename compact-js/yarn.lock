@@ -702,7 +702,7 @@ __metadata:
     "@midnight-ntwrk/compact-js": "npm:^2.3.0"
     "@midnight-ntwrk/compact-js-node": "npm:^2.3.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.11.0-rc.1"
-    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.5"
+    "@midnight-ntwrk/ledger-v6": "npm:6.1.0-alpha.5"
     "@midnight-ntwrk/platform-js": "npm:^2.1.0"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.0.0-beta.4"
     effect: "npm:^3.18.4"
@@ -774,7 +774,7 @@ __metadata:
   dependencies:
     "@effect/platform": "npm:^0.92.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.11.0-rc.1"
-    "@midnight-ntwrk/ledger": "npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.5"
+    "@midnight-ntwrk/ledger-v6": "npm:6.1.0-alpha.5"
     "@midnight-ntwrk/platform-js": "npm:^2.1.0"
     effect: "npm:^3.18.4"
     tslib: "npm:^2.8.1"
@@ -799,7 +799,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/ledger@npm:@midnight-ntwrk/ledger-v6@6.1.0-alpha.5":
+"@midnight-ntwrk/ledger-v6@npm:6.1.0-alpha.5":
   version: 6.1.0-alpha.5
   resolution: "@midnight-ntwrk/ledger-v6@npm:6.1.0-alpha.5::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v6%2F6.1.0-alpha.5%2F25da2a8f4fd40f76d2282279b4d9b457ae62a33e"
   checksum: 10/fa87cc15bbf80538586b7276f5fab1e7644105363060ff1db6f6935135ffca93ce46358e3c768f747758ef7f537a86efe365b6f3c567cf9d179ec660809a2643
