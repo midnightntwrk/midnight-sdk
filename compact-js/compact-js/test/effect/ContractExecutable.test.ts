@@ -30,7 +30,7 @@ import {
   type ReplaceAuthority,
   type VerifierKeyInsert,
   type VerifierKeyRemove
-} from '@midnight-ntwrk/ledger';
+} from '@midnight-ntwrk/ledger-v6';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import { ConfigProvider, Effect, Layer, Option } from 'effect';
@@ -128,6 +128,12 @@ describe('ContractExecutable', () => {
       );
       const result = await contract.initialize({ count: 0 }).pipe(Effect.runPromise);
       deployment = new ContractDeploy(asLedgerContractState(result.public.contractState));
+    });
+
+    it('should return identifiers of impure circuits', () => {
+      const circuitIds = contract.getImpureCircuitIds();
+
+      expect(circuitIds.length).toBeGreaterThan(0);
     });
 
     it.effect('should return updated contract state', () =>

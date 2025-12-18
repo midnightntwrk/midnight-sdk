@@ -23,7 +23,7 @@ import {
   ContractCallPrototype,
   type ContractOperation as LedgerContractOption,
   Intent
-} from '@midnight-ntwrk/ledger';
+} from '@midnight-ntwrk/ledger-v6';
 import { type ConfigError, Console,Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';

@@ -27,7 +27,7 @@ import {
 } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState, decodeRawTokenType, encodeRawTokenType, rawTokenType } from '@midnight-ntwrk/compact-runtime';
-import { ContractDeploy, ContractState as LedgerContractState } from '@midnight-ntwrk/ledger';
+import { ContractDeploy, ContractState as LedgerContractState } from '@midnight-ntwrk/ledger-v6';
 import { CoinPublicKey, ContractAddress, DomainSeparator } from '@midnight-ntwrk/platform-js';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ConfigProvider, Effect, Layer } from 'effect';

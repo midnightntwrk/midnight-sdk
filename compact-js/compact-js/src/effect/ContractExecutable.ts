@@ -46,7 +46,7 @@ import {
   StateValue as LedgerStateValue,
   type Transcript,
   VerifierKeyInsert,
-  VerifierKeyRemove} from '@midnight-ntwrk/ledger';
+  VerifierKeyRemove} from '@midnight-ntwrk/ledger-v6';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
@@ -97,6 +97,13 @@ export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, 
     circuitContext: ContractExecutable.CircuitContext<PS>,
     ...args: Contract.Contract.CircuitParameters<C, K>
   ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R>;
+
+  /**
+   * Retrieves the impure circuits available as part of the underlying contract.
+   * 
+   * @returns An array of {@link Contract.ImpureCircuitId} describing the available impure circuits.
+   */
+  getImpureCircuitIds(): Contract.ImpureCircuitId<C>[];
 
   /**
    * Applies a new Contract Maintenance Authority (CMA) to a deployed instance of the contract.
@@ -400,6 +407,10 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       ),
       this.transform
     );
+  }
+
+  getImpureCircuitIds(): Contract.ImpureCircuitId<C>[] {
+    return Contract.getImpureCircuitIds(Effect.runSync(this.createContract()));
   }
 
   replaceContractMaintenanceAuthority(
