@@ -187,15 +187,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/printer-ansi@npm:^0.46.0":
-  version: 0.46.0
-  resolution: "@effect/printer-ansi@npm:0.46.0"
+"@effect/printer-ansi@npm:^0.47.0":
+  version: 0.47.0
+  resolution: "@effect/printer-ansi@npm:0.47.0"
   dependencies:
-    "@effect/printer": "npm:^0.46.0"
+    "@effect/printer": "npm:^0.47.0"
   peerDependencies:
-    "@effect/typeclass": ^0.37.0
-    effect: ^3.18.0
-  checksum: 10/5c815c3013cc47ffcc333f1b25f5e0fd5401ee9049215d2e64740c2013b5ebb05bbda1375d5b343882acccd669a77b351b610a05fd5c0d7559fc230e58695aa5
+    "@effect/typeclass": ^0.38.0
+    effect: ^3.19.0
+  checksum: 10/3bb1ff95dbd9eb8df18bd9485f2f2b5ab33cf2d4332717ba55760c6471181c686ad528524cb024d9648b60632314a97ab3ad7367de9bf5e9698b1b2f8e7e29fd
   languageName: node
   linkType: hard
 
@@ -206,6 +206,16 @@ __metadata:
     "@effect/typeclass": ^0.37.0
     effect: ^3.18.0
   checksum: 10/5708584926c00ee2aca14a7e722cd90d2168136df3a553d8c3f9b40fede5974ec178bbc54bdaa0f050c97f4b914a3d9f04ab8c8aa588a0346fd1db8ce796f68c
+  languageName: node
+  linkType: hard
+
+"@effect/printer@npm:^0.47.0":
+  version: 0.47.0
+  resolution: "@effect/printer@npm:0.47.0"
+  peerDependencies:
+    "@effect/typeclass": ^0.38.0
+    effect: ^3.19.0
+  checksum: 10/fd36df12ca8c09748e56b9f35aa744ed9f5a6e6a300d0cf5c9cd3aa93c8dece504181cc8913ecb19f4c02910c4fc5168ad5e6f5ca7cf8db638da3ae324dbe564
   languageName: node
   linkType: hard
 
@@ -694,7 +704,7 @@ __metadata:
     "@effect/platform-node": "npm:^0.98.3"
     "@effect/platform-node-shared": "npm:^0.51.5"
     "@effect/printer": "npm:^0.46.0"
-    "@effect/printer-ansi": "npm:^0.46.0"
+    "@effect/printer-ansi": "npm:^0.47.0"
     "@effect/rpc": "npm:^0.71.0"
     "@effect/sql": "npm:^0.46.0"
     "@effect/typeclass": "npm:^0.37.0"
