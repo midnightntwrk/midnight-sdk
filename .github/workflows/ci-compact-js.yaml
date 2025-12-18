@@ -9,7 +9,7 @@ permissions:
   packages: write
   checks: write
   pull-requests: write
-  
+
 on:
   workflow_dispatch:
   workflow_call:

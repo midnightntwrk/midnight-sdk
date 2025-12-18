@@ -9,7 +9,7 @@ permissions:
   packages: write
   checks: write
   pull-requests: write
-  
+
 on:
   workflow_dispatch:
   workflow_call:
@@ -47,7 +47,7 @@ jobs:
           node-version-file: .nvmrc
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-      
+
       - name: Publish Package Artifacts
         uses: ./.github/actions/publish-package-artifacts
         with:
