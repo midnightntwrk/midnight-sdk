@@ -31,7 +31,7 @@ This project uses [Conventional Commits](https://www.conventionalcommits.org/). 
 <type>[optional scope]: <description>
 ```
 
-**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`, `revert`  
+**Types:** `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `ci`, `build`, `revert`
 **Scopes:** `compact-js`, `platform-js`
 
 ### Making Commits

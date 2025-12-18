@@ -18,7 +18,7 @@ runs:
       working-directory: ${{ inputs.working-directory }}
       run: |
         on_release_branch=$(jq --arg b "$(git rev-parse --abbrev-ref HEAD)" '(.v_info.releaseBranches | join("|")) as $p | ($b | test("^(" + $p + ")$"))' version.json)
-        
+
         source_commit=$(git log --format=%h -1 -- version.json)
         commit_height=$(($(git log --format=%h $source_commit.. | wc -l)))
         version=$(jq -r '.v_info.version' version.json)
