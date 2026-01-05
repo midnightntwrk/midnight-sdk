@@ -62,7 +62,7 @@ describe('Circuit Command', () => {
       ]);
 
       const lines = yield* MockConsole.getLines({ stripAnsi: true });
-      console.log(lines.join('||'));
+      
       expect(lines.length).toBe(0);
       expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_PS_FILEPATH))).toMatchObject({ count: 101 });
     }).pipe(
