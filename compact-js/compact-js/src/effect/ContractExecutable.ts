@@ -46,7 +46,7 @@ import {
   StateValue as LedgerStateValue,
   type Transcript,
   VerifierKeyInsert,
-  VerifierKeyRemove} from '@midnight-ntwrk/ledger-v6';
+  VerifierKeyRemove} from '@midnight-ntwrk/ledger-v7';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
@@ -458,7 +458,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         return yield* this.createSignedMaintenanceUpdate(
           () => {
             return Either.right([
-              new VerifierKeyRemove(impureCircuitId, new ContractOperationVersion('v2'))
+              new VerifierKeyRemove(impureCircuitId, new ContractOperationVersion('v3'))
             ]);
           },
           keyConfig,
@@ -481,7 +481,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         return yield* this.createSignedMaintenanceUpdate(
           () => {
             return Either.right([
-              new VerifierKeyInsert(impureCircuitId, new ContractOperationVersionedVerifierKey('v2', verifierKey))
+              new VerifierKeyInsert(impureCircuitId, new ContractOperationVersionedVerifierKey('v3', verifierKey))
             ]);
           },
           keyConfig,
