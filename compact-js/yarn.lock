@@ -219,15 +219,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/rpc@npm:^0.71.0":
-  version: 0.71.2
-  resolution: "@effect/rpc@npm:0.71.2"
+"@effect/rpc@npm:^0.73.0":
+  version: 0.73.0
+  resolution: "@effect/rpc@npm:0.73.0"
   dependencies:
     msgpackr: "npm:^1.11.4"
   peerDependencies:
-    "@effect/platform": ^0.92.1
-    effect: ^3.18.5
-  checksum: 10/15fec55bd191fc72a7d7c56c123e7e7f58079e6e72f77c1ea048ad37cb3888cd29cd9b23768263e6666dd436844d095264b65dd633622d22da5102ffd13e67a2
+    "@effect/platform": ^0.94.0
+    effect: ^3.19.13
+  checksum: 10/4e10bcbdeafb0c50902fb44c34eb2a96cc77806f00e5e67b79bfdae20966b7c28548f0443a80761443841b0d0d3152b8ddb68098b3cde7fddf96fbd3b81e565b
   languageName: node
   linkType: hard
 
@@ -705,7 +705,7 @@ __metadata:
     "@effect/platform-node-shared": "npm:^0.51.5"
     "@effect/printer": "npm:^0.46.0"
     "@effect/printer-ansi": "npm:^0.47.0"
-    "@effect/rpc": "npm:^0.71.0"
+    "@effect/rpc": "npm:^0.73.0"
     "@effect/sql": "npm:^0.49.0"
     "@effect/typeclass": "npm:^0.37.0"
     "@effect/workflow": "npm:^0.11.3"
@@ -730,7 +730,7 @@ __metadata:
     "@effect/experimental": "npm:^0.56.0"
     "@effect/platform": "npm:^0.92.1"
     "@effect/platform-node": "npm:^0.98.3"
-    "@effect/rpc": "npm:^0.71.0"
+    "@effect/rpc": "npm:^0.73.0"
     "@effect/sql": "npm:^0.49.0"
     "@effect/workflow": "npm:^0.11.3"
     effect: "npm:^3.18.4"
@@ -750,7 +750,7 @@ __metadata:
     "@effect/platform": "npm:^0.92.1"
     "@effect/platform-node": "npm:^0.98.3"
     "@effect/platform-node-shared": "npm:^0.51.5"
-    "@effect/rpc": "npm:^0.71.0"
+    "@effect/rpc": "npm:^0.73.0"
     "@effect/sql": "npm:^0.49.0"
     "@effect/vitest": "npm:^0.26.0"
     "@effect/workflow": "npm:^0.11.3"
