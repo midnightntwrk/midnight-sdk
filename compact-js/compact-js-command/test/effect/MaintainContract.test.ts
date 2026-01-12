@@ -19,7 +19,7 @@ import { Command } from '@effect/cli';
 import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
 import { ConfigCompiler, maintainCommand } from '@midnight-ntwrk/compact-js-command/effect';
-import { sampleSigningKey } from '@midnight-ntwrk/ledger-v6';
+import { sampleSigningKey } from '@midnight-ntwrk/ledger-v7';
 import { Console,Effect, Layer } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
