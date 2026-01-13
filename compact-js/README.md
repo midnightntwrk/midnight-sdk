@@ -23,5 +23,5 @@ the contract and its circuits more convenient, and TypeScript idiomatic.
 
 > [!NOTE]  
 > The term _runtime_ is often used to describe the JavaScript executable for a contract. This is
-> distinct from the package `@midnight-ntwrk/compact-runtime`, which provides the utilities that each
-> of these JavaScript executables use.
+> distinct from the package `@midnight-ntwrk/compact-runtime`, which provides the utilities that each of
+> these JavaScript executables use.
