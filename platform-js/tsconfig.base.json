@@ -11,6 +11,6 @@
     "ignoreDeprecations": "5.0",
     "module": "ES2022",
     "moduleResolution": "bundler",
-    "types": ["vitest/globals"]
+    "types": ["vitest/globals", "node"]
   },
 }
