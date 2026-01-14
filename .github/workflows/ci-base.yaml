@@ -2,11 +2,7 @@ name: CI - (base)
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-permissions:
-  contents: read
-  issues: read
-  checks: write
-  pull-requests: write
+permissions: {}
 
 on:
   workflow_dispatch:
@@ -35,6 +31,10 @@ jobs:
     name: Build, Lint and Test
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     defaults:
       run:
         working-directory: ./${{ inputs.workspace }} # Workspace name has affinity to a folder in the root of the repo.
