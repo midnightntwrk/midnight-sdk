@@ -42,6 +42,36 @@ const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeCon
   }).pipe(Layer.unwrapEffect);
 
 describe('Circuit Command', () => {
+  it.effect('should report error for unknown circuit in manifest', () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
+
+      const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+      
+      yield* cli([
+        'node', 'circuit.ts',
+        '-c', COUNTER_CONFIG_FILEPATH,
+        '--input', COUNTER_STATE_FILEPATH,
+        '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
+        '--output', COUNTER_OUTPUT_FILEPATH,
+        '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+        '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
+        '--output-result', COUNTER_RESULT_FILEPATH,
+        '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'unknown_circuit'
+      ]);
+
+      const lines = yield* MockConsole.getLines({ stripAnsi: true });
+      
+      expect(lines.length).toBe(1);
+      expect(lines[0]).toMatch(/Circuit 'unknown_circuit' not found/);
+    }).pipe(
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+      Effect.provide(testLayer)
+    ),
+    30_000
+  );
+
   it.effect('should report success with valid setup', () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;

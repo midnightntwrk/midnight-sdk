@@ -13,16 +13,27 @@
  * limitations under the License.
  */
 
-import { FileSystem,Path } from '@effect/platform';
+import { FileSystem, Path } from '@effect/platform';
 import { CompiledContract, Contract, ZKConfiguration, ZKConfigurationReadError } from '@midnight-ntwrk/compact-js/effect';
-import { Effect, Layer } from 'effect';
+import { Effect, Layer, Option } from 'effect';
 
 const KEYS_FOLDER = 'keys';
 const VERIFIER_EXT = '.verifier';
+const COMPILER_FOLDER = 'compiler';
+const CONTRACT_INFO_FILE = 'contract-info.json';
+
+interface Circuit {
+  readonly name: string;
+  readonly pure: boolean;
+  readonly hasVerifierKey: boolean;
+}
+interface ContractInfo {
+  readonly circuits: Circuit[];
+}
 
 /**
  * Returns a function, that when invoked, will create a ZK asset reader over the file system.
- * 
+ *
  * @param path A `Path` implementation.
  * @param fs A `FileSystem` implementation.
  * @returns A function that receives a `CompiledContract` instance and returns a ZK asset reader over `fs`.
@@ -35,12 +46,43 @@ const makeFileSystemReader =
     // eslint-disable-next-line require-yield
     Effect.gen(function* () {
       const assetsPath = CompiledContract.getCompiledAssetsPath(compiledContract);
+      const resolvedAssetsPath = path.resolve(baseAssetFolderPath, assetsPath);
+
+      let cachedContractInfo: ContractInfo | undefined;
+      const getContractInfo = Effect.gen(function* () {
+        if (cachedContractInfo !== undefined) {
+          return cachedContractInfo;
+        }
+        const contractInfoPath = path.join(resolvedAssetsPath, COMPILER_FOLDER, CONTRACT_INFO_FILE);
+        const contractInfoData = yield* fs.readFileString(contractInfoPath);
+        cachedContractInfo = JSON.parse(contractInfoData) as ContractInfo;
+        return cachedContractInfo;
+      });
+
       const getVerifierKey = (impureCircuitId: Contract.ImpureCircuitId<C>) =>
         Effect.gen(function* () {
-          const data = yield* fs.readFile(
-            path.join(path.resolve(baseAssetFolderPath, assetsPath), KEYS_FOLDER, `${impureCircuitId}${VERIFIER_EXT}`)
-          );
-          return Contract.VerifierKey(data);
+          const contractInfo = yield* getContractInfo;
+          const verifierKeyPath = path.join(resolvedAssetsPath, KEYS_FOLDER, `${impureCircuitId}${VERIFIER_EXT}`);
+          const circuit = contractInfo.circuits.find((_) => _.name === impureCircuitId);
+
+          if (!circuit) {
+            return yield* Effect.fail(`Circuit '${impureCircuitId}' was not found in the contract manifest (${CONTRACT_INFO_FILE}).`);
+          }
+          // If the verifier key file exists, return it...
+          if (yield* fs.exists(verifierKeyPath)) {
+            return Option.some(Contract.VerifierKey(yield* fs.readFile(verifierKeyPath)));
+          }
+          // ...otherwise, check if the circuit manifest indicates that it has been compiled requiring a
+          // verifier key (meaning it should exist)...
+          // TODO: Uncomment the following lines once the contract manifest carries a property indicating whether
+          // a verifier key was expected to be generated for the circuit.
+          // if (circuit.verifiable) {
+          //   return yield* Effect.fail(
+          //     `Verifier key for circuit '${impureCircuitId}' was expected at path '${verifierKeyPath}', but the file does not exist.`
+          //   );
+          // }
+          // ...otherwise, return none (the circuit is not verifiable and no verifier key will exist for it).
+          return Option.none<Contract.VerifierKey>();
         }).pipe(
           Effect.mapError((err: unknown) =>
             ZKConfigurationReadError.make(compiledContract.tag, impureCircuitId, 'verifier-key', err)
