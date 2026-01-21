@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { Context, type Effect } from 'effect';
+import { Context, type Effect, type Option } from 'effect';
 
 import type { CompiledContract } from './CompiledContract.js';
 import type * as Contract from './Contract.js';
@@ -53,26 +53,28 @@ export declare namespace ZKConfiguration {
      * Reads a verifier key for a given circuit identifier.
      *
      * @param impureCircuitId The identifier of the circuit to be read.
-     * @returns An `Effect` that yields a {@link Contract.VerifierKey | VerifierKey} for `impureCircuitId`; or
-     * fails with a {@link ZKConfigurationError.ZKConfigurationReadError | ZKConfigurationReadError}.
+     * @returns An `Effect` that yields an `Option` containing a {@link Contract.VerifierKey | VerifierKey} for
+     * `impureCircuitId` if the compiled contract was configured for verifier key generation; or fails with a
+     * {@link ZKConfigurationError.ZKConfigurationReadError | ZKConfigurationReadError}.
      */
     getVerifierKey(
       impureCircuitId: Contract.ImpureCircuitId<C>
-    ): Effect.Effect<Contract.VerifierKey, ZKConfigurationError.ZKConfigurationReadError>;
+    ): Effect.Effect<Option.Option<Contract.VerifierKey>, ZKConfigurationError.ZKConfigurationReadError>;
 
     /**
      * Batch reads the verifier keys for an array of circuit identifiers.
      *
      * @param impureCircuitIds The identifiers of the circuits to be read.
-     * @returns An `Effect` that yields an array of tuples describing a {@link Contract.VerifierKey | VerifierKey}
-     * and its associated circuit identifier; or fails with a 
+     * @returns An `Effect` that yields an array of tuples describing an `Option` containing a
+     * {@link Contract.VerifierKey | VerifierKey} and its associated circuit identifier if the compiled contract
+     * was configured for verifier key generation; or fails with a
      * {@link ZKConfigurationError.ZKConfigurationReadError | ZKConfigurationReadError}.
      */
     getVerifierKeys(
       impureCircuitIds: Contract.ImpureCircuitId<C>[]
     ): Effect.Effect<
-      readonly [Contract.ImpureCircuitId<C>, Contract.VerifierKey][],
+      readonly [Contract.ImpureCircuitId<C>, Option.Option<Contract.VerifierKey>][],
       ZKConfigurationError.ZKConfigurationReadError
-      >;
+    >;
   }
 }

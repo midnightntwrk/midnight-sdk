@@ -306,6 +306,12 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               const verifierKeys = yield* zkConfigReader.getVerifierKeys(Contract.getImpureCircuitIds(contract));
 
               for (const [impureCircuitId, verifierKey] of verifierKeys) {
+                // If there is no verifier key for this circuit, skip it. It's an impure circuit that likely
+                // interacts only with witnesses.
+                if (Option.isNone(verifierKey)) {
+                  continue;
+                }
+                
                 const operation = contractState.operation(impureCircuitId);
 
                 if (!operation) {
@@ -316,7 +322,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                 }
 
                 try {
-                  operation.verifierKey = verifierKey;
+                  operation.verifierKey = verifierKey.value;
                   contractState.setOperation(impureCircuitId, operation);
                 } catch (err: unknown) {
                   return yield* ContractConfigurationError.make(
