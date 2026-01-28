@@ -174,16 +174,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform@npm:^0.92.1":
-  version: 0.92.1
-  resolution: "@effect/platform@npm:0.92.1"
+"@effect/platform@npm:^0.94.2":
+  version: 0.94.2
+  resolution: "@effect/platform@npm:0.94.2"
   dependencies:
     find-my-way-ts: "npm:^0.1.6"
     msgpackr: "npm:^1.11.4"
     multipasta: "npm:^0.2.7"
   peerDependencies:
-    effect: ^3.18.1
-  checksum: 10/cc51f0fccf0e0022323877d72aed5b34f2e6efbe1879cfcf6ba5a9c491a3c4d855d33e626dbf1c5f76ed12bf5cc92febfc50213c3d1fb478759f563d63940ef4
+    effect: ^3.19.15
+  checksum: 10/5a42eb70b2c4dce276806476a3e5e852e483b0dd108e98b8b9f04ef09baaa8d4a70e415989e1dbf04b0d6da67e55375d71c4b5af57a22950c12bed3e43fb071f
   languageName: node
   linkType: hard
 
@@ -659,7 +659,7 @@ __metadata:
     "@effect/cli": "npm:^0.71.0"
     "@effect/cluster": "npm:^0.50.4"
     "@effect/experimental": "npm:^0.56.0"
-    "@effect/platform": "npm:^0.92.1"
+    "@effect/platform": "npm:^0.94.2"
     "@effect/platform-node": "npm:^0.98.3"
     "@effect/platform-node-shared": "npm:^0.51.5"
     "@effect/printer": "npm:^0.47.0"
@@ -687,7 +687,7 @@ __metadata:
   dependencies:
     "@effect/cluster": "npm:^0.50.4"
     "@effect/experimental": "npm:^0.56.0"
-    "@effect/platform": "npm:^0.92.1"
+    "@effect/platform": "npm:^0.94.2"
     "@effect/platform-node": "npm:^0.98.3"
     "@effect/rpc": "npm:^0.73.0"
     "@effect/sql": "npm:^0.49.0"
@@ -706,7 +706,7 @@ __metadata:
     "@effect/build-utils": "npm:^0.8.9"
     "@effect/cluster": "npm:^0.50.4"
     "@effect/experimental": "npm:^0.56.0"
-    "@effect/platform": "npm:^0.92.1"
+    "@effect/platform": "npm:^0.94.2"
     "@effect/platform-node": "npm:^0.98.3"
     "@effect/platform-node-shared": "npm:^0.51.5"
     "@effect/rpc": "npm:^0.73.0"
@@ -741,7 +741,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js"
   dependencies:
-    "@effect/platform": "npm:^0.92.1"
+    "@effect/platform": "npm:^0.94.2"
     "@midnight-ntwrk/compact-runtime": "npm:0.13.0-alpha.0"
     "@midnight-ntwrk/ledger-v7": "npm:7.0.0-alpha.1"
     "@midnight-ntwrk/platform-js": "npm:^2.1.0"
