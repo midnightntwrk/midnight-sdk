@@ -68,32 +68,34 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/cli@npm:^0.71.0":
-  version: 0.71.0
-  resolution: "@effect/cli@npm:0.71.0"
+"@effect/cli@npm:^0.73.1":
+  version: 0.73.1
+  resolution: "@effect/cli@npm:0.73.1"
   dependencies:
     ini: "npm:^4.1.3"
     toml: "npm:^3.0.0"
     yaml: "npm:^2.5.0"
   peerDependencies:
-    "@effect/platform": ^0.92.0
-    "@effect/printer": ^0.46.0
-    "@effect/printer-ansi": ^0.46.0
-    effect: ^3.18.0
-  checksum: 10/aa851d8d9732b4a5cfbbc93218d13141d15e1870a2c802441ef274c71ad45ac1ddc9c439585fd1197aedd19c7d724ea967fe868aa05db04548573b9e6bc23727
+    "@effect/platform": ^0.94.2
+    "@effect/printer": ^0.47.0
+    "@effect/printer-ansi": ^0.47.0
+    effect: ^3.19.15
+  checksum: 10/553fbfa16caf9e9a5dfb62b62649d11b781e5f83142a6eb59c89b1975b14c9f68aec02d3a63b28559b9ece13fe09a50d78fb30190f96c85e516d7fbef4bd2e97
   languageName: node
   linkType: hard
 
-"@effect/cluster@npm:^0.50.4":
-  version: 0.50.6
-  resolution: "@effect/cluster@npm:0.50.6"
+"@effect/cluster@npm:^0.56.1":
+  version: 0.56.1
+  resolution: "@effect/cluster@npm:0.56.1"
+  dependencies:
+    kubernetes-types: "npm:^1.30.0"
   peerDependencies:
-    "@effect/platform": ^0.92.1
-    "@effect/rpc": ^0.71.1
-    "@effect/sql": ^0.46.0
-    "@effect/workflow": ^0.11.5
-    effect: ^3.18.4
-  checksum: 10/79c1757d5f3a223e2d2223b10f2fd908a9b4e812164a2ad1fa1ac49e12222a4ca724401cc723a7d99855e207bac0a4b232f4aa00f4f86f196ae167e22e87e380
+    "@effect/platform": ^0.94.1
+    "@effect/rpc": ^0.73.0
+    "@effect/sql": ^0.49.0
+    "@effect/workflow": ^0.16.0
+    effect: ^3.19.14
+  checksum: 10/41ecb3195c6f0b91cd17705f628ba43e64bc0116afe64995589455b23d0caffc872be50409edb783601d8ddede2ed149ca576c4ee1c0f6d081d7805bc97f96ad
   languageName: node
   linkType: hard
 
@@ -116,51 +118,38 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform-node-shared@npm:^0.51.5, @effect/platform-node-shared@npm:^0.51.6":
-  version: 0.51.6
-  resolution: "@effect/platform-node-shared@npm:0.51.6"
+"@effect/platform-node-shared@npm:^0.57.1":
+  version: 0.57.1
+  resolution: "@effect/platform-node-shared@npm:0.57.1"
   dependencies:
     "@parcel/watcher": "npm:^2.5.1"
     multipasta: "npm:^0.2.7"
     ws: "npm:^8.18.2"
   peerDependencies:
-    "@effect/cluster": ^0.50.6
-    "@effect/platform": ^0.92.1
-    "@effect/rpc": ^0.71.1
-    "@effect/sql": ^0.46.0
-    effect: ^3.18.4
-  checksum: 10/2d65227136fcf12dd949eb1054b47bbb614503c11caf0e5560f23fedc73a1985aa9151d19b5c7c7be2f31e9f911a3dc0f70e2e4ac31e37aa3dd7c5c124ae2eff
+    "@effect/cluster": ^0.56.1
+    "@effect/platform": ^0.94.2
+    "@effect/rpc": ^0.73.0
+    "@effect/sql": ^0.49.0
+    effect: ^3.19.15
+  checksum: 10/c3b1e4820b4e5ad564a79cce2d1d65c30b29f8f15f9446b69929af9056e2e02624d1b5c709eca3e39f2a7d8ad1d2a29eb12955db8a736ef338681698c8ea7e42
   languageName: node
   linkType: hard
 
-"@effect/platform-node@npm:^0.98.3":
-  version: 0.98.4
-  resolution: "@effect/platform-node@npm:0.98.4"
+"@effect/platform-node@npm:^0.104.1":
+  version: 0.104.1
+  resolution: "@effect/platform-node@npm:0.104.1"
   dependencies:
-    "@effect/platform-node-shared": "npm:^0.51.6"
+    "@effect/platform-node-shared": "npm:^0.57.1"
     mime: "npm:^3.0.0"
     undici: "npm:^7.10.0"
     ws: "npm:^8.18.2"
   peerDependencies:
-    "@effect/cluster": ^0.50.6
-    "@effect/platform": ^0.92.1
-    "@effect/rpc": ^0.71.1
-    "@effect/sql": ^0.46.0
-    effect: ^3.18.4
-  checksum: 10/b28c38617d5e4c1072a7f0e835b6ae6b91fcd3949bbe12a271f7f4c53b18ea5dfe95e74aa68948b7cc820dbaffeb83372021401de41bbd5ecef1d2b9491bf90a
-  languageName: node
-  linkType: hard
-
-"@effect/platform@npm:^0.92.1":
-  version: 0.92.1
-  resolution: "@effect/platform@npm:0.92.1"
-  dependencies:
-    find-my-way-ts: "npm:^0.1.6"
-    msgpackr: "npm:^1.11.4"
-    multipasta: "npm:^0.2.7"
-  peerDependencies:
-    effect: ^3.18.1
-  checksum: 10/cc51f0fccf0e0022323877d72aed5b34f2e6efbe1879cfcf6ba5a9c491a3c4d855d33e626dbf1c5f76ed12bf5cc92febfc50213c3d1fb478759f563d63940ef4
+    "@effect/cluster": ^0.56.1
+    "@effect/platform": ^0.94.2
+    "@effect/rpc": ^0.73.0
+    "@effect/sql": ^0.49.0
+    effect: ^3.19.15
+  checksum: 10/9c85fd58eb9acb94f49ca3639ae322139fbb6fda1d06ca8a486eb078590ae5e73982033cad91fbc59aeebfbfb375f35c75db693984c034663d259f62fa61b502
   languageName: node
   linkType: hard
 
@@ -186,16 +175,6 @@ __metadata:
     "@effect/typeclass": ^0.38.0
     effect: ^3.19.0
   checksum: 10/3bb1ff95dbd9eb8df18bd9485f2f2b5ab33cf2d4332717ba55760c6471181c686ad528524cb024d9648b60632314a97ab3ad7367de9bf5e9698b1b2f8e7e29fd
-  languageName: node
-  linkType: hard
-
-"@effect/printer@npm:^0.46.0":
-  version: 0.46.0
-  resolution: "@effect/printer@npm:0.46.0"
-  peerDependencies:
-    "@effect/typeclass": ^0.37.0
-    effect: ^3.18.0
-  checksum: 10/5708584926c00ee2aca14a7e722cd90d2168136df3a553d8c3f9b40fede5974ec178bbc54bdaa0f050c97f4b914a3d9f04ab8c8aa588a0346fd1db8ce796f68c
   languageName: node
   linkType: hard
 
@@ -234,12 +213,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/typeclass@npm:^0.37.0":
-  version: 0.37.0
-  resolution: "@effect/typeclass@npm:0.37.0"
+"@effect/typeclass@npm:^0.38.0":
+  version: 0.38.0
+  resolution: "@effect/typeclass@npm:0.38.0"
   peerDependencies:
-    effect: ^3.18.0
-  checksum: 10/0cb5228296ecb78984d8ec83b75470eb49ff3416c6d231aecdc11c02e6026524b6ffb91760bf8aa281c0d96ea58cbb7f9ff33cbfd92b54d88636a0cab68a5dd7
+    effect: ^3.19.0
+  checksum: 10/0e5655bfa9097db56b090da9a09e4c781c6e7b1ad5ffcb0b39c41c48c948cd9a24696b641c287ed0fa4ff7e9f643f3a49a251da3aab25ad102e5d2e019324d5c
   languageName: node
   linkType: hard
 
@@ -656,17 +635,17 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js-command@workspace:compact-js-command"
   dependencies:
-    "@effect/cli": "npm:^0.71.0"
-    "@effect/cluster": "npm:^0.50.4"
+    "@effect/cli": "npm:^0.73.1"
+    "@effect/cluster": "npm:^0.56.1"
     "@effect/experimental": "npm:^0.56.0"
-    "@effect/platform": "npm:^0.92.1"
-    "@effect/platform-node": "npm:^0.98.3"
-    "@effect/platform-node-shared": "npm:^0.51.5"
-    "@effect/printer": "npm:^0.46.0"
+    "@effect/platform": "npm:^0.94.2"
+    "@effect/platform-node": "npm:^0.104.1"
+    "@effect/platform-node-shared": "npm:^0.57.1"
+    "@effect/printer": "npm:^0.47.0"
     "@effect/printer-ansi": "npm:^0.47.0"
     "@effect/rpc": "npm:^0.73.0"
     "@effect/sql": "npm:^0.49.0"
-    "@effect/typeclass": "npm:^0.37.0"
+    "@effect/typeclass": "npm:^0.38.0"
     "@effect/workflow": "npm:^0.11.3"
     "@midnight-ntwrk/compact-js": "npm:^2.4.0"
     "@midnight-ntwrk/compact-js-node": "npm:^2.4.0"
@@ -685,10 +664,10 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js-node@workspace:compact-js-node"
   dependencies:
-    "@effect/cluster": "npm:^0.50.4"
+    "@effect/cluster": "npm:^0.56.1"
     "@effect/experimental": "npm:^0.56.0"
-    "@effect/platform": "npm:^0.92.1"
-    "@effect/platform-node": "npm:^0.98.3"
+    "@effect/platform": "npm:^0.94.2"
+    "@effect/platform-node": "npm:^0.104.1"
     "@effect/rpc": "npm:^0.73.0"
     "@effect/sql": "npm:^0.49.0"
     "@effect/workflow": "npm:^0.11.3"
@@ -704,11 +683,11 @@ __metadata:
   resolution: "@midnight-ntwrk/compact-js-sources@workspace:."
   dependencies:
     "@effect/build-utils": "npm:^0.8.9"
-    "@effect/cluster": "npm:^0.50.4"
+    "@effect/cluster": "npm:^0.56.1"
     "@effect/experimental": "npm:^0.56.0"
     "@effect/platform": "npm:^0.94.2"
-    "@effect/platform-node": "npm:^0.98.3"
-    "@effect/platform-node-shared": "npm:^0.51.5"
+    "@effect/platform-node": "npm:^0.104.1"
+    "@effect/platform-node-shared": "npm:^0.57.1"
     "@effect/rpc": "npm:^0.73.0"
     "@effect/sql": "npm:^0.49.0"
     "@effect/vitest": "npm:^0.27.0"
@@ -3691,6 +3670,13 @@ __metadata:
   dependencies:
     json-buffer: "npm:3.0.1"
   checksum: 10/167eb6ef64cc84b6fa0780ee50c9de456b422a1e18802209234f7c2cf7eae648c7741f32e50d7e24ccb22b24c13154070b01563d642755b156c357431a191e75
+  languageName: node
+  linkType: hard
+
+"kubernetes-types@npm:^1.30.0":
+  version: 1.30.0
+  resolution: "kubernetes-types@npm:1.30.0"
+  checksum: 10/df8343def274b9e7fc8fbe2e00811fc9a025565ffd780c8cf14e5438ba1b1ecd8cb6953d056f0234ec063b9a2c88eb580bd7d5a31a0e2687c40912d184041190
   languageName: node
   linkType: hard
 
