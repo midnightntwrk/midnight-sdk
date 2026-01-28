@@ -21,7 +21,7 @@
     "@effect/printer-ansi": "^0.47.0",
     "@effect/rpc": "^0.73.0",
     "@effect/sql": "^0.49.0",
-    "@effect/typeclass": "^0.37.0",
+    "@effect/typeclass": "^0.38.0",
     "@effect/workflow": "^0.11.3",
     "@midnight-ntwrk/compact-js": "^2.3.0",
     "@midnight-ntwrk/compact-js-node": "^2.3.0",

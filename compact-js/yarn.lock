@@ -244,12 +244,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/typeclass@npm:^0.37.0":
-  version: 0.37.0
-  resolution: "@effect/typeclass@npm:0.37.0"
+"@effect/typeclass@npm:^0.38.0":
+  version: 0.38.0
+  resolution: "@effect/typeclass@npm:0.38.0"
   peerDependencies:
-    effect: ^3.18.0
-  checksum: 10/0cb5228296ecb78984d8ec83b75470eb49ff3416c6d231aecdc11c02e6026524b6ffb91760bf8aa281c0d96ea58cbb7f9ff33cbfd92b54d88636a0cab68a5dd7
+    effect: ^3.19.0
+  checksum: 10/0e5655bfa9097db56b090da9a09e4c781c6e7b1ad5ffcb0b39c41c48c948cd9a24696b641c287ed0fa4ff7e9f643f3a49a251da3aab25ad102e5d2e019324d5c
   languageName: node
   linkType: hard
 
@@ -676,7 +676,7 @@ __metadata:
     "@effect/printer-ansi": "npm:^0.47.0"
     "@effect/rpc": "npm:^0.73.0"
     "@effect/sql": "npm:^0.49.0"
-    "@effect/typeclass": "npm:^0.37.0"
+    "@effect/typeclass": "npm:^0.38.0"
     "@effect/workflow": "npm:^0.11.3"
     "@midnight-ntwrk/compact-js": "npm:^2.3.0"
     "@midnight-ntwrk/compact-js-node": "npm:^2.3.0"
