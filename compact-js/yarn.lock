@@ -662,7 +662,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:0.14.0"
     "@midnight-ntwrk/ledger-v7": "npm:7.0.0"
     "@midnight-ntwrk/platform-js": "npm:^2.2.0"
-    "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.0.0-beta.12"
+    "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.0.0"
     effect: "npm:^3.19.15"
     json5: "npm:^2.2.3"
     ts-node: "npm:^10.9.2"
@@ -785,14 +785,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-address-format@npm:3.0.0-beta.12":
-  version: 3.0.0-beta.12
-  resolution: "@midnight-ntwrk/wallet-sdk-address-format@npm:3.0.0-beta.12::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-address-format%2F3.0.0-beta.12%2Fa71f5ddd1263c1926e28fab24ebb2efe37a3dc1a"
+"@midnight-ntwrk/wallet-sdk-address-format@npm:3.0.0":
+  version: 3.0.0
+  resolution: "@midnight-ntwrk/wallet-sdk-address-format@npm:3.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-address-format%2F3.0.0%2F36d5faa5ada80a9c200d62d03971755ea05ce0aa"
   dependencies:
     "@midnight-ntwrk/ledger-v7": "npm:7.0.0"
     "@scure/base": "npm:^1.2.6"
     "@subsquid/scale-codec": "npm:^4.0.1"
-  checksum: 10/ab6324ac1ec3d02754810d58391dcaca589d9ef09ba1f2f799a3e85fa1a9825557fe3c04c52f05c0e905425b9dfc0930906edb1e55d6d920f40b1b21fc43630a
+  checksum: 10/ecee75660f7754ab86d87b2347f7dc4cbcdfb43cc5bd0f9dbddb071a394cdc6eabd3a86963b9b771e399ad9ef69399c1a688c825f0342d7b4e401f89ccef6362
   languageName: node
   linkType: hard
 
