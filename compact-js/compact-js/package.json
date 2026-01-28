@@ -11,7 +11,7 @@
     "./effect/internal/*": null
   },
   "dependencies": {
-    "@effect/platform": "^0.92.1",
+    "@effect/platform": "^0.94.2",
     "@midnight-ntwrk/compact-runtime": "0.13.0-alpha.0",
     "@midnight-ntwrk/ledger-v7": "7.0.0-alpha.1",
     "@midnight-ntwrk/platform-js": "^2.1.0",
