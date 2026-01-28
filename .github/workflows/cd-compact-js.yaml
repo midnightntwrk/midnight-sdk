@@ -2,13 +2,7 @@ name: Publish - Compact.js
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-permissions:
-  contents: read
-  issues: read
-  id-token: write
-  packages: write
-  checks: write
-  pull-requests: write
+permissions: {}
 
 on:
   workflow_dispatch:
@@ -25,6 +19,10 @@ concurrency:
 jobs:
   ci:
     if: inputs.should_run == 'true'
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     uses: ./.github/workflows/ci-base.yaml
     with:
       workspace: compact-js
@@ -35,6 +33,9 @@ jobs:
     needs: ci
     name: Publish Packages
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
       - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # ratchet:actions/checkout@v5
 
