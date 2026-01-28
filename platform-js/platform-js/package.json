@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@effect/platform": "^0.94.2",
-    "effect": "^3.19.14",
+    "effect": "^3.19.15",
     "tslib": "^2.8.1"
   },
   "repository": {
