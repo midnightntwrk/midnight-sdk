@@ -11,7 +11,7 @@
     "./effect/internal/*": null
   },
   "dependencies": {
-    "@effect/cli": "^0.71.0",
+    "@effect/cli": "^0.73.1",
     "@effect/cluster": "^0.50.4",
     "@effect/experimental": "^0.56.0",
     "@effect/platform": "^0.94.2",
