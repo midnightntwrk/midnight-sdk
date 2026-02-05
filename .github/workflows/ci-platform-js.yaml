@@ -2,13 +2,7 @@ name: CI - Platform.js
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-permissions:
-  contents: read
-  issues: read
-  id-token: write
-  packages: write
-  checks: write
-  pull-requests: write
+permissions: {}
 
 on:
   workflow_dispatch:
@@ -25,10 +19,13 @@ concurrency:
 jobs:
   ci:
     if: inputs.should_run == 'true'
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     uses: ./.github/workflows/ci-base.yaml
     with:
       workspace: platform-js
       coverage-files: |
         platform-js, ./platform-js/platform-js/coverage/coverage-summary.json
     secrets: inherit
-

@@ -2,23 +2,17 @@ name: CD
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+permissions: {}
+
 on:
   workflow_dispatch:
     inputs:
       workspace:
         type: choice
         description: The workspace to build and publish
-        options: 
+        options:
           - platform-js
           - compact-js
-
-permissions:
-  contents: read
-  issues: read
-  id-token: write
-  packages: write
-  checks: write
-  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}-${{ inputs.workspace }}
@@ -27,14 +21,24 @@ concurrency:
 jobs:
   cd-platformjs:
     name: Build and Publish Platform.js
-    with:
-      should_run: ${{ inputs.workspace == 'platform-js' }}
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+      packages: write
     uses: ./.github/workflows/cd-platform-js.yaml
+    with:
+      should_run: "${{ inputs.workspace == 'platform-js' && 'true' || 'false' }}"
     secrets: inherit
 
   cd-compactjs:
     name: Build and Publish Compact.js
-    with:
-      should_run: ${{ inputs.workspace == 'compact-js' }}
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
+      packages: write
     uses: ./.github/workflows/cd-compact-js.yaml
+    with:
+      should_run: "${{ inputs.workspace == 'compact-js' && 'true' || 'false' }}"
     secrets: inherit
