@@ -176,6 +176,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@effect/platform@npm:^0.94.4":
+  version: 0.94.4
+  resolution: "@effect/platform@npm:0.94.4"
+  dependencies:
+    find-my-way-ts: "npm:^0.1.6"
+    msgpackr: "npm:^1.11.4"
+    multipasta: "npm:^0.2.7"
+  peerDependencies:
+    effect: ^3.19.16
+  checksum: 10/8b5683982bbfd37059d02d8f69b06bd04a843449a45eff5fb5b8103a897cabe426dbdb9b5cf03d63a45df94b0f7bf59cdb5f295d0cdc6c436344c2d246a66720
+  languageName: node
+  linkType: hard
+
 "@effect/printer-ansi@npm:^0.47.0":
   version: 0.47.0
   resolution: "@effect/printer-ansi@npm:0.47.0"
@@ -648,7 +661,7 @@ __metadata:
     "@effect/cli": "npm:^0.73.1"
     "@effect/cluster": "npm:^0.56.1"
     "@effect/experimental": "npm:^0.56.0"
-    "@effect/platform": "npm:^0.94.2"
+    "@effect/platform": "npm:^0.94.4"
     "@effect/platform-node": "npm:^0.104.1"
     "@effect/platform-node-shared": "npm:^0.57.1"
     "@effect/printer": "npm:^0.47.0"
@@ -676,7 +689,7 @@ __metadata:
   dependencies:
     "@effect/cluster": "npm:^0.56.1"
     "@effect/experimental": "npm:^0.56.0"
-    "@effect/platform": "npm:^0.94.2"
+    "@effect/platform": "npm:^0.94.4"
     "@effect/platform-node": "npm:^0.104.1"
     "@effect/rpc": "npm:^0.73.0"
     "@effect/sql": "npm:^0.49.0"
@@ -695,7 +708,7 @@ __metadata:
     "@effect/build-utils": "npm:^0.8.9"
     "@effect/cluster": "npm:^0.56.1"
     "@effect/experimental": "npm:^0.56.0"
-    "@effect/platform": "npm:^0.94.2"
+    "@effect/platform": "npm:^0.94.4"
     "@effect/platform-node": "npm:^0.104.1"
     "@effect/platform-node-shared": "npm:^0.57.1"
     "@effect/rpc": "npm:^0.73.0"
@@ -730,7 +743,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js"
   dependencies:
-    "@effect/platform": "npm:^0.94.2"
+    "@effect/platform": "npm:^0.94.4"
     "@midnight-ntwrk/compact-runtime": "npm:0.14.0"
     "@midnight-ntwrk/ledger-v7": "npm:7.0.0"
     "@midnight-ntwrk/platform-js": "npm:^2.2.0"
