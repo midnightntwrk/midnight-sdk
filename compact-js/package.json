@@ -50,7 +50,7 @@
     "tstyche": "^4.3.0",
     "turbo": "^2.5.5",
     "typescript": "^5.8.2",
-    "typescript-eslint": "^8.35.1",
+    "typescript-eslint": "^8.55.0",
     "vitest": "^4.0.17"
   }
 }
