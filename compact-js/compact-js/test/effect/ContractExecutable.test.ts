@@ -30,7 +30,7 @@ import {
   type ReplaceAuthority,
   type VerifierKeyInsert,
   type VerifierKeyRemove
-} from '@midnight-ntwrk/ledger-v7';
+} from '@midnight-ntwrk/ledger-v8';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import { ConfigProvider, Effect, Layer, Option } from 'effect';

@@ -16,7 +16,7 @@
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { Intent } from '@midnight-ntwrk/ledger-v7';
+import { Intent } from '@midnight-ntwrk/ledger-v8';
 import { type ConfigError, Duration, Effect, Option } from 'effect';
 
 import { type ConfigCompiler } from '../ConfigCompiler.js';
