@@ -513,7 +513,7 @@ __metadata:
     "@tsconfig/node22": "npm:^22.0.5"
     "@types/node": "npm:^25.2.3"
     "@vitest/coverage-v8": "npm:^4.0.18"
-    "@vitest/ui": "npm:^3.2.4"
+    "@vitest/ui": "npm:^4.0.18"
     effect: "npm:^3.19.15"
     eslint: "npm:^9.30.1"
     eslint-config-prettier: "npm:^10.1.5"
@@ -1214,15 +1214,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/pretty-format@npm:3.2.4":
-  version: 3.2.4
-  resolution: "@vitest/pretty-format@npm:3.2.4"
-  dependencies:
-    tinyrainbow: "npm:^2.0.0"
-  checksum: 10/8dd30cbf956e01fbab042fe651fb5175d9f0cd00b7b569a46cd98df89c4fec47dab12916201ad6e09a4f25f2a2ec8927a4bfdc61118593097f759c90b18a51d4
-  languageName: node
-  linkType: hard
-
 "@vitest/pretty-format@npm:4.0.17":
   version: 4.0.17
   resolution: "@vitest/pretty-format@npm:4.0.17"
@@ -1269,31 +1260,20 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/ui@npm:^3.2.4":
-  version: 3.2.4
-  resolution: "@vitest/ui@npm:3.2.4"
+"@vitest/ui@npm:^4.0.18":
+  version: 4.0.18
+  resolution: "@vitest/ui@npm:4.0.18"
   dependencies:
-    "@vitest/utils": "npm:3.2.4"
+    "@vitest/utils": "npm:4.0.18"
     fflate: "npm:^0.8.2"
     flatted: "npm:^3.3.3"
     pathe: "npm:^2.0.3"
-    sirv: "npm:^3.0.1"
-    tinyglobby: "npm:^0.2.14"
-    tinyrainbow: "npm:^2.0.0"
+    sirv: "npm:^3.0.2"
+    tinyglobby: "npm:^0.2.15"
+    tinyrainbow: "npm:^3.0.3"
   peerDependencies:
-    vitest: 3.2.4
-  checksum: 10/727ca0a1421fff894ff6d5891bab7fa70546735ac08c4a6b07d509950ecb93529a38dd58c208cf5919c55347103c79a1c65c9b1c859e9af4302cef4e1b81fe5e
-  languageName: node
-  linkType: hard
-
-"@vitest/utils@npm:3.2.4":
-  version: 3.2.4
-  resolution: "@vitest/utils@npm:3.2.4"
-  dependencies:
-    "@vitest/pretty-format": "npm:3.2.4"
-    loupe: "npm:^3.1.4"
-    tinyrainbow: "npm:^2.0.0"
-  checksum: 10/7f12ef63bd8ee13957744d1f336b0405f164ade4358bf9dfa531f75bbb58ffac02bf61aba65724311ddbc50b12ba54853a169e59c6b837c16086173b9a480710
+    vitest: 4.0.18
+  checksum: 10/e70920941aa8e7ada08e56cd1324f37624a9fd88533b5f6f299f237a9978a7ffc61a6d267f2f3516afae2c07cdf06932328658c30f54ad362422b20439d1e14a
   languageName: node
   linkType: hard
 
@@ -3266,13 +3246,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"loupe@npm:^3.1.4":
-  version: 3.2.1
-  resolution: "loupe@npm:3.2.1"
-  checksum: 10/a4d78ec758aaa04e0e35d5cd1c15e970beb9cdbfd3d0f34f98b9bcda489f896a7190b3b6cc40b7a6dcb8e97e82e96eafaae10096aaa469804acdba6f7c2bde5f
-  languageName: node
-  linkType: hard
-
 "lru-cache@npm:^11.0.0, lru-cache@npm:^11.1.0, lru-cache@npm:^11.2.1":
   version: 11.2.2
   resolution: "lru-cache@npm:11.2.2"
@@ -4340,7 +4313,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"sirv@npm:^3.0.1":
+"sirv@npm:^3.0.2":
   version: 3.0.2
   resolution: "sirv@npm:3.0.2"
   dependencies:
@@ -4593,13 +4566,6 @@ __metadata:
     fdir: "npm:^6.5.0"
     picomatch: "npm:^4.0.3"
   checksum: 10/d72bd826a8b0fa5fa3929e7fe5ba48fceb2ae495df3a231b6c5408cd7d8c00b58ab5a9c2a76ba56a62ee9b5e083626f1f33599734bed1ffc4b792406408f0ca2
-  languageName: node
-  linkType: hard
-
-"tinyrainbow@npm:^2.0.0":
-  version: 2.0.0
-  resolution: "tinyrainbow@npm:2.0.0"
-  checksum: 10/94d4e16246972614a5601eeb169ba94f1d49752426312d3cf8cc4f2cc663a2e354ffc653aa4de4eebccbf9eeebdd0caef52d1150271fdfde65d7ae7f3dcb9eb5
   languageName: node
   linkType: hard
 
