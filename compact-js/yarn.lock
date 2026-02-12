@@ -706,7 +706,7 @@ __metadata:
     "@midnight-ntwrk/compact-js-node": "workspace:*"
     "@midnight-ntwrk/midnight-js-compact": "npm:3.0.0-alpha.3"
     "@tsconfig/node22": "npm:^22.0.0"
-    "@types/node": "npm:^24.0.0"
+    "@types/node": "npm:^25.2.3"
     "@vitest/coverage-v8": "npm:^4.0.18"
     "@vitest/ui": "npm:^4.0.18"
     effect: "npm:^3.19.15"
@@ -1339,12 +1339,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^24.0.0":
-  version: 24.10.4
-  resolution: "@types/node@npm:24.10.4"
+"@types/node@npm:^25.2.3":
+  version: 25.2.3
+  resolution: "@types/node@npm:25.2.3"
   dependencies:
     undici-types: "npm:~7.16.0"
-  checksum: 10/a0b318b99a97103d151589a10e20d7d3ce93188a0e6466040eb2ce5fae33ca6785306737b4006560fe3152073cbb2b14747b854fa303296275c22afc8a37da2a
+  checksum: 10/46962e3c1c0205da5b637c2e924f4eb03ce16f384af686b69afeb5fd4f8274d9a570375f8a24de2750633b69cb7ac33f0e458d9c3f20a66e12eb3a569499062d
   languageName: node
   linkType: hard
 
