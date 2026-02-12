@@ -37,7 +37,7 @@
     "@midnight-ntwrk/midnight-js-compact": "3.0.0-alpha.3",
     "@tsconfig/node22": "^22.0.0",
     "@types/node": "^24.0.0",
-    "@vitest/coverage-v8": "^4.0.17",
+    "@vitest/coverage-v8": "^4.0.18",
     "@vitest/ui": "^3.2.4",
     "eslint": "^9.30.1",
     "eslint-config-prettier": "^10.1.5",
