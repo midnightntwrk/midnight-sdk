@@ -1,9 +1,9 @@
-# Compact.js 2.4.0 - Release Notes
+# Compact.js 2.4.2 - Release Notes
 
-### Version 2.4.0
+### Version 2.4.2
 
-**Version:** 2.4.0  
-**Date:** 2026-01-28  
+**Version:** 2.4.2  
+**Date:** 2026-02-17  
 **Environment:** Preprod, Preview
 
 ### High-level summary 
@@ -41,7 +41,13 @@ N/A
 
 ### Improvements
 
-N/A
+The `circuit` command present in the `@midnight-ntwrk/compact-js-command` package now accepts an optional
+`--output-oc` option that when supplied, writes the on-chain (public) state data from the circuit invocation to
+the specified file path.
+
+It allows for scenarios where callers are required to batch circuit invocations into a single transaction since
+the on-chain state from each invocation can be used to setup the next invocation that is to be included in the
+transaction.
 
 ### Deprecations
 
