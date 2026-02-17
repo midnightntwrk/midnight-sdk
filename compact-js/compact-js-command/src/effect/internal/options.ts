@@ -54,6 +54,13 @@ export const outputFilePath = Options.file('output', { exists: 'either' }).pipe(
 );
 
 /** @internal */
+export const outputPublicFilePath = Options.file('output-oc', { exists: 'either' }).pipe(
+  Options.withDescription('A file path of where the generated \'on-chain\' (on-chain) data should be written.'),
+  Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath)))),
+  Options.optional
+);
+
+/** @internal */
 export const outputPrivateStateFilePath = Options.file('output-ps', { exists: 'either' }).pipe(
   Options.withDescription('A file path of where the generated \'PrivateState\' data should be written.'),
   Options.withDefault('output.ps.json'),
