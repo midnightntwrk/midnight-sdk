@@ -19,11 +19,12 @@ import { Contract, type ContractExecutable, ContractRuntimeError } from '@midnig
 import { decodeZswapLocalState, type EncodedZswapLocalState,
   encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import {
+  ChargedState as LedgerChargedState,
   communicationCommitmentRandomness,
   ContractCallPrototype,
   type ContractOperation as LedgerContractOption,
-  Intent
-} from '@midnight-ntwrk/ledger-v7';
+  Intent,
+  StateValue as LedgerStateValue} from '@midnight-ntwrk/ledger-v7';
 import { type ConfigError, Console,Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -51,6 +52,7 @@ export const Options = {
   inputPrivateStateFilePath: InternalOptions.inputPrivateStateFilePath,
   inputZswapLocalStateFilePath: InternalOptions.inputZswapLocalStateFilePath,
   outputFilePath: InternalOptions.outputFilePath,
+  outputPublicFilePath: InternalOptions.outputPublicFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
   outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath,
   outputResultFilePath: InternalOptions.outputResultFilePath
@@ -72,6 +74,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       inputPrivateStateFilePath,
       inputZswapLocalStateFilePath,
       outputFilePath,
+      outputPublicFilePath,
       outputPrivateStateFilePath,
       outputZswapLocalStateFilePath,
       outputResultFilePath
@@ -133,6 +136,13 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         circuitId
       ));
 
+    // If the output public file path is provided, write the on-chain (public state) data to the specified file.
+    if (Option.isSome(outputPublicFilePath)) {
+      ledgerContractState.data = new LedgerChargedState(
+        LedgerStateValue.decode(result.public.contractState.encode())
+      );
+      yield* fs.writeFile(Option.getOrThrow(outputPublicFilePath), ledgerContractState.serialize());
+    }
     yield* fs.writeFileString(
       outputResultFilePath,
       JSON.stringify(
