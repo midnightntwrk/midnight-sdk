@@ -78,19 +78,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/cli@npm:^0.73.1":
-  version: 0.73.1
-  resolution: "@effect/cli@npm:0.73.1"
+"@effect/cli@npm:^0.73.2":
+  version: 0.73.2
+  resolution: "@effect/cli@npm:0.73.2"
   dependencies:
     ini: "npm:^4.1.3"
     toml: "npm:^3.0.0"
     yaml: "npm:^2.5.0"
   peerDependencies:
-    "@effect/platform": ^0.94.2
+    "@effect/platform": ^0.94.3
     "@effect/printer": ^0.47.0
     "@effect/printer-ansi": ^0.47.0
-    effect: ^3.19.15
-  checksum: 10/553fbfa16caf9e9a5dfb62b62649d11b781e5f83142a6eb59c89b1975b14c9f68aec02d3a63b28559b9ece13fe09a50d78fb30190f96c85e516d7fbef4bd2e97
+    effect: ^3.19.16
+  checksum: 10/5e7ef759c81fc08982c82405e47e8228a2d679985b3e4820fefaa6e4ade65ee48978e01f907472076508323c2a0add5476db12971a2ebf3e79dc4fd8443e028b
   languageName: node
   linkType: hard
 
@@ -645,7 +645,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js-command@workspace:compact-js-command"
   dependencies:
-    "@effect/cli": "npm:^0.73.1"
+    "@effect/cli": "npm:^0.73.2"
     "@effect/cluster": "npm:^0.56.1"
     "@effect/experimental": "npm:^0.56.0"
     "@effect/platform": "npm:^0.94.2"
