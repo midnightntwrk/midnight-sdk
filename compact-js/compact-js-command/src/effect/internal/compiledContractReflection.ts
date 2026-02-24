@@ -248,7 +248,7 @@ const makeArgumentParser =
           if (!circuitNode) {
             return Either.left(ContractRuntimeError.make(`Circuit '${circuitId}' not found on the Compact generated TypeScript declaration.`))
           }
-          return transformParams(args, circuitNode.parameters.slice(1).map((_) => _.type!)) as Either.Either<Contract.Contract.CircuitParameters<C, Contract.ImpureCircuitId>, ContractRuntimeError.ContractRuntimeError>;
+          return transformParams(args, circuitNode.parameters.slice(1).map((_) => _.type!)) as Either.Either<Contract.Contract.CircuitParameters<C, Contract.ProvableCircuitId>, ContractRuntimeError.ContractRuntimeError>;
         }
       } satisfies CompiledContractReflection.CompiledContractReflection.ArgumentParser<C, PS>;
     });

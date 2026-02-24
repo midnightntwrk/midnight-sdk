@@ -130,15 +130,15 @@ describe('ContractExecutable', () => {
       deployment = new ContractDeploy(asLedgerContractState(result.public.contractState));
     });
 
-    it('should return identifiers of impure circuits', () => {
-      const circuitIds = contract.getImpureCircuitIds();
+    it('should return identifiers of provable circuits', () => {
+      const circuitIds = contract.getProvableCircuitIds();
 
       expect(circuitIds.length).toBeGreaterThan(0);
     });
 
     it.effect('should return updated contract state', () =>
       Effect.gen(function* () {
-        const result = yield* contract.circuit(Contract.ImpureCircuitId<CounterContract>('increment'), {
+        const result = yield* contract.circuit(Contract.ProvableCircuitId<CounterContract>('increment'), {
           address: ContractAddress.ContractAddress(deployment.address),
           contractState: asContractState(deployment.initialState),
           privateState: { count: 0 }
@@ -193,7 +193,7 @@ describe('ContractExecutable', () => {
     it.effect('removeContractOperation should work', () =>
       Effect.gen(function* () {
         const result = yield* contract.removeContractOperation(
-          Contract.ImpureCircuitId<CounterContract>('increment'),
+          Contract.ProvableCircuitId<CounterContract>('increment'),
           {
             address: ContractAddress.ContractAddress(deployment.address),
             contractState: asContractState(deployment.initialState),
@@ -210,7 +210,7 @@ describe('ContractExecutable', () => {
     it.effect('addOrReplaceContractOperation should work', () =>
       Effect.gen(function* () {
         const result = yield* contract.addOrReplaceContractOperation(
-          Contract.ImpureCircuitId<CounterContract>('increment'),
+          Contract.ProvableCircuitId<CounterContract>('increment'),
           Contract.VerifierKey(deployment.initialState.operation('increment')!.verifierKey),
           {
             address: ContractAddress.ContractAddress(deployment.address),

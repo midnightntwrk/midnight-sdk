@@ -97,7 +97,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     );
 
     const result = yield* contractModule.contractExecutable.circuit(
-      Contract.ImpureCircuitId(circuitId),
+      Contract.ProvableCircuitId(circuitId),
       {
         address,
         contractState: yield* ContractState.asContractState(ledgerContractState),
@@ -106,7 +106,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
           ? decodeZswapLocalState((yield* Option.getOrThrow(encodedZswapLocalState)) as EncodedZswapLocalState)
           : undefined 
       },
-      ...(yield* argsParser.parseCircuitArgs(Contract.ImpureCircuitId(circuitId), args))
+      ...(yield* argsParser.parseCircuitArgs(Contract.ProvableCircuitId(circuitId), args))
     );
     // Replacer function handles types that don't serialize properly in JSON:
     // - Uint8Array serializes as {"0": 215, "1": 182, ...} instead of [215, 182, ...]

@@ -731,7 +731,7 @@ __metadata:
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js"
   dependencies:
     "@effect/platform": "npm:^0.94.2"
-    "@midnight-ntwrk/compact-runtime": "npm:0.14.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.14.102"
     "@midnight-ntwrk/ledger-v7": "npm:7.0.0"
     "@midnight-ntwrk/platform-js": "npm:^2.2.0"
     effect: "npm:^3.19.15"
@@ -747,6 +747,17 @@ __metadata:
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
   checksum: 10/bba44d09770b172b7a5ba193f59d2ec57ca0dff2e3fd538326942e102e8cbe0b0cc1cb736e1f469afc74258517e7d25fc4dfa7f89a299aed900efc89f1eed3a7
+  languageName: node
+  linkType: hard
+
+"@midnight-ntwrk/compact-runtime@npm:0.14.102":
+  version: 0.14.102
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.14.102::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.14.102%2Fb2ce6c73ee4fbfbbf874628d1e4347032a94f58f"
+  dependencies:
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0-rc.1"
+    "@types/object-inspect": "npm:^1.8.1"
+    object-inspect: "npm:^1.12.3"
+  checksum: 10/ac7ecb21ac240762417510a587b16a32576305736a424d07369e99d8d2f743d224fdd17b4f6196b51d8c5f13b0584385365460c2ad0291518cf9681aa6ef0c8f
   languageName: node
   linkType: hard
 
@@ -771,6 +782,13 @@ __metadata:
   version: 2.0.0
   resolution: "@midnight-ntwrk/onchain-runtime-v2@npm:2.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v2%2F2.0.0%2F52b1b4c48af577d31a5ba21947d00b4832aeb5cf"
   checksum: 10/71b2b5e2270ce36fbdb63c0bd531f09f2de9151b286b6c7389966279750080b300893aef973621e438a934f9274277181cdf9bdc1350abc0e244fa892a145b19
+  languageName: node
+  linkType: hard
+
+"@midnight-ntwrk/onchain-runtime-v3@npm:^3.0.0-rc.1":
+  version: 3.0.0-rc.1
+  resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.0.0-rc.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.0.0-rc.1%2F309476cd2c6ccb4c9b93c33dc927ac4f34a27910"
+  checksum: 10/95447e570de992a2526c48967a65d31599a699ead23292c0c9908251f65a8d1995162aad1b8a2cd1d8c9d7094d2abd46ebe684561a9d8a40746801d939498fa4
   languageName: node
   linkType: hard
 

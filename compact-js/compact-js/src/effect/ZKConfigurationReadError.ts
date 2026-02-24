@@ -42,7 +42,7 @@ export class ZKConfigurationReadError extends Error.TypeIdError(TypeId, 'ZKConfi
   readonly contractTag: string;
 
   /** The circuit of the compiled contract being read. */
-  readonly impureCircuitId: Contract.ImpureCircuitId;
+  readonly provableCircuitId: Contract.ProvableCircuitId;
 
   /** The type of asset that was being read. */
   readonly assetType: AssetType;
@@ -65,14 +65,14 @@ export const isReadError = (u: unknown): u is ZKConfigurationReadError => hasPro
  */
 export const  make: <C extends Contract.Contract.Any>(
   contractTag: string,
-  impureCircuitId: Contract.ImpureCircuitId<C>,
+  provableCircuitId: Contract.ProvableCircuitId<C>,
   assetType: AssetType,
   cause?: unknown
-) => ZKConfigurationReadError = (contractTag, impureCircuitId, assetType, cause?: unknown) =>
+) => ZKConfigurationReadError = (contractTag, provableCircuitId, assetType, cause?: unknown) =>
   new ZKConfigurationReadError({
     contractTag,
-    impureCircuitId,
+    provableCircuitId,
     assetType,
-    message: `Failed to read ${assetType.replaceAll('-', ' ')} for ${contractTag}#${impureCircuitId}`,
+    message: `Failed to read ${assetType.replaceAll('-', ' ')} for ${contractTag}#${provableCircuitId}`,
     cause
   });

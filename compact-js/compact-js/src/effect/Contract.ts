@@ -35,8 +35,8 @@ export type Witnesses<PS> = Record<string, Witness<PS>>;
 export type Circuit<PS, U = any> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, U>;
 export type Circuits<PS> = Record<string, Circuit<PS>>;
 
-export type ImpureCircuit<PS, U = any> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, U>;
-export type ImpureCircuits<PS> = Record<string, ImpureCircuit<PS>>;
+export type ProvableCircuit<PS, U = any> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, U>;
+export type ProvableCircuits<PS> = Record<string, ProvableCircuit<PS>>;
 
 export type VerifierKey = Uint8Array & Brand.Brand<'VerifierKey'>;
 export const VerifierKey = Brand.nominal<VerifierKey>();
@@ -44,18 +44,18 @@ export const VerifierKey = Brand.nominal<VerifierKey>();
 export type ZKIR = Uint8Array & Brand.Brand<'ZKIR'>;
 export const ZKIR = Brand.nominal<ZKIR>();
 
-export type ImpureCircuitId<C extends Contract.Any = Contract.Any, K = Contract.ImpureCircuitId<C>> = K &
-  Brand.Brand<'ImpureCircuitId'>;
-const ImpureCircuitId_ = Brand.nominal<ImpureCircuitId>();
-export const ImpureCircuitId = <C extends Contract.Any>(
-  id: Brand.Brand.Unbranded<ImpureCircuitId<C>>
-): ImpureCircuitId<C> => ImpureCircuitId_(id);
+export type ProvableCircuitId<C extends Contract.Any = Contract.Any, K = Contract.ProvableCircuitId<C>> = K &
+  Brand.Brand<'ProvableCircuitId'>;
+const ProvableCircuitId_ = Brand.nominal<ProvableCircuitId>();
+export const ProvableCircuitId = <C extends Contract.Any>(
+  id: Brand.Brand.Unbranded<ProvableCircuitId<C>>
+): ProvableCircuitId<C> => ProvableCircuitId_(id);
 
 export interface Contract<PS, W extends Witnesses<PS> = Witnesses<PS>> {
   witnesses: W;
 
   circuits: Circuits<PS>;
-  impureCircuits: ImpureCircuits<PS>;
+  provableCircuits: ProvableCircuits<PS>;
 
   initialState(context: ConstructorContext<PS>, ...args: any[]): ConstructorResult<PS>;
 }
@@ -77,14 +77,14 @@ export declare namespace Contract {
   export type InitializeParameters<C extends Contract<any>> =
     Parameters<C['initialState']> extends [ConstructorContext<any>, ...infer A] ? A : never;
 
-  export type ImpureCircuitId<C extends Contract<any>> = keyof C['impureCircuits'] & string;
+  export type ProvableCircuitId<C extends Contract<any>> = keyof C['provableCircuits'] & string;
 
-  export type CircuitParameters<C extends Contract<any>, K extends ImpureCircuitId<C>> =
-    Parameters<C['impureCircuits'][K]> extends [CircuitContext<any>, ...infer A] ? A : never;
+  export type CircuitParameters<C extends Contract<any>, K extends ProvableCircuitId<C>> =
+    Parameters<C['provableCircuits'][K]> extends [CircuitContext<any>, ...infer A] ? A : never;
 
-  export type CircuitReturnType<C extends Contract<any>, K extends ImpureCircuitId<C>> =
-    ReturnType<C['impureCircuits'][K]> extends CircuitResults<any, infer U> ? U : never;
+  export type CircuitReturnType<C extends Contract<any>, K extends ProvableCircuitId<C>> =
+    ReturnType<C['provableCircuits'][K]> extends CircuitResults<any, infer U> ? U : never;
 }
 
-export const getImpureCircuitIds: <C extends Contract.Any>(contract: C) => ImpureCircuitId<C>[] = (contract) =>
-  Object.keys(contract.impureCircuits).map(ImpureCircuitId);
+export const getProvableCircuitIds: <C extends Contract.Any>(contract: C) => ProvableCircuitId<C>[] = (contract) =>
+  Object.keys(contract.provableCircuits).map(ProvableCircuitId);

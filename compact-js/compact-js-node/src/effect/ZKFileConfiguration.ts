@@ -25,7 +25,7 @@ const CONTRACT_INFO_FILE = 'contract-info.json';
 interface Circuit {
   readonly name: string;
   readonly pure: boolean;
-  readonly hasVerifierKey: boolean;
+  readonly proof: boolean;
 }
 interface ContractInfo {
   readonly circuits: Circuit[];
@@ -59,14 +59,14 @@ const makeFileSystemReader =
         return cachedContractInfo;
       });
 
-      const getVerifierKey = (impureCircuitId: Contract.ImpureCircuitId<C>) =>
+      const getVerifierKey = (provableCircuitId: Contract.ProvableCircuitId<C>) =>
         Effect.gen(function* () {
           const contractInfo = yield* getContractInfo;
-          const verifierKeyPath = path.join(resolvedAssetsPath, KEYS_FOLDER, `${impureCircuitId}${VERIFIER_EXT}`);
-          const circuit = contractInfo.circuits.find((_) => _.name === impureCircuitId);
+          const verifierKeyPath = path.join(resolvedAssetsPath, KEYS_FOLDER, `${provableCircuitId}${VERIFIER_EXT}`);
+          const circuit = contractInfo.circuits.find((_) => _.name === provableCircuitId);
 
           if (!circuit) {
-            return yield* Effect.fail(`Circuit '${impureCircuitId}' was not found in the contract manifest (${CONTRACT_INFO_FILE}).`);
+            return yield* Effect.fail(`Circuit '${provableCircuitId}' was not found in the contract manifest (${CONTRACT_INFO_FILE}).`);
           }
           // If the verifier key file exists, return it...
           if (yield* fs.exists(verifierKeyPath)) {
@@ -74,29 +74,27 @@ const makeFileSystemReader =
           }
           // ...otherwise, check if the circuit manifest indicates that it has been compiled requiring a
           // verifier key (meaning it should exist)...
-          // TODO: Uncomment the following lines once the contract manifest carries a property indicating whether
-          // a verifier key was expected to be generated for the circuit.
-          // if (circuit.verifiable) {
-          //   return yield* Effect.fail(
-          //     `Verifier key for circuit '${impureCircuitId}' was expected at path '${verifierKeyPath}', but the file does not exist.`
-          //   );
-          // }
+          if (circuit.proof) {
+            return yield* Effect.fail(
+              `Verifier key for circuit '${provableCircuitId}' was expected at path '${verifierKeyPath}', but the file does not exist.`
+            );
+          }
           // ...otherwise, return none (the circuit is not verifiable and no verifier key will exist for it).
           return Option.none<Contract.VerifierKey>();
         }).pipe(
           Effect.mapError((err: unknown) =>
-            ZKConfigurationReadError.make(compiledContract.tag, impureCircuitId, 'verifier-key', err)
+            ZKConfigurationReadError.make(compiledContract.tag, provableCircuitId, 'verifier-key', err)
           )
         );
 
       return {
         getVerifierKey,
-        getVerifierKeys: (impureCircuitIds) =>
+        getVerifierKeys: (provableCircuitIds) =>
           Effect.forEach(
-            impureCircuitIds,
-            (impureCircuitId) =>
-              getVerifierKey(impureCircuitId).pipe(
-                Effect.map((verifierKey) => [impureCircuitId, verifierKey] as const)
+            provableCircuitIds,
+            (provableCircuitId) =>
+              getVerifierKey(provableCircuitId).pipe(
+                Effect.map((verifierKey) => [provableCircuitId, verifierKey] as const)
               ),
             { concurrency: 'unbounded', discard: false }
           )

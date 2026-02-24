@@ -45,13 +45,13 @@ export const Options = {
 
 const removeCircuit = (
   contract: ContractExecutable.ContractExecutable<any, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-  circuitId: Contract.ImpureCircuitId,
+  circuitId: Contract.ProvableCircuitId,
   contractContext: ContractExecutable.ContractExecutable.ContractContext
 ) => contract.removeContractOperation(circuitId, contractContext);
 
 const addOrReplaceCircuit = (
   contract: ContractExecutable.ContractExecutable<any, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-  circuitId: Contract.ImpureCircuitId,
+  circuitId: Contract.ProvableCircuitId,
   verifierKey: Contract.VerifierKey,
   contractContext: ContractExecutable.ContractExecutable.ContractContext
 ) => contract.addOrReplaceContractOperation(circuitId, verifierKey, contractContext);
@@ -80,12 +80,12 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       onSome: (filePath) => fs.readFile(filePath).pipe(
         Effect.flatMap((data) => addOrReplaceCircuit(
           contractModule.contractExecutable,
-          Contract.ImpureCircuitId(circuitId),
+          Contract.ProvableCircuitId(circuitId),
           Contract.VerifierKey(data),
           contractContext)
         )
       ),
-      onNone: () => removeCircuit(contractModule.contractExecutable, Contract.ImpureCircuitId(circuitId), contractContext)
+      onNone: () => removeCircuit(contractModule.contractExecutable, Contract.ProvableCircuitId(circuitId), contractContext)
     });
     const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
       .addMaintenanceUpdate(result.public.maintenanceUpdate);
