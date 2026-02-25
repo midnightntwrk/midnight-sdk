@@ -115,12 +115,12 @@ describe('ContractExecutable', () => {
             StringDep
           >
         >();
-        expect(executable.circuit(Contract.ImpureCircuitId<MockCounterContract>('reset'), {} as any)).type.toBe<
+        expect(executable.circuit(Contract.ProvableCircuitId<MockCounterContract>('reset'), {} as any)).type.toBe<
           Effect.Effect<
             ContractExecutable.ContractExecutable.CallResult<
               MockCounterContract,
               any,
-              Contract.ImpureCircuitId<MockCounterContract>
+              Contract.ProvableCircuitId<MockCounterContract>
             >,
             ContractExecutable.ContractExecutionError,
             StringDep

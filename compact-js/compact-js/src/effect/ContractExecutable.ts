@@ -86,24 +86,24 @@ export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, 
   /**
    * Invokes a circuit on deployed instance of the contract.
    *
-   * @param impureCircuitId The circuit to be invoked.
-   * @param circuitContext Execution context for `impureCircuitId` including its current onchain and private
+   * @param provableCircuitId The circuit to be invoked.
+   * @param circuitContext Execution context for `provableCircuitId` including its current onchain and private
    * states.
    * @param args The arguments to supply the circuit.
-   * @returns A {@link ContractExecutable.CallResult} describing the result of invoking `impureCircuitId`.
+   * @returns A {@link ContractExecutable.CallResult} describing the result of invoking `provableCircuitId`.
    */
-  circuit<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
-    impureCircuitId: K,
+  circuit<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
+    provableCircuitId: K,
     circuitContext: ContractExecutable.CircuitContext<PS>,
     ...args: Contract.Contract.CircuitParameters<C, K>
   ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R>;
 
   /**
-   * Retrieves the impure circuits available as part of the underlying contract.
+   * Retrieves the provable circuits available as part of the underlying contract.
    * 
-   * @returns An array of {@link Contract.ImpureCircuitId} describing the available impure circuits.
+   * @returns An array of {@link Contract.ProvableCircuitId} describing the available provable circuits.
    */
-  getImpureCircuitIds(): Contract.ImpureCircuitId<C>[];
+  getProvableCircuitIds(): Contract.ProvableCircuitId<C>[];
 
   /**
    * Applies a new Contract Maintenance Authority (CMA) to a deployed instance of the contract.
@@ -125,25 +125,25 @@ export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, 
   /**
    * Removes the current verifier key for an operation on a deployed instance of the contract.
    *
-   * @param impureCircuitId The circuit to be removed from the deployed contract.
+   * @param provableCircuitId The circuit to be removed from the deployed contract.
    * @param contractContext Execution context for the maintenance operation.
    * @returns A {@link ContractExecutable.MaintenanceResult} describing the result of the maintenance update.
    */
-  removeContractOperation<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
-    impureCircuitId: K,
+  removeContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
+    provableCircuitId: K,
     contractContext: ContractExecutable.ContractContext
   ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R>;
 
   /**
    * Adds or replaces a verifier key associated with a circuit on a deployed contract.
    *
-   * @param impureCircuitId The circuit to add or replace on the deployed contract.
-   * @param verifierKey The verifier key to apply to `impureCircuitId`.
+   * @param provableCircuitId The circuit to add or replace on the deployed contract.
+   * @param verifierKey The verifier key to apply to `provableCircuitId`.
    * @param contractContext Execution context for the maintenance operation.
    * @returns A {@link ContractExecutable.MaintenanceResult} describing the result of the maintenance update.
    */
-  addOrReplaceContractOperation<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
-    impureCircuitId: K,
+  addOrReplaceContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
+    provableCircuitId: K,
     verifierKey: Contract.VerifierKey,
     contractContext: ContractExecutable.ContractContext
   ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R>;
@@ -184,7 +184,7 @@ export declare namespace ContractExecutable {
     readonly publicTranscript: Op<AlignedValue>[];
     readonly partitionedTranscript: PartitionedTranscript;
   };
-  export type CallResultPrivate<C extends Contract.Contract<PS>, PS, K extends Contract.ImpureCircuitId<C>> = {
+  export type CallResultPrivate<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
     readonly input: AlignedValue;
     readonly output: AlignedValue;
     readonly privateTranscriptOutputs: AlignedValue[];
@@ -192,7 +192,7 @@ export declare namespace ContractExecutable {
     readonly privateState: PS;
     readonly zswapLocalState: ZswapLocalState;
   };
-  export type CallResult<C extends Contract.Contract<PS>, PS, K extends Contract.ImpureCircuitId<C>> = {
+  export type CallResult<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
     readonly public: CallResultPublic;
     readonly private: CallResultPrivate<C, PS, K>;
   };
@@ -303,30 +303,32 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
           Effect.flatMap(({ contractState, privateState, zswapLocalState }) =>
             Effect.gen(this, function* () {
               // Add the verifier keys.
-              const verifierKeys = yield* zkConfigReader.getVerifierKeys(Contract.getImpureCircuitIds(contract));
+              const verifierKeys = yield* zkConfigReader.getVerifierKeys(Contract.getProvableCircuitIds(contract));
 
-              for (const [impureCircuitId, verifierKey] of verifierKeys) {
-                // If there is no verifier key for this circuit, skip it. It's an impure circuit that likely
-                // interacts only with witnesses.
+              for (const [provableCircuitId, verifierKey] of verifierKeys) {
+                // If there is no verifier key for this circuit, raise an error.
                 if (Option.isNone(verifierKey)) {
-                  continue;
+                  return yield* ContractConfigurationError.make(
+                    `Failed to find a verifier key for circuit '${provableCircuitId}'`,
+                    contractState
+                  );
                 }
                 
-                const operation = contractState.operation(impureCircuitId);
+                const operation = contractState.operation(provableCircuitId);
 
                 if (!operation) {
                   return yield* ContractConfigurationError.make(
-                    `Circuit '${impureCircuitId}' is undefined for the given contract state`,
+                    `Circuit '${provableCircuitId}' is undefined for the given contract state`,
                     contractState
                   );
                 }
 
                 try {
                   operation.verifierKey = verifierKey.value;
-                  contractState.setOperation(impureCircuitId, operation);
+                  contractState.setOperation(provableCircuitId, operation);
                 } catch (err: unknown) {
                   return yield* ContractConfigurationError.make(
-                    `Failed to configure verifier key for circuit '${impureCircuitId}' for the given contract state`,
+                    `Failed to configure verifier key for circuit '${provableCircuitId}' for the given contract state`,
                     contractState,
                     err
                   );
@@ -354,8 +356,8 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     );
   }
 
-  circuit<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
-    impureCircuitId: K,
+  circuit<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
+    provableCircuitId: K,
     circuitContext: ContractExecutable.CircuitContext<PS>,
     ...args: Contract.Contract.CircuitParameters<C, K>
   ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R> {
@@ -366,12 +368,12 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       Effect.flatMap(({ keyConfig, contract }) =>
         Effect.try({
           try: () => {
-            const circuit = contract.impureCircuits[impureCircuitId] as Contract.ImpureCircuit<
+            const circuit = contract.provableCircuits[provableCircuitId] as Contract.ProvableCircuit<
               PS,
               Contract.Contract.CircuitReturnType<C, K>
             >;
             if (!circuit) {
-              throw new Error(`Circuit ${this.compiledContract.tag}#${impureCircuitId} could not be found.`);
+              throw new Error(`Circuit ${this.compiledContract.tag}#${provableCircuitId} could not be found.`);
             }
             const zswapLocalState = circuitContext.zswapLocalState
                 ? encodeZswapLocalState(circuitContext.zswapLocalState)
@@ -408,15 +410,15 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               };
             })
           ),
-          Effect.mapError((err) => ContractRuntimeError.make(`Error executing circuit '${impureCircuitId}'`, err))
+          Effect.mapError((err) => ContractRuntimeError.make(`Error executing circuit '${provableCircuitId}'`, err))
         )
       ),
       this.transform
     );
   }
 
-  getImpureCircuitIds(): Contract.ImpureCircuitId<C>[] {
-    return Contract.getImpureCircuitIds(Effect.runSync(this.createContract()));
+  getProvableCircuitIds(): Contract.ProvableCircuitId<C>[] {
+    return Contract.getProvableCircuitIds(Effect.runSync(this.createContract()));
   }
 
   replaceContractMaintenanceAuthority(
@@ -452,9 +454,9 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     );
   }
 
-  removeContractOperation<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
+  removeContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
     this: ContractExecutableImpl<C, PS, E, R>,
-    impureCircuitId: K,
+    provableCircuitId: K,
     contractContext: ContractExecutable.ContractContext
   ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R> {
     return Effect.all({
@@ -464,7 +466,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         return yield* this.createSignedMaintenanceUpdate(
           () => {
             return Either.right([
-              new VerifierKeyRemove(impureCircuitId, new ContractOperationVersion('v3'))
+              new VerifierKeyRemove(provableCircuitId, new ContractOperationVersion('v3'))
             ]);
           },
           keyConfig,
@@ -475,8 +477,8 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     );
   }
 
-  addOrReplaceContractOperation<K extends Contract.ImpureCircuitId<C> = Contract.ImpureCircuitId<C>>(
-    impureCircuitId: K,
+  addOrReplaceContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
+    provableCircuitId: K,
     verifierKey: Contract.VerifierKey,
     contractContext: ContractExecutable.ContractContext
   ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R> {
@@ -487,7 +489,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         return yield* this.createSignedMaintenanceUpdate(
           () => {
             return Either.right([
-              new VerifierKeyInsert(impureCircuitId, new ContractOperationVersionedVerifierKey('v3', verifierKey))
+              new VerifierKeyInsert(provableCircuitId, new ContractOperationVersionedVerifierKey('v3', verifierKey))
             ]);
           },
           keyConfig,

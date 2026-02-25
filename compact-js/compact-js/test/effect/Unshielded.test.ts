@@ -120,7 +120,7 @@ describe('Unshielded Tokens', () => {
     it.effect('should return unshielded spends for a given contract address', () => Effect.gen(function* () {
       const address = Arbitrary.getSampleContractAddress();
       const mintResult = yield* runtime.runFork(contract.circuit(
-        Contract.ImpureCircuitId<UnshieldedContract>('mintUnshieldedToContractTest'),
+        Contract.ProvableCircuitId<UnshieldedContract>('mintUnshieldedToContractTest'),
         {
           address: ContractAddress.ContractAddress(deployment.address),
           contractState: asContractState(deployment.initialState),
@@ -149,7 +149,7 @@ describe('Unshielded Tokens', () => {
 
     it.effect('should return unshielded spends for a given user address', () => Effect.gen(function* () {
       const mintResult = yield* runtime.runFork(contract.circuit(
-        Contract.ImpureCircuitId<UnshieldedContract>('mintUnshieldedToUserTest'),
+        Contract.ProvableCircuitId<UnshieldedContract>('mintUnshieldedToUserTest'),
         {
           address: ContractAddress.ContractAddress(deployment.address),
           contractState: asContractState(deployment.initialState),
@@ -178,7 +178,7 @@ describe('Unshielded Tokens', () => {
 
     it.effect('should return unshielded spends for the deployed contract when minting', () => Effect.gen(function* () {
       const mintResult = yield* runtime.runFork(contract.circuit(
-        Contract.ImpureCircuitId<UnshieldedContract>('mintUnshieldedToSelfTest'),
+        Contract.ProvableCircuitId<UnshieldedContract>('mintUnshieldedToSelfTest'),
         {
           address: ContractAddress.ContractAddress(deployment.address),
           contractState: asContractState(deployment.initialState),
@@ -212,7 +212,7 @@ describe('Unshielded Tokens', () => {
         Arbitrary.getSampleContractAddress()
       ));
       const spendResult = yield* runtime.runFork(contract.circuit(
-        Contract.ImpureCircuitId<UnshieldedContract>('sendUnshieldedToSelfTest'),
+        Contract.ProvableCircuitId<UnshieldedContract>('sendUnshieldedToSelfTest'),
         {
           address: ContractAddress.ContractAddress(deployment.address),
           contractState: asContractState(deployment.initialState),
@@ -250,7 +250,7 @@ describe('Unshielded Tokens', () => {
       const address = Arbitrary.getSampleContractAddress();
       const color = encodeRawTokenType(rawTokenType(DomainSeparator.asBytes(domainSep), address));
       const spendResult = yield* runtime.runFork(contract.circuit(
-        Contract.ImpureCircuitId<UnshieldedContract>('receiveUnshieldedTest'),
+        Contract.ProvableCircuitId<UnshieldedContract>('receiveUnshieldedTest'),
         {
           address: ContractAddress.ContractAddress(deployment.address),
           contractState: asContractState(deployment.initialState),

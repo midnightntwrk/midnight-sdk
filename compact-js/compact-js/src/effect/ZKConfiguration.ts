@@ -52,28 +52,28 @@ export declare namespace ZKConfiguration {
     /**
      * Reads a verifier key for a given circuit identifier.
      *
-     * @param impureCircuitId The identifier of the circuit to be read.
+     * @param provableCircuitId The identifier of the circuit to be read.
      * @returns An `Effect` that yields an `Option` containing a {@link Contract.VerifierKey | VerifierKey} for
-     * `impureCircuitId` if the compiled contract was configured for verifier key generation; or fails with a
+     * `provableCircuitId` if the compiled contract was configured for verifier key generation; or fails with a
      * {@link ZKConfigurationError.ZKConfigurationReadError | ZKConfigurationReadError}.
      */
     getVerifierKey(
-      impureCircuitId: Contract.ImpureCircuitId<C>
+      provableCircuitId: Contract.ProvableCircuitId<C>
     ): Effect.Effect<Option.Option<Contract.VerifierKey>, ZKConfigurationError.ZKConfigurationReadError>;
 
     /**
      * Batch reads the verifier keys for an array of circuit identifiers.
      *
-     * @param impureCircuitIds The identifiers of the circuits to be read.
+     * @param provableCircuitIds The identifiers of the circuits to be read.
      * @returns An `Effect` that yields an array of tuples describing an `Option` containing a
      * {@link Contract.VerifierKey | VerifierKey} and its associated circuit identifier if the compiled contract
      * was configured for verifier key generation; or fails with a
      * {@link ZKConfigurationError.ZKConfigurationReadError | ZKConfigurationReadError}.
      */
     getVerifierKeys(
-      impureCircuitIds: Contract.ImpureCircuitId<C>[]
+      provableCircuitIds: Contract.ProvableCircuitId<C>[]
     ): Effect.Effect<
-      readonly [Contract.ImpureCircuitId<C>, Option.Option<Contract.VerifierKey>][],
+      readonly [Contract.ProvableCircuitId<C>, Option.Option<Contract.VerifierKey>][],
       ZKConfigurationError.ZKConfigurationReadError
     >;
   }

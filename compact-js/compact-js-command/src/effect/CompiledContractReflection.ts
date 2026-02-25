@@ -65,13 +65,13 @@ export declare namespace CompiledContractReflection {
     /**
      * Transforms an array of strings into an array of circuit arguments.
      * 
-     * @param impureCircuitId The identifier of the circuit that will be invoked with `args`.
+     * @param provableCircuitId The identifier of the circuit that will be invoked with `args`.
      * @param args The array of strings to be transformed.
      * @returns An `Effect` that yields an array of circuit arguments; or fails with a 
      * {@link ContractRuntimeError.ContractRuntimeError | ContractRuntimeError}.
      */
-    parseCircuitArgs<K extends Contract.ImpureCircuitId<C>>(
-      impureCircuitId: K,
+    parseCircuitArgs<K extends Contract.ProvableCircuitId<C>>(
+      provableCircuitId: K,
       args: string[]
     ): Effect.Effect<Contract.Contract.CircuitParameters<C, K>, ContractRuntimeError.ContractRuntimeError>;
   }
