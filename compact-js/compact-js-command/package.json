@@ -14,7 +14,7 @@
     "@effect/cli": "^0.73.1",
     "@effect/cluster": "^0.56.1",
     "@effect/experimental": "^0.56.0",
-    "@effect/platform": "^0.94.2",
+    "@effect/platform": "^0.94.5",
     "@effect/platform-node": "^0.104.1",
     "@effect/platform-node-shared": "^0.57.1",
     "@effect/printer": "^0.47.0",
