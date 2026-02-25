@@ -27,6 +27,7 @@ import * as MockConsole from './MockConsole.js';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy.bin');
+const COUNTER_OUTPUT_OC_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_onchain.bin');
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy.json');
 const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_zswap.json');
 
@@ -48,6 +49,7 @@ describe('Deploy Command', () => {
         'node', 'deploy.ts',
         '-c', COUNTER_CONFIG_FILEPATH,
         '--output', COUNTER_OUTPUT_FILEPATH,
+        '--output-oc', COUNTER_OUTPUT_OC_FILEPATH,
         '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
         '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH
       ]);
@@ -58,6 +60,7 @@ describe('Deploy Command', () => {
     }).pipe(
       Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
       Effect.provide(testLayer)

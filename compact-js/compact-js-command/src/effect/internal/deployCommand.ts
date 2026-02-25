@@ -21,7 +21,7 @@ import {
   ContractDeploy,
   Intent
 } from '@midnight-ntwrk/ledger-v7';
-import { type ConfigError, Duration, Effect } from 'effect';
+import { type ConfigError, Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
@@ -42,6 +42,7 @@ export type Options = Command.Command.ParseConfig<typeof Options>;
 export const Options = {
   signingKey: InternalOptions.signingKey,
   outputFilePath: InternalOptions.outputFilePath,
+  outputPublicFilePath: InternalOptions.outputPublicFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
   outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath
 }
@@ -56,6 +57,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
   (
     {
       outputFilePath,
+      outputPublicFilePath,
       outputPrivateStateFilePath,
       outputZswapLocalStateFilePath,
       args
@@ -70,9 +72,15 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       contractModule.createInitialPrivateState(),
       ...(yield* argsParser.parseInitializationArgs(args))
     );
-    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
-      .addDeploy(new ContractDeploy(yield* ContractState.asLedgerContractState(result.public.contractState)));
+    const ledgerContractState = yield* ContractState.asLedgerContractState(result.public.contractState);
+    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addDeploy(
+      new ContractDeploy(ledgerContractState)
+    );
 
+    // If the output public file path is provided, write the on-chain (public state) data to the specified file.
+    if (Option.isSome(outputPublicFilePath)) {
+      yield* fs.writeFile(Option.getOrThrow(outputPublicFilePath), ledgerContractState.serialize());
+    }
     yield* fs.writeFile(outputFilePath, intent.serialize());
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.private.privateState));
     yield* fs.writeFileString(
