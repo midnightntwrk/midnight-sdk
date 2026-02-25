@@ -24,7 +24,7 @@
   },
   "devDependencies": {
     "@effect/build-utils": "^0.8.9",
-    "@effect/cluster": "^0.56.1",
+    "@effect/cluster": "^0.56.4",
     "@effect/experimental": "^0.56.0",
     "@effect/platform-node": "^0.104.1",
     "@effect/platform-node-shared": "^0.57.1",

@@ -94,18 +94,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/cluster@npm:^0.56.1":
-  version: 0.56.1
-  resolution: "@effect/cluster@npm:0.56.1"
+"@effect/cluster@npm:^0.56.4":
+  version: 0.56.4
+  resolution: "@effect/cluster@npm:0.56.4"
   dependencies:
     kubernetes-types: "npm:^1.30.0"
   peerDependencies:
-    "@effect/platform": ^0.94.1
-    "@effect/rpc": ^0.73.0
+    "@effect/platform": ^0.94.5
+    "@effect/rpc": ^0.73.1
     "@effect/sql": ^0.49.0
     "@effect/workflow": ^0.16.0
-    effect: ^3.19.14
-  checksum: 10/41ecb3195c6f0b91cd17705f628ba43e64bc0116afe64995589455b23d0caffc872be50409edb783601d8ddede2ed149ca576c4ee1c0f6d081d7805bc97f96ad
+    effect: ^3.19.17
+  checksum: 10/1fa165eba0b0acc2d08b5916e1aabdee6f9aba3737d102e4ad8a7b522d2359d18566efea4afeb729169226df487bf2ab8b240a09c30e20263589ae4202365730
   languageName: node
   linkType: hard
 
@@ -646,7 +646,7 @@ __metadata:
   resolution: "@midnight-ntwrk/compact-js-command@workspace:compact-js-command"
   dependencies:
     "@effect/cli": "npm:^0.73.1"
-    "@effect/cluster": "npm:^0.56.1"
+    "@effect/cluster": "npm:^0.56.4"
     "@effect/experimental": "npm:^0.56.0"
     "@effect/platform": "npm:^0.94.2"
     "@effect/platform-node": "npm:^0.104.1"
@@ -674,7 +674,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js-node@workspace:compact-js-node"
   dependencies:
-    "@effect/cluster": "npm:^0.56.1"
+    "@effect/cluster": "npm:^0.56.4"
     "@effect/experimental": "npm:^0.56.0"
     "@effect/platform": "npm:^0.94.2"
     "@effect/platform-node": "npm:^0.104.1"
@@ -693,7 +693,7 @@ __metadata:
   resolution: "@midnight-ntwrk/compact-js-sources@workspace:."
   dependencies:
     "@effect/build-utils": "npm:^0.8.9"
-    "@effect/cluster": "npm:^0.56.1"
+    "@effect/cluster": "npm:^0.56.4"
     "@effect/experimental": "npm:^0.56.0"
     "@effect/platform": "npm:^0.94.2"
     "@effect/platform-node": "npm:^0.104.1"
