@@ -163,6 +163,7 @@ export declare namespace ContractExecutable {
   export type CircuitContext<PS> = ContractContext & {
     readonly privateState: PS;
     readonly zswapLocalState?: ZswapLocalState;
+    readonly ledgerParameters?: LedgerParameters;
   }
 
   export type DeployResultPublic = {
@@ -238,7 +239,8 @@ const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
 const partitionTranscript = (
   txContext: QueryContext,
   finalTxContext: QueryContext,
-  publicTranscript: Op<AlignedValue>[]
+  publicTranscript: Op<AlignedValue>[],
+  ledgerParameters: LedgerParameters | undefined
 ): Either.Either<ContractExecutable.PartitionedTranscript, Error> => {
   const partitionedTranscripts = partitionTranscripts(
     [
@@ -250,7 +252,7 @@ const partitionTranscript = (
         publicTranscript
       )
     ],
-    LedgerParameters.initialParameters()
+    ledgerParameters ?? LedgerParameters.initialParameters()
   );
   return partitionedTranscripts.length === 1
     ? Either.right(partitionedTranscripts[0])
@@ -396,7 +398,8 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                   partitionedTranscript: yield* partitionTranscript(
                     initialTxContext,
                     context.currentQueryContext,
-                    proofData.publicTranscript
+                    proofData.publicTranscript,
+                    circuitContext.ledgerParameters
                   )
                 },
                 private: {
