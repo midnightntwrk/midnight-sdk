@@ -24,7 +24,8 @@ import {
   ContractCallPrototype,
   type ContractOperation as LedgerContractOption,
   Intent,
-  StateValue as LedgerStateValue} from '@midnight-ntwrk/ledger-v7';
+  StateValue as LedgerStateValue,
+} from '@midnight-ntwrk/ledger-v7';
 import { type ConfigError, Console,Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -33,6 +34,7 @@ import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
 import * as ContractState from './contractState.js';
 import { decodeZswapLocalStateObject, encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
+import * as LedgerParameters from './ledgerParameters.js';
 import * as InternalOptions from './options.js';
 
 /** @internal */
@@ -51,6 +53,7 @@ export const Options = {
   inputFilePath: InternalOptions.inputFilePath,
   inputPrivateStateFilePath: InternalOptions.inputPrivateStateFilePath,
   inputZswapLocalStateFilePath: InternalOptions.inputZswapLocalStateFilePath,
+  inputLedgerParamsFilePath: InternalOptions.inputLedgerParamsFilePath,
   outputFilePath: InternalOptions.outputFilePath,
   outputPublicFilePath: InternalOptions.outputPublicFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
@@ -73,6 +76,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       inputFilePath,
       inputPrivateStateFilePath,
       inputZswapLocalStateFilePath,
+      inputLedgerParamsFilePath,
       outputFilePath,
       outputPublicFilePath,
       outputPrivateStateFilePath,
@@ -95,6 +99,12 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         Effect.flatMap((str) => decodeZswapLocalStateObject(JSON.parse(str))
       ))
     );
+    const decodedLedgerParameters = Option.map(
+      inputLedgerParamsFilePath,
+      (filePath) => fs.readFile(filePath).pipe(
+        Effect.flatMap(LedgerParameters.asLedgerParameters)
+      )
+    );
 
     const result = yield* contractModule.contractExecutable.circuit(
       Contract.ProvableCircuitId(circuitId),
@@ -104,7 +114,10 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         privateState: privateState ?? contractModule.createInitialPrivateState(),
         zswapLocalState: Option.isSome(encodedZswapLocalState)
           ? decodeZswapLocalState((yield* Option.getOrThrow(encodedZswapLocalState)) as EncodedZswapLocalState)
-          : undefined 
+          : undefined,
+        ledgerParameters: Option.isSome(decodedLedgerParameters)
+          ? yield* Option.getOrThrow(decodedLedgerParameters)
+          : undefined
       },
       ...(yield* argsParser.parseCircuitArgs(Contract.ProvableCircuitId(circuitId), args))
     );

@@ -20,6 +20,7 @@ import { FileSystem } from '@effect/platform';
 import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
 import { circuitCommand,ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
+import { LedgerParameters } from '@midnight-ntwrk/ledger-v7';
 import { Console,Effect, Layer } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
@@ -27,6 +28,7 @@ import * as MockConsole from './MockConsole.js';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 const COUNTER_STATE_FILEPATH = resolve(import.meta.dirname, '../contract/counter/state.bin');
+const COUNTER_LEDGER_PARAMS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/ledger_parameters.bin');
 const COUNTER_OUTPUT_OC_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_onchain.bin');
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.bin');
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.json');
@@ -100,6 +102,49 @@ describe('Circuit Command', () => {
     }).pipe(
       Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
+      Effect.provide(testLayer)
+    ),
+    30_000
+  );
+
+  it.effect('should report success with valid ledger parameters', () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
+
+      const ledgerParameters = LedgerParameters.initialParameters();
+      ledgerParameters.feePrices.blockUsageFactor = 3; // Modify some aspect of the ledger parameters.
+ 
+      yield* fs.writeFile(COUNTER_LEDGER_PARAMS_FILEPATH, ledgerParameters.serialize());
+
+      const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+
+      yield* cli([
+        'node', 'circuit.ts',
+        '-c', COUNTER_CONFIG_FILEPATH,
+        '--input', COUNTER_STATE_FILEPATH,
+        '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
+        '--input-ledger-params', COUNTER_LEDGER_PARAMS_FILEPATH,
+        '--output', COUNTER_OUTPUT_FILEPATH,
+        '--output-oc', COUNTER_OUTPUT_OC_FILEPATH,
+        '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+        '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
+        '--output-result', COUNTER_RESULT_FILEPATH,
+        '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
+      ]);
+
+      const lines = yield* MockConsole.getLines({ stripAnsi: true });
+      
+      expect(lines.length).toBe(0);
+      expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_PS_FILEPATH))).toMatchObject({ count: 101 });
+    }).pipe(
+      Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_LEDGER_PARAMS_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),

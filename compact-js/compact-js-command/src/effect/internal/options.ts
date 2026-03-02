@@ -111,6 +111,16 @@ export const inputZswapLocalStateFilePath = Options.file('input-zswap', { exists
   }))
 );
 
+/** @internal */
+export const inputLedgerParamsFilePath = Options.file('input-ledger-params', { exists: 'either' }).pipe(
+  Options.withDescription('A file path of where optional ledger parameters data can be read.'),
+  Options.optional,
+  Options.mapEffect((_) => Option.match(_, {
+    onSome: (filePath) => Path.Path.pipe(Effect.map((path) => Option.some(path.resolve(filePath)))),
+    onNone: () => Effect.succeed(Option.none())
+  }))
+);
+
 export type ConfigOptionInput = Command.Command.ParseConfig<{
   config: typeof config;
 }>;
