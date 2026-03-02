@@ -39,7 +39,7 @@ jobs:
       run:
         working-directory: ./${{ inputs.workspace }} # Workspace name has affinity to a folder in the root of the repo.
     steps:
-      - uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8  # ratchet:actions/checkout@v5
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -51,7 +51,7 @@ jobs:
           done
 
       - name: Log in to GitHub Container registry
-        uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # ratchet:docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # ratchet:docker/login-action@v3
         with:
           registry: 'https://ghcr.io'
           username: ${{ github.actor }}
@@ -71,7 +71,7 @@ jobs:
         run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@8b402f58fbc84540c8b491a91e594a4576fec3d7 # v5.0.2
+        uses: actions/cache@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: |
             **/node_modules
@@ -121,7 +121,7 @@ jobs:
 
       - name: Publish Test Coverage
         if: ${{ inputs.coverage-files }} # Publish the comment if we have received coverage files
-        uses: MishaKav/jest-coverage-comment@174f9cbf582b7cc2a7a3acce14dcfc8362e9d37f # ratchet:MishaKav/jest-coverage-comment@v1
+        uses: MishaKav/jest-coverage-comment@2a8fe3083255756f3692599238ca251e858e15b2 # ratchet:MishaKav/jest-coverage-comment@v1
         with:
           hide-comment: false
           unique-id-for-comment: ${{ inputs.workspace }}-coverage
