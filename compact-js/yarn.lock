@@ -78,45 +78,45 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/cli@npm:^0.73.1":
-  version: 0.73.1
-  resolution: "@effect/cli@npm:0.73.1"
+"@effect/cli@npm:^0.73.2":
+  version: 0.73.2
+  resolution: "@effect/cli@npm:0.73.2"
   dependencies:
     ini: "npm:^4.1.3"
     toml: "npm:^3.0.0"
     yaml: "npm:^2.5.0"
   peerDependencies:
-    "@effect/platform": ^0.94.2
+    "@effect/platform": ^0.94.3
     "@effect/printer": ^0.47.0
     "@effect/printer-ansi": ^0.47.0
-    effect: ^3.19.15
-  checksum: 10/553fbfa16caf9e9a5dfb62b62649d11b781e5f83142a6eb59c89b1975b14c9f68aec02d3a63b28559b9ece13fe09a50d78fb30190f96c85e516d7fbef4bd2e97
+    effect: ^3.19.16
+  checksum: 10/5e7ef759c81fc08982c82405e47e8228a2d679985b3e4820fefaa6e4ade65ee48978e01f907472076508323c2a0add5476db12971a2ebf3e79dc4fd8443e028b
   languageName: node
   linkType: hard
 
-"@effect/cluster@npm:^0.56.1":
-  version: 0.56.1
-  resolution: "@effect/cluster@npm:0.56.1"
+"@effect/cluster@npm:^0.56.4":
+  version: 0.56.4
+  resolution: "@effect/cluster@npm:0.56.4"
   dependencies:
     kubernetes-types: "npm:^1.30.0"
   peerDependencies:
-    "@effect/platform": ^0.94.1
-    "@effect/rpc": ^0.73.0
+    "@effect/platform": ^0.94.5
+    "@effect/rpc": ^0.73.1
     "@effect/sql": ^0.49.0
     "@effect/workflow": ^0.16.0
-    effect: ^3.19.14
-  checksum: 10/41ecb3195c6f0b91cd17705f628ba43e64bc0116afe64995589455b23d0caffc872be50409edb783601d8ddede2ed149ca576c4ee1c0f6d081d7805bc97f96ad
+    effect: ^3.19.17
+  checksum: 10/1fa165eba0b0acc2d08b5916e1aabdee6f9aba3737d102e4ad8a7b522d2359d18566efea4afeb729169226df487bf2ab8b240a09c30e20263589ae4202365730
   languageName: node
   linkType: hard
 
-"@effect/experimental@npm:^0.56.0":
-  version: 0.56.0
-  resolution: "@effect/experimental@npm:0.56.0"
+"@effect/experimental@npm:^0.58.0":
+  version: 0.58.0
+  resolution: "@effect/experimental@npm:0.58.0"
   dependencies:
     uuid: "npm:^11.0.3"
   peerDependencies:
-    "@effect/platform": ^0.92.0
-    effect: ^3.18.0
+    "@effect/platform": ^0.94.0
+    effect: ^3.19.13
     ioredis: ^5
     lmdb: ^3
   peerDependenciesMeta:
@@ -124,7 +124,7 @@ __metadata:
       optional: true
     lmdb:
       optional: true
-  checksum: 10/a8a6955e797022f2bcff9ec0d5cc6bf748a1399da00156a3ad9d6ac24e2a1bc28abcff23ca7d708429b5674ed0e34b82f8ad781a9e89a3a3942fa964cd4b3582
+  checksum: 10/cd59fa1fb04de51c1e87cd33bb2059493497e9df179e6cad15eeffe5108db51758b3078ac73ca2df73f955654a4f2c333218a744e519199776d94bf15c331c89
   languageName: node
   linkType: hard
 
@@ -176,6 +176,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@effect/platform@npm:^0.94.5":
+  version: 0.94.5
+  resolution: "@effect/platform@npm:0.94.5"
+  dependencies:
+    find-my-way-ts: "npm:^0.1.6"
+    msgpackr: "npm:^1.11.4"
+    multipasta: "npm:^0.2.7"
+  peerDependencies:
+    effect: ^3.19.17
+  checksum: 10/58ac6b3ae01a3b0ffd9e1bfa30a83de0f06c78d68547431a7422d3bd9a0a26d80e15ddeed8f3ea42723964757256b6f8fff9cd27e8c6128c0da3c411f899134a
+  languageName: node
+  linkType: hard
+
 "@effect/printer-ansi@npm:^0.47.0":
   version: 0.47.0
   resolution: "@effect/printer-ansi@npm:0.47.0"
@@ -198,15 +211,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/rpc@npm:^0.73.0":
-  version: 0.73.0
-  resolution: "@effect/rpc@npm:0.73.0"
+"@effect/rpc@npm:^0.73.1":
+  version: 0.73.2
+  resolution: "@effect/rpc@npm:0.73.2"
   dependencies:
     msgpackr: "npm:^1.11.4"
   peerDependencies:
-    "@effect/platform": ^0.94.0
-    effect: ^3.19.13
-  checksum: 10/4e10bcbdeafb0c50902fb44c34eb2a96cc77806f00e5e67b79bfdae20966b7c28548f0443a80761443841b0d0d3152b8ddb68098b3cde7fddf96fbd3b81e565b
+    "@effect/platform": ^0.94.5
+    effect: ^3.19.18
+  checksum: 10/f9b8cdcf5bd23c0fdf1216598498d450427007c48aade5ef50e1b7cfc9cee024a2cf149198fa962cfbc5dabf216c42d8d41d7543e4551969fd683a22307444f2
   languageName: node
   linkType: hard
 
@@ -242,14 +255,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/workflow@npm:^0.11.3":
-  version: 0.11.5
-  resolution: "@effect/workflow@npm:0.11.5"
+"@effect/workflow@npm:^0.16.0":
+  version: 0.16.0
+  resolution: "@effect/workflow@npm:0.16.0"
   peerDependencies:
-    "@effect/platform": ^0.92.1
-    "@effect/rpc": ^0.71.1
-    effect: ^3.18.4
-  checksum: 10/e8ba8aa2026134f8ceb3cf7e80b029e1686e8569eb6bd9e025b1ca1c167e578ac48f79df40922b106a63dcd7ce189d20e24072b27a5471b4c6939f57d7c490e0
+    "@effect/experimental": ^0.58.0
+    "@effect/platform": ^0.94.0
+    "@effect/rpc": ^0.73.0
+    effect: ^3.19.13
+  checksum: 10/f90f5835d7cacf12dbe6429171cf5d4cc7021161e172e4116aa1c5eb21cf0e1214fbc4fe65d7e9120bff15e16107ec01d86cf27421912a63f16727227d15df07
   languageName: node
   linkType: hard
 
@@ -645,25 +659,25 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js-command@workspace:compact-js-command"
   dependencies:
-    "@effect/cli": "npm:^0.73.1"
-    "@effect/cluster": "npm:^0.56.1"
-    "@effect/experimental": "npm:^0.56.0"
-    "@effect/platform": "npm:^0.94.2"
+    "@effect/cli": "npm:^0.73.2"
+    "@effect/cluster": "npm:^0.56.4"
+    "@effect/experimental": "npm:^0.58.0"
+    "@effect/platform": "npm:^0.94.5"
     "@effect/platform-node": "npm:^0.104.1"
     "@effect/platform-node-shared": "npm:^0.57.1"
     "@effect/printer": "npm:^0.47.0"
     "@effect/printer-ansi": "npm:^0.47.0"
-    "@effect/rpc": "npm:^0.73.0"
+    "@effect/rpc": "npm:^0.73.1"
     "@effect/sql": "npm:^0.49.0"
     "@effect/typeclass": "npm:^0.38.0"
-    "@effect/workflow": "npm:^0.11.3"
+    "@effect/workflow": "npm:^0.16.0"
     "@midnight-ntwrk/compact-js": "npm:^2.4.0"
     "@midnight-ntwrk/compact-js-node": "npm:^2.4.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.14.102"
     "@midnight-ntwrk/ledger-v7": "npm:7.0.0"
     "@midnight-ntwrk/platform-js": "npm:^2.2.0"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.0.0"
-    effect: "npm:^3.19.15"
+    effect: "npm:^3.19.17"
     json5: "npm:^2.2.3"
     ts-node: "npm:^10.9.2"
     tslib: "npm:^2.8.1"
@@ -674,14 +688,14 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js-node@workspace:compact-js-node"
   dependencies:
-    "@effect/cluster": "npm:^0.56.1"
-    "@effect/experimental": "npm:^0.56.0"
-    "@effect/platform": "npm:^0.94.2"
+    "@effect/cluster": "npm:^0.56.4"
+    "@effect/experimental": "npm:^0.58.0"
+    "@effect/platform": "npm:^0.94.5"
     "@effect/platform-node": "npm:^0.104.1"
-    "@effect/rpc": "npm:^0.73.0"
+    "@effect/rpc": "npm:^0.73.1"
     "@effect/sql": "npm:^0.49.0"
-    "@effect/workflow": "npm:^0.11.3"
-    effect: "npm:^3.19.15"
+    "@effect/workflow": "npm:^0.16.0"
+    effect: "npm:^3.19.17"
     tslib: "npm:^2.8.1"
   peerDependencies:
     "@midnight-ntwrk/compact-js": ">=2.4.0"
@@ -693,23 +707,23 @@ __metadata:
   resolution: "@midnight-ntwrk/compact-js-sources@workspace:."
   dependencies:
     "@effect/build-utils": "npm:^0.8.9"
-    "@effect/cluster": "npm:^0.56.1"
-    "@effect/experimental": "npm:^0.56.0"
-    "@effect/platform": "npm:^0.94.2"
+    "@effect/cluster": "npm:^0.56.4"
+    "@effect/experimental": "npm:^0.58.0"
+    "@effect/platform": "npm:^0.94.5"
     "@effect/platform-node": "npm:^0.104.1"
     "@effect/platform-node-shared": "npm:^0.57.1"
-    "@effect/rpc": "npm:^0.73.0"
+    "@effect/rpc": "npm:^0.73.1"
     "@effect/sql": "npm:^0.49.0"
     "@effect/vitest": "npm:^0.27.0"
-    "@effect/workflow": "npm:^0.11.3"
+    "@effect/workflow": "npm:^0.16.0"
     "@eslint/js": "npm:^9.30.1"
     "@midnight-ntwrk/compact-js-node": "workspace:*"
     "@midnight-ntwrk/midnight-js-compact": "npm:3.0.0-alpha.3"
     "@tsconfig/node22": "npm:^22.0.0"
-    "@types/node": "npm:^24.0.0"
+    "@types/node": "npm:^25.3.0"
     "@vitest/coverage-v8": "npm:^4.0.18"
     "@vitest/ui": "npm:^4.0.18"
-    effect: "npm:^3.19.15"
+    effect: "npm:^3.19.17"
     eslint: "npm:^9.30.1"
     eslint-config-prettier: "npm:^10.1.5"
     eslint-import-resolver-typescript: "npm:^4.4.4"
@@ -730,11 +744,11 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js"
   dependencies:
-    "@effect/platform": "npm:^0.94.2"
+    "@effect/platform": "npm:^0.94.5"
     "@midnight-ntwrk/compact-runtime": "npm:0.14.102"
     "@midnight-ntwrk/ledger-v7": "npm:7.0.0"
     "@midnight-ntwrk/platform-js": "npm:^2.2.0"
-    effect: "npm:^3.19.15"
+    effect: "npm:^3.19.17"
     tslib: "npm:^2.8.1"
   languageName: unknown
   linkType: soft
@@ -1339,12 +1353,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^24.0.0":
-  version: 24.10.4
-  resolution: "@types/node@npm:24.10.4"
+"@types/node@npm:^25.3.0":
+  version: 25.3.3
+  resolution: "@types/node@npm:25.3.3"
   dependencies:
-    undici-types: "npm:~7.16.0"
-  checksum: 10/a0b318b99a97103d151589a10e20d7d3ce93188a0e6466040eb2ce5fae33ca6785306737b4006560fe3152073cbb2b14747b854fa303296275c22afc8a37da2a
+    undici-types: "npm:~7.18.0"
+  checksum: 10/883e8942b0ddf89f9aae56c4205af8d9a368acd6cab83aa052447a6c5e69ce2bc8ab3f54e549233ada160ba9216dad7f30c62c35867c584fe844ae99f7dea2e0
   languageName: node
   linkType: hard
 
@@ -2247,6 +2261,16 @@ __metadata:
     "@standard-schema/spec": "npm:^1.0.0"
     fast-check: "npm:^3.23.1"
   checksum: 10/f676e5afa82ddc2e8a069b1c75d4aff35a350dd3cd8133cbbbf6ff91c7cb8f9e533918aabae25bebcfb8e99d9ece596e6bdc4b041e7dde9c4c46e32f79258300
+  languageName: node
+  linkType: hard
+
+"effect@npm:^3.19.17":
+  version: 3.19.19
+  resolution: "effect@npm:3.19.19"
+  dependencies:
+    "@standard-schema/spec": "npm:^1.0.0"
+    fast-check: "npm:^3.23.1"
+  checksum: 10/f969fb3a228631d79ae9b7f54ab4432b855c0dcf760a09ba64d33cdd2aa89f0cb9fbf1f80b3e0f964e450fda5e914aa60df80863d6e4343922255905de24d891
   languageName: node
   linkType: hard
 
@@ -5268,10 +5292,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici-types@npm:~7.16.0":
-  version: 7.16.0
-  resolution: "undici-types@npm:7.16.0"
-  checksum: 10/db43439f69c2d94cc29f75cbfe9de86df87061d6b0c577ebe9bb3255f49b22c50162a7d7eb413b0458b6510b8ca299ac7cff38c3a29fbd31af9f504bcf7fbc0d
+"undici-types@npm:~7.18.0":
+  version: 7.18.2
+  resolution: "undici-types@npm:7.18.2"
+  checksum: 10/e61a5918f624d68420c3ca9d301e9f15b61cba6e97be39fe2ce266dd6151e4afe424d679372638826cb506be33952774e0424141200111a9857e464216c009af
   languageName: node
   linkType: hard
 
