@@ -720,7 +720,7 @@ __metadata:
     eslint-plugin-unused-imports: "npm:^4.1.4"
     shx: "npm:^0.4.0"
     tstyche: "npm:^4.3.0"
-    turbo: "npm:^2.5.5"
+    turbo: "npm:^2.8.13"
     typescript: "npm:^5.8.2"
     typescript-eslint: "npm:^8.55.0"
     vitest: "npm:^4.0.18"
@@ -5089,58 +5089,58 @@ __metadata:
   languageName: node
   linkType: hard
 
-"turbo-darwin-64@npm:2.7.2":
-  version: 2.7.2
-  resolution: "turbo-darwin-64@npm:2.7.2"
+"turbo-darwin-64@npm:2.8.13":
+  version: 2.8.13
+  resolution: "turbo-darwin-64@npm:2.8.13"
   conditions: os=darwin & cpu=x64
   languageName: node
   linkType: hard
 
-"turbo-darwin-arm64@npm:2.7.2":
-  version: 2.7.2
-  resolution: "turbo-darwin-arm64@npm:2.7.2"
+"turbo-darwin-arm64@npm:2.8.13":
+  version: 2.8.13
+  resolution: "turbo-darwin-arm64@npm:2.8.13"
   conditions: os=darwin & cpu=arm64
   languageName: node
   linkType: hard
 
-"turbo-linux-64@npm:2.7.2":
-  version: 2.7.2
-  resolution: "turbo-linux-64@npm:2.7.2"
+"turbo-linux-64@npm:2.8.13":
+  version: 2.8.13
+  resolution: "turbo-linux-64@npm:2.8.13"
   conditions: os=linux & cpu=x64
   languageName: node
   linkType: hard
 
-"turbo-linux-arm64@npm:2.7.2":
-  version: 2.7.2
-  resolution: "turbo-linux-arm64@npm:2.7.2"
+"turbo-linux-arm64@npm:2.8.13":
+  version: 2.8.13
+  resolution: "turbo-linux-arm64@npm:2.8.13"
   conditions: os=linux & cpu=arm64
   languageName: node
   linkType: hard
 
-"turbo-windows-64@npm:2.7.2":
-  version: 2.7.2
-  resolution: "turbo-windows-64@npm:2.7.2"
+"turbo-windows-64@npm:2.8.13":
+  version: 2.8.13
+  resolution: "turbo-windows-64@npm:2.8.13"
   conditions: os=win32 & cpu=x64
   languageName: node
   linkType: hard
 
-"turbo-windows-arm64@npm:2.7.2":
-  version: 2.7.2
-  resolution: "turbo-windows-arm64@npm:2.7.2"
+"turbo-windows-arm64@npm:2.8.13":
+  version: 2.8.13
+  resolution: "turbo-windows-arm64@npm:2.8.13"
   conditions: os=win32 & cpu=arm64
   languageName: node
   linkType: hard
 
-"turbo@npm:^2.5.5":
-  version: 2.7.2
-  resolution: "turbo@npm:2.7.2"
+"turbo@npm:^2.8.13":
+  version: 2.8.13
+  resolution: "turbo@npm:2.8.13"
   dependencies:
-    turbo-darwin-64: "npm:2.7.2"
-    turbo-darwin-arm64: "npm:2.7.2"
-    turbo-linux-64: "npm:2.7.2"
-    turbo-linux-arm64: "npm:2.7.2"
-    turbo-windows-64: "npm:2.7.2"
-    turbo-windows-arm64: "npm:2.7.2"
+    turbo-darwin-64: "npm:2.8.13"
+    turbo-darwin-arm64: "npm:2.8.13"
+    turbo-linux-64: "npm:2.8.13"
+    turbo-linux-arm64: "npm:2.8.13"
+    turbo-windows-64: "npm:2.8.13"
+    turbo-windows-arm64: "npm:2.8.13"
   dependenciesMeta:
     turbo-darwin-64:
       optional: true
@@ -5156,7 +5156,7 @@ __metadata:
       optional: true
   bin:
     turbo: bin/turbo
-  checksum: 10/a0fb2c34ddd68bbe0fe763ef87131c687edf8caafa8b50be8df1606d82a586bd8362276f99bf34e905c9217521634b5a7c2926bad08228b29b84d54d9b4ad49b
+  checksum: 10/5fe96ab390ad05d425a37ed427962f8f53c4ce39513f84efa50f47e01ecce6ef2b7a15d458f7a37318eff1ec4b58cbe1edab1452d4b63c8e8882de863db2160d
   languageName: node
   linkType: hard
 
