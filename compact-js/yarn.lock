@@ -705,7 +705,7 @@ __metadata:
     "@effect/workflow": "npm:^0.16.0"
     "@eslint/js": "npm:^9.30.1"
     "@midnight-ntwrk/compact-js-node": "workspace:*"
-    "@midnight-ntwrk/midnight-js-compact": "npm:3.2.0-rc.3"
+    "@midnight-ntwrk/midnight-js-compact": "npm:3.2.0"
     "@tsconfig/node22": "npm:^22.0.0"
     "@types/node": "npm:^25.3.0"
     "@vitest/coverage-v8": "npm:^4.0.18"
@@ -765,13 +765,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/midnight-js-compact@npm:3.2.0-rc.3":
-  version: 3.2.0-rc.3
-  resolution: "@midnight-ntwrk/midnight-js-compact@npm:3.2.0-rc.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fmidnight-js-compact%2F3.2.0-rc.3%2Fb9a1ddbf2918f0f862f456ca879dccc7d64b21b2"
+"@midnight-ntwrk/midnight-js-compact@npm:3.2.0":
+  version: 3.2.0
+  resolution: "@midnight-ntwrk/midnight-js-compact@npm:3.2.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fmidnight-js-compact%2F3.2.0%2F136b7315e86ec429c5353b31bfb02a8fbba97a97"
   bin:
     fetch-compactc: dist/fetch-compact.mjs
     run-compactc: dist/run-compactc.cjs
-  checksum: 10/4be36bfa6fa49bf1e0ff244133df2a46ba840cc4ea53d716e179f67ad446b9ebc9c622429923209921c14e6126102fa03de4ac2d1fb6dcd875e727dc96ab4d68
+  checksum: 10/445dd5deb3aa63e4449c796b9c64074a4d1a6e5ff0a225213b251589c75f684825c64d4b3e542ec20cb41324f81e1eb9687fda0f2ed847421d2aa064fd16d7c2
   languageName: node
   linkType: hard
 
