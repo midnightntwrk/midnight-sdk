@@ -14,7 +14,7 @@
  */
 
 import { ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { LedgerParameters } from '@midnight-ntwrk/ledger-v7';
+import { LedgerParameters } from '@midnight-ntwrk/ledger-v8';
 import { Effect } from 'effect';
 
 /** @internal */
