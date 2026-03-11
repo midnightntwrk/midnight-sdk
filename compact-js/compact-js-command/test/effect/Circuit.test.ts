@@ -20,7 +20,7 @@ import { FileSystem } from '@effect/platform';
 import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
 import { circuitCommand,ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
-import { LedgerParameters } from '@midnight-ntwrk/ledger-v7';
+import { LedgerParameters } from '@midnight-ntwrk/ledger-v8';
 import { Console,Effect, Layer } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
