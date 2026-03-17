@@ -450,7 +450,7 @@ __metadata:
     "@midnight-ntwrk/compact-js": "npm:^2.5.0"
     "@midnight-ntwrk/compact-js-node": "npm:^2.5.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.15.0-rc.1"
-    "@midnight-ntwrk/ledger-v8": "npm:8.0.2"
+    "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.0.1"
     effect: "npm:^3.20.0"
@@ -522,7 +522,7 @@ __metadata:
   dependencies:
     "@effect/platform": "npm:^0.95.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.15.0-rc.1"
-    "@midnight-ntwrk/ledger-v8": "npm:8.0.2"
+    "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
     effect: "npm:^3.20.0"
     tslib: "npm:^2.8.1"
@@ -547,7 +547,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/ledger-v8@npm:8.0.2":
+"@midnight-ntwrk/ledger-v8@npm:^8.0.2":
   version: 8.0.2
   resolution: "@midnight-ntwrk/ledger-v8@npm:8.0.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v8%2F8.0.2%2F89f539aa03677c5d966c1adae48e4dfc89df292a"
   checksum: 10/2c4b9a8cadbd22da8fc23652f598467b670a062b515a5a67de9a03ac09b597bf93ee36d1122f196933cf5c6897eca55d383e683959449d21fb9dd7f831bf3656
