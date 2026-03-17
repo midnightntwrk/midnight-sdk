@@ -28,13 +28,13 @@ describe('CompiledContract', () => {
 
   describe('as initialized', () => {
     it('should require witnesses as defined by contract', () => {
-      expect(compiledContract).type.toBeAssignableWith<
+      expect(compiledContract).type.toBeAssignableFrom<
         CompiledContract.CompiledContract<MockCounterContract, any, CompactContext.Witnesses<MockCounterContract>>
       >();
     });
 
     it('should require ZK path configuration', () => {
-      expect(compiledContract).type.toBeAssignableWith<
+      expect(compiledContract).type.toBeAssignableFrom<
         CompiledContract.CompiledContract<MockCounterContract, any, CompactContext.CompiledAssetsPath>
       >();
     });
@@ -45,7 +45,7 @@ describe('CompiledContract', () => {
       );
 
       it('should not require further witnesses', () => {
-        expect(contract).type.not.toBeAssignableWith<
+        expect(contract).type.not.toBeAssignableTo<
           CompiledContract.CompiledContract<MockCounterContract, any, CompactContext.Witnesses<MockCounterContract>>
         >();
       });
@@ -55,7 +55,7 @@ describe('CompiledContract', () => {
       const contract = compiledContract.pipe(CompiledContract.withCompiledFileAssets('~/contracts'));
 
       it('should not require further witnesses', () => {
-        expect(contract).type.not.toBeAssignableWith<
+        expect(contract).type.not.toBeAssignableTo<
           CompiledContract.CompiledContract<MockCounterContract, any, CompactContext.CompiledAssetsPath>
         >();
       });
