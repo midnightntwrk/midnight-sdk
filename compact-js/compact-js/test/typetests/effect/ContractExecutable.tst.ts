@@ -43,7 +43,7 @@ describe('ContractExecutable', () => {
 
   describe('as initialized', () => {
     it('should require ZKConfig and KeyConfig', () => {
-      expect(contractExecutable).type.toBeAssignableWith<
+      expect(contractExecutable).type.toBeAssignableFrom<
         ContractExecutable.ContractExecutable<
           MockCounterContract,
           any,
