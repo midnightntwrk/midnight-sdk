@@ -4,9 +4,9 @@ TypeScript monorepo that develops and publishes four npm libraries for building 
 
 ## Compatibility
 
-What runs on each network (updated 2026-03-19):
+See [COMPATIBILITY.md](./COMPATIBILITY.md) for full version details, Docker image tags, and npm packages.
 
-**Infrastructure (server-side)**
+**Infrastructure (server-side)** — deployed per network ([Preview status](https://status.shielded.tools/preview) | [Preprod status](https://status.shielded.tools/preprod))
 
 | Component | Preview | Preprod | Mainnet |
 |---|---|---|---|
@@ -25,7 +25,32 @@ What runs on each network (updated 2026-03-19):
 | Wallet SDK | 3.0.1 | 3.1.0-rc.0 |
 | DApp Connector API | 4.0.1 | — |
 
-Full version details including RC versions, Docker image tags, and npm packages in [COMPATIBILITY.md](./COMPATIBILITY.md).
+## Ecosystem
+
+### Infrastructure (server-side)
+
+| Repository | Produces | Artifacts |
+|---|---|---|
+| [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | Node, Toolkit | [Docker](https://hub.docker.com/r/midnightntwrk/midnight-node) |
+| [midnightntwrk/midnight-ledger](https://github.com/midnightntwrk/midnight-ledger) | Ledger, Proof Server, On-chain Runtime | [Docker](https://hub.docker.com/r/midnightntwrk/proof-server), [npm](https://www.npmjs.com/package/@midnight-ntwrk/onchain-runtime-v3) |
+| [midnightntwrk/midnight-indexer](https://github.com/midnightntwrk/midnight-indexer) | Indexer API, Chain Indexer, Wallet Indexer | [Docker](https://hub.docker.com/r/midnightntwrk/indexer-api) |
+| [input-output-hk/partner-chains](https://github.com/input-output-hk/partner-chains) | Partner Chains | GitHub releases |
+| [midnightntwrk/midnight-local-dev](https://github.com/midnightntwrk/midnight-local-dev) | Local dev stack | Docker Compose |
+| midnightntwrk/midnight-faucet | Faucet (tMNT) | Docker |
+| midnightntwrk/midnight-explorer | Block Explorer | Docker |
+
+### Client-side (libraries and tools)
+
+| Repository | Produces | Artifacts |
+|---|---|---|
+| [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) | Compact compiler (`compactc`), Compact language, Compact runtime | [Releases](https://github.com/midnightntwrk/compact/releases), [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) |
+| [midnightntwrk/midnight-sdk](https://github.com/midnightntwrk/midnight-sdk) (this repo) | compact-js, compact-js-node, compact-js-command, platform-js | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-js) |
+| [midnightntwrk/midnight-js](https://github.com/midnightntwrk/midnight-js) | 12 `@midnight-ntwrk/midnight-js-*` packages | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-contracts) |
+| [midnightntwrk/midnight-wallet](https://github.com/midnightntwrk/midnight-wallet) | Wallet SDK (`wallet-sdk-*` packages) | [npm](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format) |
+| [midnightntwrk/midnight-dapp-connector-api](https://github.com/midnightntwrk/midnight-dapp-connector-api) | DApp Connector API | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) |
+| [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Wallet DApp (reference app) | [Docker](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
+
+**Networks:** Local (`undeployed`) for fastest iteration, Preview / Preprod for public testnets, Mainnet not yet launched.
 
 ## Developer Paths
 
@@ -72,9 +97,7 @@ Build wallets or integrate Midnight into existing wallets.
 - [platform-js](./platform-js/platform-js) (this repo) — shared types and abstractions
 - [Wallet SDK release notes](https://docs.midnight.network/relnotes/wallet) — latest changes and migration guides
 
-## Libraries
-
-This repo develops and publishes the following npm libraries under the `@midnight-ntwrk` scope:
+## Libraries (this repo)
 
 | Library | npm | Description |
 |---------|-----|-------------|
@@ -84,30 +107,6 @@ This repo develops and publishes the following npm libraries under the `@midnigh
 | [platform-js](./platform-js/platform-js) | [@midnight-ntwrk/platform-js](https://www.npmjs.com/package/@midnight-ntwrk/platform-js) | Core abstractions, utilities, and types for building Midnight services and libraries |
 
 The repo is organized into two workspaces — `compact-js/` and `platform-js/` — managed with Yarn 4 workspaces and Turborepo.
-
-## Ecosystem
-
-| Component | Repository | npm / Docker |
-|-----------|------------|--------------|
-| Compact compiler | [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) | GitHub releases |
-| Compact runtime | — | [@midnight-ntwrk/compact-runtime](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) |
-| Midnight.js | [midnightntwrk/midnight-js](https://github.com/midnightntwrk/midnight-js) | @midnight-ntwrk/midnight-js-* |
-| Wallet SDK | [midnightntwrk/midnight-wallet](https://github.com/midnightntwrk/midnight-wallet) | @midnight-ntwrk/wallet-sdk-* |
-| Wallet DApp | [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Docker: `midnightntwrk/wallet-dapp` |
-| DApp Connector | [midnightntwrk/midnight-dapp-connector-api](https://github.com/midnightntwrk/midnight-dapp-connector-api) | @midnight-ntwrk/dapp-connector-api |
-| Node | [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | Docker: `midnightntwrk/midnight-node` |
-| Proof Server | — | Docker: `midnightntwrk/proof-server` |
-| Indexer | [midnightntwrk/midnight-indexer](https://github.com/midnightntwrk/midnight-indexer) | Docker: `midnightntwrk/indexer-api` |
-| Local dev | [midnightntwrk/midnight-local-dev](https://github.com/midnightntwrk/midnight-local-dev) | Docker Compose |
-| Explorer | [midnightntwrk/midnight-explorer](https://github.com/midnightntwrk/midnight-explorer) | — |
-
-**Networks:**
-
-- **Local** (`undeployed`) — Docker Compose stack for fastest iteration
-- **Preview / Preprod** — public testnets, same component versions
-- **Mainnet** — not yet launched
-
-See [COMPATIBILITY.md](./COMPATIBILITY.md) for version details and the [support matrix](https://docs.midnight.network/relnotes/support-matrix) for official compatibility info.
 
 ## Development
 
