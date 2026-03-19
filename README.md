@@ -6,16 +6,24 @@ TypeScript monorepo that develops and publishes four npm libraries for building 
 
 What runs on each network (updated 2026-03-19):
 
+**Infrastructure (server-side)**
+
 | Component | Preview | Preprod | Mainnet |
 |---|---|---|---|
-| Ledger | 8.0.2 | 8.0.2 | — |
 | Node | 0.22.0 | 0.22.0 | — |
+| Ledger | 8.0.2 | 8.0.2 | — |
 | Proof Server | 8.0.2 | 8.0.2 | — |
-| Compact Compiler (`compactc`) | 0.30.0 | 0.30.0 | — |
-| Compact Runtime | 0.15.0 | 0.15.0 | — |
 | Indexer | 4.0.0 | 4.0.0 | — |
-| Midnight.js | 3.2.0 | 3.2.0 | — |
-| Compact JS | 2.4.3 | 2.4.3 | — |
+
+**Client-side (libraries and tools)** — all packages in a project must target the same ledger version
+
+| Component | Ledger v7 (released) | Ledger v8 (RC) |
+|---|---|---|
+| Compact Compiler (`compactc`) | 0.29.0 | 0.30.0 |
+| Compact JS | 2.4.3 | 2.5.0-rc.3 |
+| Midnight.js | 3.2.0 | 4.0.0-rc.2 |
+| Wallet SDK | 3.0.1 | 3.1.0-rc.0 |
+| DApp Connector API | 4.0.1 | — |
 
 Full version details including RC versions, Docker image tags, and npm packages in [COMPATIBILITY.md](./COMPATIBILITY.md).
 
