@@ -10,7 +10,7 @@ TypeScript monorepo that develops and publishes four npm libraries for building 
 
 | Repository | Produces | Artifacts |
 |---|---|---|
-| [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | Node, Toolkit | [Docker](https://hub.docker.com/r/midnightntwrk/midnight-node) |
+| [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | Node | [Docker](https://hub.docker.com/r/midnightntwrk/midnight-node) |
 | [midnightntwrk/midnight-ledger](https://github.com/midnightntwrk/midnight-ledger) | Ledger, Proof Server*, On-chain Runtime | [Docker](https://hub.docker.com/r/midnightntwrk/proof-server), [npm](https://www.npmjs.com/package/@midnight-ntwrk/onchain-runtime-v3) |
 | [midnightntwrk/midnight-indexer](https://github.com/midnightntwrk/midnight-indexer) | Indexer API, Chain Indexer, Wallet Indexer | [Docker](https://hub.docker.com/r/midnightntwrk/indexer-api) |
 | [input-output-hk/partner-chains](https://github.com/input-output-hk/partner-chains) | Partner Chains | GitHub releases |
@@ -30,6 +30,7 @@ TypeScript monorepo that develops and publishes four npm libraries for building 
 | [midnightntwrk/midnight-wallet](https://github.com/midnightntwrk/midnight-wallet) | Wallet SDK (`wallet-sdk-*` packages) | [npm](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format) |
 | [midnightntwrk/midnight-dapp-connector-api](https://github.com/midnightntwrk/midnight-dapp-connector-api) | DApp Connector API | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) |
 | [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Wallet DApp (reference app) | [Docker](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
+| [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | Midnight Toolkit — CLI for deploying contracts, managing wallets, syncing | [Docker](https://hub.docker.com/r/midnightntwrk/midnight-node) |
 
 
 ## Developer Paths
@@ -40,6 +41,7 @@ Write and test Compact smart contracts.
 
 - [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) — Compact language and compiler (source of truth)
 - [Compact language reference](https://docs.midnight.network/compact) — documentation
+- [Midnight Toolkit](https://github.com/midnightntwrk/midnight-node) — CLI for deploying contracts, managing wallets, syncing with the network
 - [create-mn-app](https://github.com/midnightntwrk/create-mn-app) — scaffold a new project
 - [example-counter](https://github.com/midnightntwrk/example-counter) / [example-bboard](https://github.com/midnightntwrk/example-bboard) — reference contracts (use as templates)
 - [Examples](https://docs.midnight.network/category/examples) — walkthroughs
