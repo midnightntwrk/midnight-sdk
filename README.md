@@ -26,7 +26,7 @@ TypeScript monorepo that develops and publishes four npm libraries for building 
 |---|---|---|
 | [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) | Compact compiler (`compactc`), Compact language, Compact runtime | [Releases](https://github.com/midnightntwrk/compact/releases), [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) |
 | [midnightntwrk/midnight-sdk](https://github.com/midnightntwrk/midnight-sdk) (this repo) | compact-js, compact-js-node, compact-js-command, platform-js | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-js) |
-| [midnightntwrk/midnight-js](https://github.com/midnightntwrk/midnight-js) | 12 `@midnight-ntwrk/midnight-js-*` packages | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-contracts) |
+| [midnightntwrk/midnight-js](https://github.com/midnightntwrk/midnight-js) | 12 `@midnight-ntwrk/midnight-js-*` packages, [testkit-js](https://github.com/midnightntwrk/midnight-js) (contract testing and E2E) | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-contracts) |
 | [midnightntwrk/midnight-wallet](https://github.com/midnightntwrk/midnight-wallet) | Wallet SDK (`wallet-sdk-*` packages) | [npm](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format) |
 | [midnightntwrk/midnight-dapp-connector-api](https://github.com/midnightntwrk/midnight-dapp-connector-api) | DApp Connector API | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) |
 | [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Wallet DApp (reference app) | [Docker](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
@@ -44,6 +44,7 @@ Write and test Compact smart contracts.
 - [Midnight Toolkit](https://github.com/midnightntwrk/midnight-node) — CLI for deploying and interacting with contracts
 - [create-mn-app](https://github.com/midnightntwrk/create-mn-app) — scaffold a new project
 - [example-counter](https://github.com/midnightntwrk/example-counter) / [example-bboard](https://github.com/midnightntwrk/example-bboard) — reference contracts (use as templates)
+- [testkit-js](https://github.com/midnightntwrk/midnight-js) — contract testing and E2E test suite (in the midnight-js repo)
 - [Examples](https://docs.midnight.network/category/examples) — walkthroughs
 
 ### DApp Developers
