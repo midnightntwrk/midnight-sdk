@@ -4,41 +4,52 @@ What runs on each Midnight network (updated 2026-03-19).
 
 ## Infrastructure (server-side)
 
-Deployed per network. Developers connect to these services (or run them locally via Docker). Infrastructure built on ledger v8 also supports ledger-v7 client components.
+Deployed per network. Developers connect to these services (or run them locally via Docker). Current networks run **ledger v7**. An upgrade to ledger v8 (node 0.22.0) is upcoming.
 
-| Component | Preview | Preprod | Mainnet | Release Notes |
-|---|---|---|---|---|
-| Node | 0.22.0 | 0.22.0 | — | [node-0.22.0](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.0) |
-| Ledger | 8.0.2 | 8.0.2 | — | [ledger-8.0.2](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.2) |
-| Proof Server | 8.0.2 | 8.0.2 | — | — |
-| On-chain Runtime | 3.0.0 | 3.0.0 | — | — |
-| Indexer | 4.0.0 | 4.0.0 | — | [v4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) |
-| Partner Chains | 1.8.1 | 1.8.1 | — | [v1.8.1](https://github.com/input-output-hk/partner-chains/releases/tag/v1.8.1) |
-| Faucet (tMNT) | 0.11.8 | 0.11.8 | — | [v0.11.8](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.8) |
-| Block Explorer | 0.2.0 | 0.2.0 | — | — |
+### Currently deployed
+
+| Component | Preview | Preprod | Mainnet |
+|---|---|---|---|
+| Node | 0.21.0 | 0.21.0 | — |
+| Ledger | 7.x | 7.x | — |
+| Indexer | 3.1.0 | 3.1.0 | — |
+| Faucet (tMNT) | 0.11.5 | 0.11.5 | — |
+| Partner Chains | 1.8.1 | 1.8.1 | — |
+| Block Explorer | 0.2.0 | 0.2.0 | — |
+
+### Upcoming (released, not yet deployed)
+
+| Component | Version | Release Notes |
+|---|---|---|
+| Node | 0.22.0 (ledger v8) | [node-0.22.0](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.0) |
+| Ledger | 8.0.2 | [ledger-8.0.2](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.2) |
+| Proof Server | 8.0.2 | — |
+| On-chain Runtime | 3.0.0 | — |
+| Indexer | 4.0.0 | [v4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) |
+| Faucet (tMNT) | 0.11.8 | [v0.11.8](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.8) |
 
 ### Docker Images
 
-| Image | Preview | Preprod | Mainnet | Docker Hub |
-|---|---|---|---|---|
-| `midnightntwrk/midnight-node` | 0.22.0 | 0.22.0 | — | [hub](https://hub.docker.com/r/midnightntwrk/midnight-node) |
-| `midnightntwrk/proof-server` | 8.0.2 | 8.0.2 | — | [hub](https://hub.docker.com/r/midnightntwrk/proof-server) |
-| `midnightntwrk/indexer-api` | 4.0.0 | 4.0.0 | — | [hub](https://hub.docker.com/r/midnightntwrk/indexer-api) |
-| `midnightntwrk/chain-indexer` | 4.0.0 | 4.0.0 | — | [hub](https://hub.docker.com/r/midnightntwrk/chain-indexer) |
-| `midnightntwrk/wallet-indexer` | 4.0.0 | 4.0.0 | — | [hub](https://hub.docker.com/r/midnightntwrk/wallet-indexer) |
-| `midnightntwrk/indexer-standalone` | 4.0.0 | 4.0.0 | — | [hub](https://hub.docker.com/r/midnightntwrk/indexer-standalone) |
-| `midnightntwrk/wallet-dapp` | 1.1.0 | 1.1.0 | — | [hub](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
-| `midnightntwrk/midnight-toolkit` | 0.22.0 | 0.22.0 | — | — |
-| `midnightntwrk/proof-server-no-hw` | 8.0.2 | 8.0.2 | — | — |
-| `midnightntwrk/indexer-halo2-verifier-server` | 4.0.0 | 4.0.0 | — | — |
+| Image | Deployed | Latest | Docker Hub |
+|---|---|---|---|
+| `midnightntwrk/midnight-node` | 0.21.0 | 0.22.0 | [hub](https://hub.docker.com/r/midnightntwrk/midnight-node) |
+| `midnightntwrk/proof-server` | 7.x | 8.0.2 | [hub](https://hub.docker.com/r/midnightntwrk/proof-server) |
+| `midnightntwrk/indexer-api` | 3.1.0 | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/indexer-api) |
+| `midnightntwrk/chain-indexer` | 3.1.0 | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/chain-indexer) |
+| `midnightntwrk/wallet-indexer` | 3.1.0 | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/wallet-indexer) |
+| `midnightntwrk/indexer-standalone` | 3.1.0 | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/indexer-standalone) |
+| `midnightntwrk/wallet-dapp` | 1.1.0 | 1.1.0 | [hub](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
+| `midnightntwrk/midnight-toolkit` | 0.21.0 | 0.22.0 | — |
+| `midnightntwrk/proof-server-no-hw` | 7.x | 8.0.2 | — |
+| `midnightntwrk/indexer-halo2-verifier-server` | 3.1.0 | 4.0.0 | — |
 
 ## Client-side (libraries and tools)
 
-Installed by developers via npm or CLI. All client-side packages in a project **must target the same ledger major version** — do not mix ledger-v7 and ledger-v8 packages. Both sets work against the current infrastructure (ledger v8 is backwards compatible with v7 clients).
+Installed by developers via npm or CLI. All client-side packages in a project **must target the same ledger major version** — do not mix ledger-v7 and ledger-v8 packages. Current networks run ledger v7; ledger v8 packages are for the upcoming infrastructure upgrade.
 
 ### Compatible version sets
 
-| Component | Ledger v7 (released) | Ledger v8 (RC) |
+| Component | Ledger v7 (current) | Ledger v8 (upcoming) |
 |---|---|---|
 | Compact Compiler (`compactc`) | [0.29.0](https://github.com/midnightntwrk/compact/releases/tag/compactc-v0.29.0) | [0.30.0](https://github.com/midnightntwrk/compact/releases/tag/compactc-v0.30.0) |
 | @midnight-ntwrk/compact-js | [2.4.3](https://www.npmjs.com/package/@midnight-ntwrk/compact-js/v/2.4.3) | [2.5.0-rc.3](https://www.npmjs.com/package/@midnight-ntwrk/compact-js/v/2.5.0-rc.3) |
@@ -52,7 +63,7 @@ Installed by developers via npm or CLI. All client-side packages in a project **
 
 #### Compact JS (this repo)
 
-| Package | npm | Ledger v7 | Ledger v8 |
+| Package | npm | Ledger v7 (current) | Ledger v8 (upcoming) |
 |---|---|---|---|
 | @midnight-ntwrk/compact-js | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-js) | 2.4.3 | 2.5.0-rc.3 |
 | @midnight-ntwrk/compact-runtime | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) | 0.14.0 | 0.15.0 (released) |
@@ -64,7 +75,7 @@ Installed by developers via npm or CLI. All client-side packages in a project **
 
 Release notes: [v3.2.0](https://github.com/midnightntwrk/midnight-js/releases/tag/v3.2.0) | [v4.0.0-rc.2](https://github.com/midnightntwrk/midnight-js/releases/tag/v4.0.0-rc.2)
 
-| Package | npm | Ledger v7 | Ledger v8 |
+| Package | npm | Ledger v7 (current) | Ledger v8 (upcoming) |
 |---|---|---|---|
 | @midnight-ntwrk/midnight-js-contracts | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-contracts) | 3.2.0 | 4.0.0-rc.2 |
 | @midnight-ntwrk/midnight-js-types | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-types) | 3.2.0 | 4.0.0-rc.2 |
@@ -81,7 +92,7 @@ Release notes: [v3.2.0](https://github.com/midnightntwrk/midnight-js/releases/ta
 
 #### Wallet and DApp Connector
 
-| Package | npm | Ledger v7 | Ledger v8 |
+| Package | npm | Ledger v7 (current) | Ledger v8 (upcoming) |
 |---|---|---|---|
 | @midnight-ntwrk/wallet-sdk-address-format | [npm](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format) | 3.0.1 | 3.1.0-rc.0 |
 | @midnight-ntwrk/dapp-connector-api | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) | 4.0.1 | — |

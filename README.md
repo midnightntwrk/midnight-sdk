@@ -8,16 +8,16 @@ See [COMPATIBILITY.md](./COMPATIBILITY.md) for full version details, Docker imag
 
 **Infrastructure (server-side)** — deployed per network ([Preview status](https://status.shielded.tools/preview) | [Preprod status](https://status.shielded.tools/preprod))
 
-| Component | Preview | Preprod | Mainnet |
-|---|---|---|---|
-| Node | 0.22.0 | 0.22.0 | — |
-| Ledger | 8.0.2 | 8.0.2 | — |
-| Proof Server | 8.0.2 | 8.0.2 | — |
-| Indexer | 4.0.0 | 4.0.0 | — |
+| Component | Preview | Preprod | Mainnet | Upcoming |
+|---|---|---|---|---|
+| Node | 0.21.0 | 0.21.0 | — | [0.22.0](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.0) (ledger v8) |
+| Ledger | 7.x | 7.x | — | 8.0.2 |
+| Indexer | 3.1.0 | 3.1.0 | — | [4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) |
+| Faucet | 0.11.5 | 0.11.5 | — | 0.11.8 |
 
-**Client-side (libraries and tools)** — all packages in a project must target the same ledger version
+**Client-side (libraries and tools)** — all packages in a project must target the same ledger version. Current networks run ledger v7.
 
-| Component | Ledger v7 (released) | Ledger v8 (RC) |
+| Component | Ledger v7 (current) | Ledger v8 (RC) |
 |---|---|---|
 | Compact Compiler (`compactc`) | 0.29.0 | 0.30.0 |
 | Compact JS | 2.4.3 | 2.5.0-rc.3 |
