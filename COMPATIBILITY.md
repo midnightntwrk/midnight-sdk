@@ -4,7 +4,9 @@ What runs on each Midnight network (updated 2026-03-19).
 
 ## Infrastructure (server-side)
 
-Deployed per network. Developers connect to these services (or run them locally via Docker). Current networks run **ledger v7**. An upgrade to ledger v8 (node 0.22.0) is upcoming.
+Deployed per network. Developers connect to these services (or run them locally via Docker). Current networks run **ledger-v7**. An upgrade to ledger-v8 (node 0.22.0) is upcoming.
+
+Proof Server can also be run locally by DApp developers for proof generation.
 
 ### Currently deployed
 
@@ -21,7 +23,7 @@ Deployed per network. Developers connect to these services (or run them locally 
 
 | Component | Version | Release Notes |
 |---|---|---|
-| Node | 0.22.0 (ledger v8) | [node-0.22.0](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.0) |
+| Node | 0.22.0 (ledger-v8) | [node-0.22.0](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.0) |
 | Ledger | 8.0.2 | [ledger-8.0.2](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.2) |
 | Proof Server | 8.0.2 | — |
 | On-chain Runtime | 3.0.0 | — |
@@ -45,11 +47,11 @@ Deployed per network. Developers connect to these services (or run them locally 
 
 ## Client-side (libraries and tools)
 
-Installed by developers via npm or CLI. All client-side packages in a project **must target the same ledger major version** — do not mix ledger-v7 and ledger-v8 packages. Current networks run ledger v7; ledger v8 packages are for the upcoming infrastructure upgrade.
+Installed by developers via npm or CLI. All client-side packages in a project **must target the same ledger major version** — do not mix ledger-v7 and ledger-v8 packages. Current networks run ledger-v7; ledger-v8 packages are for the upcoming infrastructure upgrade.
 
 ### Compatible version sets
 
-| Component | Ledger v7 (current) | Ledger v8 (upcoming) |
+| Component | ledger-v7 (current) | ledger-v8 (upcoming) |
 |---|---|---|
 | Compact Compiler (`compactc`) | [0.29.0](https://github.com/midnightntwrk/compact/releases/tag/compactc-v0.29.0) | [0.30.0](https://github.com/midnightntwrk/compact/releases/tag/compactc-v0.30.0) |
 | @midnight-ntwrk/compact-js | [2.4.3](https://www.npmjs.com/package/@midnight-ntwrk/compact-js/v/2.4.3) | [2.5.0-rc.3](https://www.npmjs.com/package/@midnight-ntwrk/compact-js/v/2.5.0-rc.3) |
@@ -63,7 +65,7 @@ Installed by developers via npm or CLI. All client-side packages in a project **
 
 #### Compact JS (this repo)
 
-| Package | npm | Ledger v7 (current) | Ledger v8 (upcoming) |
+| Package | npm | ledger-v7 (current) | ledger-v8 (upcoming) |
 |---|---|---|---|
 | @midnight-ntwrk/compact-js | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-js) | 2.4.3 | 2.5.0-rc.3 |
 | @midnight-ntwrk/compact-runtime | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) | 0.14.0 | 0.15.0 (released) |
@@ -75,7 +77,7 @@ Installed by developers via npm or CLI. All client-side packages in a project **
 
 Release notes: [v3.2.0](https://github.com/midnightntwrk/midnight-js/releases/tag/v3.2.0) | [v4.0.0-rc.2](https://github.com/midnightntwrk/midnight-js/releases/tag/v4.0.0-rc.2)
 
-| Package | npm | Ledger v7 (current) | Ledger v8 (upcoming) |
+| Package | npm | ledger-v7 (current) | ledger-v8 (upcoming) |
 |---|---|---|---|
 | @midnight-ntwrk/midnight-js-contracts | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-contracts) | 3.2.0 | 4.0.0-rc.2 |
 | @midnight-ntwrk/midnight-js-types | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-types) | 3.2.0 | 4.0.0-rc.2 |
@@ -92,7 +94,7 @@ Release notes: [v3.2.0](https://github.com/midnightntwrk/midnight-js/releases/ta
 
 #### Wallet and DApp Connector
 
-| Package | npm | Ledger v7 (current) | Ledger v8 (upcoming) |
+| Package | npm | ledger-v7 (current) | ledger-v8 (upcoming) |
 |---|---|---|---|
 | @midnight-ntwrk/wallet-sdk-address-format | [npm](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format) | 3.0.1 | 3.1.0-rc.0 |
 | @midnight-ntwrk/dapp-connector-api | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) | 4.0.1 | — |

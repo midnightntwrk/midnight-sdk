@@ -10,14 +10,14 @@ See [COMPATIBILITY.md](./COMPATIBILITY.md) for full version details, Docker imag
 
 | Component | Preview | Preprod | Mainnet | Upcoming |
 |---|---|---|---|---|
-| Node | 0.21.0 | 0.21.0 | — | [0.22.0](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.0) (ledger v8) |
+| Node | 0.21.0 | 0.21.0 | — | [0.22.0](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.0) (ledger-v8) |
 | Ledger | 7.x | 7.x | — | 8.0.2 |
 | Indexer | 3.1.0 | 3.1.0 | — | [4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) |
 | Faucet | 0.11.5 | 0.11.5 | — | 0.11.8 |
 
-**Client-side (libraries and tools)** — all packages in a project must target the same ledger version. Current networks run ledger v7.
+**Client-side (libraries and tools)** — all packages in a project must target the same ledger version. Current networks run ledger-v7.
 
-| Component | Ledger v7 (current) | Ledger v8 (RC) |
+| Component | ledger-v7 (current) | ledger-v8 (RC) |
 |---|---|---|
 | Compact Compiler (`compactc`) | 0.29.0 | 0.30.0 |
 | Compact JS | 2.4.3 | 2.5.0-rc.3 |
@@ -32,12 +32,14 @@ See [COMPATIBILITY.md](./COMPATIBILITY.md) for full version details, Docker imag
 | Repository | Produces | Artifacts |
 |---|---|---|
 | [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | Node, Toolkit | [Docker](https://hub.docker.com/r/midnightntwrk/midnight-node) |
-| [midnightntwrk/midnight-ledger](https://github.com/midnightntwrk/midnight-ledger) | Ledger, Proof Server, On-chain Runtime | [Docker](https://hub.docker.com/r/midnightntwrk/proof-server), [npm](https://www.npmjs.com/package/@midnight-ntwrk/onchain-runtime-v3) |
+| [midnightntwrk/midnight-ledger](https://github.com/midnightntwrk/midnight-ledger) | Ledger, Proof Server*, On-chain Runtime | [Docker](https://hub.docker.com/r/midnightntwrk/proof-server), [npm](https://www.npmjs.com/package/@midnight-ntwrk/onchain-runtime-v3) |
 | [midnightntwrk/midnight-indexer](https://github.com/midnightntwrk/midnight-indexer) | Indexer API, Chain Indexer, Wallet Indexer | [Docker](https://hub.docker.com/r/midnightntwrk/indexer-api) |
 | [input-output-hk/partner-chains](https://github.com/input-output-hk/partner-chains) | Partner Chains | GitHub releases |
 | [midnightntwrk/midnight-local-dev](https://github.com/midnightntwrk/midnight-local-dev) | Local dev stack | Docker Compose |
 | midnightntwrk/midnight-faucet | Faucet (tMNT) | Docker |
 | midnightntwrk/midnight-explorer | Block Explorer | Docker |
+
+*Proof Server can be run as shared infrastructure or locally by DApp developers for proof generation.
 
 ### Client-side (libraries and tools)
 
