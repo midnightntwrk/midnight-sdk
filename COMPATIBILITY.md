@@ -42,7 +42,6 @@ Proof Server can also be run locally by DApp developers for proof generation.
 | `midnightntwrk/indexer-standalone` | 3.1.0 | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/indexer-standalone) |
 | `midnightntwrk/wallet-dapp` | 1.1.0 | 1.1.0 | [hub](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
 | `midnightntwrk/midnight-node-toolkit` | 0.21.0 | 0.22.0 | [hub](https://hub.docker.com/r/midnightntwrk/midnight-node-toolkit) |
-| `midnightntwrk/proof-server-no-hw` | 7.x | 8.0.2 | — |
 | `midnightntwrk/indexer-halo2-verifier-server` | 3.1.0 | 4.0.0 | — |
 
 ## Client-side (libraries and tools)
