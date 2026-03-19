@@ -2,6 +2,8 @@
 
 TypeScript monorepo that develops and publishes four npm libraries for building on [Midnight](https://midnight.network). These libraries provide the execution environment for Compact smart contracts and core platform abstractions that higher-level frameworks like [Midnight.js](https://github.com/midnightntwrk/midnight-js) build on.
 
+**Networks:** Local (`undeployed`) for fastest iteration, Preview / Preprod for public testnets, Mainnet not yet launched. See [COMPATIBILITY.md](./COMPATIBILITY.md) for which versions are deployed on each network and which client libraries are compatible.
+
 ## Repositories and Components
 
 ### Infrastructure (server-side)
@@ -29,7 +31,6 @@ TypeScript monorepo that develops and publishes four npm libraries for building 
 | [midnightntwrk/midnight-dapp-connector-api](https://github.com/midnightntwrk/midnight-dapp-connector-api) | DApp Connector API | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) |
 | [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Wallet DApp (reference app) | [Docker](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
 
-**Networks:** Local (`undeployed`) for fastest iteration, Preview / Preprod for public testnets, Mainnet not yet launched. See [COMPATIBILITY.md](./COMPATIBILITY.md) for which versions are deployed on each network and which client libraries are compatible.
 
 ## Developer Paths
 
