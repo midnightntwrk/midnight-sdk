@@ -1,6 +1,6 @@
 # Midnight SDK
 
-Developer hub for [Midnight](https://midnight.network). This repo provides a map of all Midnight repositories and the components they produce, a [compatibility matrix](./COMPATIBILITY.md) for testnets and mainnet, and the source code for four npm libraries (`compact-js`, `platform-js`) that provide the execution environment for Compact smart contracts.
+Developer hub for [Midnight](https://midnight.network). This repo provides a map of all Midnight repositories and the components they produce, a [compatibility matrix](./COMPATIBILITY.md) for testnets and mainnet, an [ecosystem overview](./ECOSYSTEM.md) of the full architecture, and the source code for four npm libraries (`compact-js`, `platform-js`) that provide the execution environment for Compact smart contracts.
 
 **Networks:** Local (`undeployed`) for fastest iteration, Preview / Preprod for public testnets, Mainnet not yet launched. See [COMPATIBILITY.md](./COMPATIBILITY.md) for which versions are deployed on each network and which client libraries are compatible.
 
