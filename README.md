@@ -8,21 +8,25 @@ TypeScript monorepo that develops and publishes four npm libraries for building 
 
 Write and test Compact smart contracts.
 
-- [Compact language reference](https://docs.midnight.network/compact) — learn the language
+- [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) — Compact language and compiler (source of truth)
+- [Compact language reference](https://docs.midnight.network/compact) — documentation
+- [create-mn-app](https://github.com/midnightntwrk/create-mn-app) — scaffold a new project
+- [example-counter](https://github.com/midnightntwrk/example-counter) / [example-bboard](https://github.com/midnightntwrk/example-bboard) — reference contracts (use as templates)
 - [compact-js](./compact-js/compact-js) (this repo) — TypeScript execution environment for compiled contracts
-- [Midnight Toolkit](https://github.com/midnightntwrk/midnight-node/tree/main/util/toolkit) — CLI for deploying contracts, managing wallets, syncing with the network
-- [testkit-js](https://github.com/midnightntwrk/midnight-js) — testing infrastructure and E2E test suite (in the midnight-js repo)
-- [Examples](https://docs.midnight.network/category/examples) — counter, bboard, and other reference contracts
+- [Examples](https://docs.midnight.network/category/examples) — walkthroughs
 
 ### DApp Developers
 
 Build web and Node.js applications on Midnight.
 
 - [Getting started](https://docs.midnight.network/getting-started) — first-time setup
-- [midnight-js](https://github.com/midnightntwrk/midnight-js) — TypeScript framework providing low-level Midnight protocol primitives for Web and Node.js
+- [midnight-js](https://github.com/midnightntwrk/midnight-js) — DApp framework (contracts, types, providers)
 - [create-mn-app](https://github.com/midnightntwrk/create-mn-app) — scaffold a new project
+- [midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) — reference DApp showing the provider pattern and wallet integration
+- [DApp Connector API](https://github.com/midnightntwrk/midnight-dapp-connector-api) — wallet-DApp interface
 - [Tutorials](https://docs.midnight.network/category/tutorials) — end-to-end walkthroughs
-- [DApp Connector API](https://github.com/midnightntwrk/midnight-dapp-connector-api) — interface between DApps and wallets
+
+DApps need a local infrastructure stack (proof-server + indexer + midnight-node) or connection to a public testnet. See [midnight-local-dev](https://github.com/midnightntwrk/midnight-local-dev).
 
 ### Tool Builders
 
@@ -30,6 +34,7 @@ Build new tooling, providers, or frameworks on Midnight.
 
 - [platform-js](./platform-js/platform-js) (this repo) — core abstractions and types that midnight-js and other frameworks build on
 - [midnight-js](https://github.com/midnightntwrk/midnight-js) — reference implementation of a DApp framework; study its provider pattern to build alternatives
+- [midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) — reference for the provider pattern in practice
 - [compact-js](./compact-js/compact-js) (this repo) — if building tooling that works with compiled Compact contracts
 - [DApp Connector API](https://github.com/midnightntwrk/midnight-dapp-connector-api) — spec for wallet-DApp communication
 
@@ -59,21 +64,25 @@ The repo is organized into two workspaces — `compact-js/` and `platform-js/` �
 
 | Component | Repository | npm / Docker |
 |-----------|------------|--------------|
-| Compact compiler | [midnightntwrk/compact](https://github.com/midnightntwrk/compact) | GitHub releases |
+| Compact compiler | [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) | GitHub releases |
 | Compact runtime | — | [@midnight-ntwrk/compact-runtime](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) |
 | Midnight.js | [midnightntwrk/midnight-js](https://github.com/midnightntwrk/midnight-js) | @midnight-ntwrk/midnight-js-* |
 | Wallet SDK | [midnightntwrk/midnight-wallet](https://github.com/midnightntwrk/midnight-wallet) | @midnight-ntwrk/wallet-sdk-* |
+| Wallet DApp | [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Docker: `midnightntwrk/wallet-dapp` |
 | DApp Connector | [midnightntwrk/midnight-dapp-connector-api](https://github.com/midnightntwrk/midnight-dapp-connector-api) | @midnight-ntwrk/dapp-connector-api |
-| Ledger | [midnightntwrk/midnight-ledger](https://github.com/midnightntwrk/midnight-ledger) | @midnight-ntwrk/ledger-v8 |
 | Node | [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | Docker: `midnightntwrk/midnight-node` |
 | Proof Server | — | Docker: `midnightntwrk/proof-server` |
 | Indexer | [midnightntwrk/midnight-indexer](https://github.com/midnightntwrk/midnight-indexer) | Docker: `midnightntwrk/indexer-api` |
 | Local dev | [midnightntwrk/midnight-local-dev](https://github.com/midnightntwrk/midnight-local-dev) | Docker Compose |
 | Explorer | [midnightntwrk/midnight-explorer](https://github.com/midnightntwrk/midnight-explorer) | — |
 
-**Compatibility** — see the [support matrix](https://docs.midnight.network/relnotes/support-matrix) for version compatibility across components.
+**Networks:**
 
-**Networks** — use Undeployed (local) for development, Preprod for integration testing. See [nodes documentation](https://docs.midnight.network/nodes) for network details.
+- **Local** (`undeployed`) — Docker Compose stack for fastest iteration
+- **Preview / Preprod** — public testnets, same component versions
+- **Mainnet** — not yet launched
+
+See [COMPATIBILITY.md](./COMPATIBILITY.md) for version details and the [support matrix](https://docs.midnight.network/relnotes/support-matrix) for official compatibility info.
 
 ## Development
 
