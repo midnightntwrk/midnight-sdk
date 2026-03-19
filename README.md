@@ -4,24 +4,18 @@ TypeScript monorepo that develops and publishes four npm libraries for building 
 
 ## Compatibility
 
-Current versions across Midnight networks (updated 2026-03-19):
+What runs on each network (updated 2026-03-19):
 
-| Component | Version | Release Notes |
-|---|---|---|
-| Ledger | 8.0.2 | [release](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.2) |
-| Node | 0.22.0 | [release](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.0) |
-| Proof Server | 8.0.2 | — |
-| On-chain Runtime | 2.0.1 | — |
-| Compact Compiler (`compactc`) | 0.30.0 | [release](https://github.com/midnightntwrk/compact/releases/tag/compactc-v0.30.0) |
-| Compact Runtime | 0.15.0 | — |
-| Indexer | 4.0.0 | [release](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) |
-| Partner Chains | 1.8.1 | [release](https://github.com/input-output-hk/partner-chains/releases/tag/v1.8.1) |
-| DApp Connector API | 4.0.1 | [release](https://github.com/midnightntwrk/midnight-dapp-connector-api/releases/tag/v4.0.1) |
-| Wallet SDK | 3.0.1 | [notes](https://github.com/midnightntwrk/midnight-wallet/blob/main/RELEASE_NOTES.md) |
-| Midnight.js | 3.2.0 | [release](https://github.com/midnightntwrk/midnight-js/releases/tag/v3.2.0) |
-| Compact JS | 2.4.3 | — |
-| Faucet (tMNT) | 0.11.8 | [release](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.8) |
-| Block Explorer | 0.2.0 | — |
+| Component | Preview | Preprod | Mainnet |
+|---|---|---|---|
+| Ledger | 8.0.2 | 8.0.2 | — |
+| Node | 0.22.0 | 0.22.0 | — |
+| Proof Server | 8.0.2 | 8.0.2 | — |
+| Compact Compiler (`compactc`) | 0.30.0 | 0.30.0 | — |
+| Compact Runtime | 0.15.0 | 0.15.0 | — |
+| Indexer | 4.0.0 | 4.0.0 | — |
+| Midnight.js | 3.2.0 | 3.2.0 | — |
+| Compact JS | 2.4.3 | 2.4.3 | — |
 
 Full version details including RC versions, Docker image tags, and npm packages in [COMPATIBILITY.md](./COMPATIBILITY.md).
 
