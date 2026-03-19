@@ -42,11 +42,11 @@ Installed by developers via npm or CLI. All client-side packages in a project **
 |---|---|---|
 | Compact Compiler (`compactc`) | [0.29.0](https://github.com/midnightntwrk/compact/releases/tag/compactc-v0.29.0) | [0.30.0](https://github.com/midnightntwrk/compact/releases/tag/compactc-v0.30.0) |
 | @midnight-ntwrk/compact-js | [2.4.3](https://www.npmjs.com/package/@midnight-ntwrk/compact-js/v/2.4.3) | [2.5.0-rc.3](https://www.npmjs.com/package/@midnight-ntwrk/compact-js/v/2.5.0-rc.3) |
-| @midnight-ntwrk/compact-runtime | [0.14.0](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime/v/0.14.0) | [0.15.0](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime/v/0.15.0) |
+| @midnight-ntwrk/compact-runtime | [0.14.0](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime/v/0.14.0) | [0.15.0](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime/v/0.15.0) (released) |
 | @midnight-ntwrk/midnight-js-* | [3.2.0](https://github.com/midnightntwrk/midnight-js/releases/tag/v3.2.0) | [4.0.0-rc.2](https://github.com/midnightntwrk/midnight-js/releases/tag/v4.0.0-rc.2) |
 | @midnight-ntwrk/wallet-sdk-* | [3.0.1](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format/v/3.0.1) | [3.1.0-rc.0](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format/v/3.1.0-rc.0) |
 | @midnight-ntwrk/dapp-connector-api | [4.0.1](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api/v/4.0.1) | — |
-| @midnight-ntwrk/ledger-v* | [ledger-v7 7.0.2](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v7) | [ledger-v8 8.0.2](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v8) |
+| @midnight-ntwrk/ledger-v* | [ledger-v7 7.0.3](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v7) | [ledger-v8 8.0.2](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v8) |
 
 ### All npm packages
 
@@ -55,9 +55,9 @@ Installed by developers via npm or CLI. All client-side packages in a project **
 | Package | npm | Ledger v7 | Ledger v8 |
 |---|---|---|---|
 | @midnight-ntwrk/compact-js | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-js) | 2.4.3 | 2.5.0-rc.3 |
-| @midnight-ntwrk/compact-runtime | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) | 0.14.0 | 0.15.0 |
+| @midnight-ntwrk/compact-runtime | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) | 0.14.0 | 0.15.0 (released) |
 | @midnight-ntwrk/onchain-runtime-v3 | [npm](https://www.npmjs.com/package/@midnight-ntwrk/onchain-runtime-v3) | — | 3.0.0 |
-| @midnight-ntwrk/ledger-v7 | [npm](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v7) | 7.0.2 | — |
+| @midnight-ntwrk/ledger-v7 | [npm](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v7) | 7.0.3 | — |
 | @midnight-ntwrk/ledger-v8 | [npm](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v8) | — | 8.0.2 |
 
 #### Midnight.js
