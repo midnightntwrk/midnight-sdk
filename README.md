@@ -30,7 +30,7 @@ TypeScript monorepo that develops and publishes four npm libraries for building 
 | [midnightntwrk/midnight-wallet](https://github.com/midnightntwrk/midnight-wallet) | Wallet SDK (`wallet-sdk-*` packages) | [npm](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format) |
 | [midnightntwrk/midnight-dapp-connector-api](https://github.com/midnightntwrk/midnight-dapp-connector-api) | DApp Connector API | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) |
 | [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Wallet DApp (reference app) | [Docker](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
-| [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | Midnight Toolkit — CLI for deploying contracts | [Docker](https://hub.docker.com/r/midnightntwrk/midnight-node) |
+| [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | Midnight Toolkit — CLI for deploying and interacting with contracts | [Docker](https://hub.docker.com/r/midnightntwrk/midnight-node) |
 
 
 ## Developer Paths
@@ -41,7 +41,7 @@ Write and test Compact smart contracts.
 
 - [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) — Compact language and compiler (source of truth)
 - [Compact language reference](https://docs.midnight.network/compact) — documentation
-- [Midnight Toolkit](https://github.com/midnightntwrk/midnight-node) — CLI for deploying contracts
+- [Midnight Toolkit](https://github.com/midnightntwrk/midnight-node) — CLI for deploying and interacting with contracts
 - [create-mn-app](https://github.com/midnightntwrk/create-mn-app) — scaffold a new project
 - [example-counter](https://github.com/midnightntwrk/example-counter) / [example-bboard](https://github.com/midnightntwrk/example-bboard) — reference contracts (use as templates)
 - [Examples](https://docs.midnight.network/category/examples) — walkthroughs
