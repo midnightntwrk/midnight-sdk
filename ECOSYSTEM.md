@@ -55,7 +55,7 @@ Everything depends on the ledger. The ledger version is the compatibility anchor
 | Component | Repository | Description |
 |---|---|---|
 | Midnight Toolkit | [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | CLI for deploying and interacting with contracts |
-| Faucet (tMNT) | midnightntwrk/midnight-faucet | Test token distribution for testnets |
+| Faucet (tNIGHT) | midnightntwrk/midnight-faucet | Test token distribution for testnets |
 | Block Explorer | midnightntwrk/midnight-explorer | On-chain data browser |
 | Wallet DApp | [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Reference DApp showing provider pattern and wallet integration |
 
@@ -64,7 +64,7 @@ Everything depends on the ledger. The ledger version is the compatibility anchor
 | Component | Description |
 |---|---|
 | Lace Wallet | Third-party browser wallet with Midnight support |
-| Lumen | Dev wallet plugin/CLI |
+| Lumen | Developer wallet plugin/CLI (in development) |
 
 ### Cardano Contracts
 

@@ -15,7 +15,7 @@ Proof Server can also be run locally by DApp developers for proof generation.
 | Node | 0.21.0 | 0.21.0 | — |
 | Ledger | 7.x | 7.x | — |
 | Indexer | 3.1.0 | 3.1.0 | — |
-| Faucet (tMNT) | 0.11.5 | 0.11.5 | — |
+| Faucet (tNIGHT) | 0.11.5 | 0.11.5 | — |
 | Partner Chains | 1.8.1 | 1.8.1 | — |
 | Block Explorer | 0.2.0 | 0.2.0 | — |
 
@@ -28,7 +28,7 @@ Proof Server can also be run locally by DApp developers for proof generation.
 | Proof Server | 8.0.2 | — |
 | On-chain Runtime | 3.0.0 | — |
 | Indexer | 4.0.0 | [v4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) |
-| Faucet (tMNT) | 0.11.8 | [v0.11.8](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.8) |
+| Faucet (tNIGHT) | 0.11.8 | [v0.11.8](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.8) |
 
 ### Docker Images
 
