@@ -15,8 +15,9 @@ Developer hub for [Midnight](https://midnight.network). This repo provides a map
 | [midnightntwrk/midnight-indexer](https://github.com/midnightntwrk/midnight-indexer) | Indexer API, Chain Indexer, Wallet Indexer | [Docker](https://hub.docker.com/r/midnightntwrk/indexer-api) |
 | [input-output-hk/partner-chains](https://github.com/input-output-hk/partner-chains) | Partner Chains | GitHub releases |
 | [midnightntwrk/midnight-local-dev](https://github.com/midnightntwrk/midnight-local-dev) | Local dev stack | Docker Compose |
-| midnightntwrk/midnight-faucet | Faucet (tNIGHT) | Docker |
-| midnightntwrk/midnight-explorer | Block Explorer | Docker |
+| [midnightntwrk/midnight-faucet](https://github.com/midnightntwrk/midnight-faucet) | Faucet (tNIGHT) | Docker |
+| [midnightntwrk/midnight-explorer](https://github.com/midnightntwrk/midnight-explorer) | Block Explorer | Docker |
+| [midnightntwrk/midnight-cnight-to-dust-dapp](https://github.com/midnightntwrk/midnight-cnight-to-dust-dapp) | cNgD App — cNIGHT-generates-Dust registration (Cardano) | — |
 
 *Proof Server can be run as shared infrastructure or locally by DApp developers for proof generation.
 

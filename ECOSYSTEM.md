@@ -55,8 +55,8 @@ Everything depends on the ledger. The ledger version is the compatibility anchor
 | Component | Repository | Description |
 |---|---|---|
 | Midnight Toolkit | [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | CLI for deploying and interacting with contracts |
-| Faucet (tNIGHT) | midnightntwrk/midnight-faucet | Test token distribution for testnets |
-| Block Explorer | midnightntwrk/midnight-explorer | On-chain data browser |
+| Faucet (tNIGHT) | [midnightntwrk/midnight-faucet](https://github.com/midnightntwrk/midnight-faucet) | Test token distribution for testnets |
+| Block Explorer | [midnightntwrk/midnight-explorer](https://github.com/midnightntwrk/midnight-explorer) | On-chain data browser |
 | Wallet DApp | [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Reference DApp showing provider pattern and wallet integration |
 
 ### External Tooling
@@ -68,10 +68,10 @@ Everything depends on the ledger. The ledger version is the compatibility anchor
 
 ### Cardano
 
-| Component | Description |
-|---|---|
-| cNgD App | cNIGHT-generates-Dust registration application. Runs on Cardano networks. |
-| Cardano Contracts | On-chain contracts supporting the Midnight ↔ Cardano bridge: Reserve, Governance, Multi-sig, Contract, Bridge, Upgradeability, Dust |
+| Component | Repository | Description |
+|---|---|---|
+| cNgD App | [midnightntwrk/midnight-cnight-to-dust-dapp](https://github.com/midnightntwrk/midnight-cnight-to-dust-dapp) | cNIGHT-generates-Dust registration application. Runs on Cardano networks. |
+| Cardano Contracts | — | On-chain contracts supporting the Midnight ↔ Cardano bridge: Reserve, Governance, Multi-sig, Contract, Bridge, Upgradeability, Dust |
 
 ## Developer Personas
 
