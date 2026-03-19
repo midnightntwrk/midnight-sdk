@@ -66,11 +66,12 @@ Everything depends on the ledger. The ledger version is the compatibility anchor
 | Lace Wallet | Third-party browser wallet with Midnight support |
 | Lumen | Developer wallet plugin/CLI (in development) |
 
-### Cardano Contracts
+### Cardano
 
-On-chain Cardano contracts that support the Midnight ↔ Cardano bridge:
-
-Reserve, Governance, Multi-sig, Contract, Bridge, Upgradeability, Dust
+| Component | Description |
+|---|---|
+| cNgD App | cNIGHT-generates-Dust registration application. Runs on Cardano networks. |
+| Cardano Contracts | On-chain contracts supporting the Midnight ↔ Cardano bridge: Reserve, Governance, Multi-sig, Contract, Bridge, Upgradeability, Dust |
 
 ## Developer Personas
 
