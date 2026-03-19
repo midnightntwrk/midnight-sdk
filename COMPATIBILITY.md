@@ -9,7 +9,7 @@ What runs on each Midnight network (updated 2026-03-19).
 | Ledger | 8.0.2 | 8.0.2 | — | [ledger-8.0.2](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.2) |
 | Node | 0.22.0 | 0.22.0 | — | [node-0.22.0](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.0) |
 | Proof Server | 8.0.2 | 8.0.2 | — | — |
-| On-chain Runtime | 2.0.1 | 2.0.1 | — | — |
+| On-chain Runtime | 3.0.0 | 3.0.0 | — | — |
 | Compact Compiler (`compactc`) | 0.30.0 | 0.30.0 | — | [compactc-v0.30.0](https://github.com/midnightntwrk/compact/releases/tag/compactc-v0.30.0) |
 | Compact Language | 0.22.0 | 0.22.0 | — | — |
 | Compact Runtime | 0.15.0 | 0.15.0 | — | — |
@@ -39,7 +39,7 @@ What runs on each Midnight network (updated 2026-03-19).
 |---|---|---|---|---|---|
 | @midnight-ntwrk/compact-js | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-js) | 2.4.3 | 2.4.3 | — | 2.5.0-rc.3 |
 | @midnight-ntwrk/compact-runtime | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) | 0.15.0 | 0.15.0 | — | 0.15.0-rc.1 |
-| @midnight-ntwrk/onchain-runtime-v2 | [npm](https://www.npmjs.com/package/@midnight-ntwrk/onchain-runtime-v2) | 2.0.1 | 2.0.1 | — | — |
+| @midnight-ntwrk/onchain-runtime-v3 | [npm](https://www.npmjs.com/package/@midnight-ntwrk/onchain-runtime-v3) | 3.0.0 | 3.0.0 | — | — |
 | @midnight-ntwrk/ledger-v8 | [npm](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v8) | 8.0.2 | 8.0.2 | — | 8.0.3-rc.1 |
 | @midnight-ntwrk/dapp-connector-api | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) | 4.0.1 | 4.0.1 | — | — |
 | @midnight-ntwrk/wallet-sdk-address-format | [npm](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format) | 3.0.1 | 3.0.1 | — | 3.1.0-rc.0 |
