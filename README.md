@@ -41,7 +41,6 @@ Write and test Compact smart contracts.
 - [Compact language reference](https://docs.midnight.network/compact) — documentation
 - [create-mn-app](https://github.com/midnightntwrk/create-mn-app) — scaffold a new project
 - [example-counter](https://github.com/midnightntwrk/example-counter) / [example-bboard](https://github.com/midnightntwrk/example-bboard) — reference contracts (use as templates)
-- [compact-js](./compact-js/compact-js) (this repo) — TypeScript execution environment for compiled contracts
 - [Examples](https://docs.midnight.network/category/examples) — walkthroughs
 
 ### DApp Developers
