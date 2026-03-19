@@ -31,7 +31,7 @@ Developer hub for [Midnight](https://midnight.network). This repo provides a map
 | [midnightntwrk/midnight-wallet](https://github.com/midnightntwrk/midnight-wallet) | Wallet SDK (`wallet-sdk-*` packages) | [npm](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format) |
 | [midnightntwrk/midnight-dapp-connector-api](https://github.com/midnightntwrk/midnight-dapp-connector-api) | DApp Connector API | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) |
 | [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Wallet DApp (reference app) | [Docker](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
-| [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | Midnight Toolkit — CLI for deploying and interacting with contracts | [Docker](https://hub.docker.com/r/midnightntwrk/midnight-node) |
+| [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | Midnight Toolkit — CLI for deploying and interacting with contracts | [Docker](https://hub.docker.com/r/midnightntwrk/midnight-node-toolkit) |
 
 
 ## Developer Paths
