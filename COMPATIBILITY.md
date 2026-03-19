@@ -22,31 +22,35 @@ Preview and Preprod run the same versions. Mainnet is not yet launched.
 
 ## Libraries (npm)
 
-| Package | Released | RC | Release Notes |
+| Package | npm | Released | RC |
 |---|---|---|---|
-| @midnight-ntwrk/compact-js | 2.4.3 | 2.5.0-rc.3 | — |
-| @midnight-ntwrk/compact-runtime | 0.15.0 | — | — |
-| @midnight-ntwrk/onchain-runtime-v2 | 2.0.1 | — | — |
-| @midnight-ntwrk/ledger-v8 | 8.0.2 | — | — |
-| @midnight-ntwrk/dapp-connector-api | 4.0.1 | — | [v4.0.1](https://github.com/midnightntwrk/midnight-dapp-connector-api/releases/tag/v4.0.1) |
-| @midnight-ntwrk/wallet-sdk-address-format | 3.0.1 | 3.1.0-rc.0 | [notes](https://github.com/midnightntwrk/midnight-wallet/blob/main/RELEASE_NOTES.md) |
+| @midnight-ntwrk/compact-js | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-js) | 2.4.3 | 2.5.0-rc.3 |
+| @midnight-ntwrk/compact-runtime | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) | 0.15.0 | 0.15.0-rc.1 |
+| @midnight-ntwrk/onchain-runtime-v2 | [npm](https://www.npmjs.com/package/@midnight-ntwrk/onchain-runtime-v2) | 2.0.1 | — |
+| @midnight-ntwrk/ledger-v8 | [npm](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v8) | 8.0.2 | 8.0.3-rc.1 |
+| @midnight-ntwrk/dapp-connector-api | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) | 4.0.1 | — |
+| @midnight-ntwrk/wallet-sdk-address-format | [npm](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format) | 3.0.1 | 3.1.0-rc.0 |
 
 ## Midnight.js
 
-All packages at released **3.2.0**, RC **4.0.0-rc.2**:
-
 Release notes: [v3.2.0](https://github.com/midnightntwrk/midnight-js/releases/tag/v3.2.0) | [v4.0.0-rc.2](https://github.com/midnightntwrk/midnight-js/releases/tag/v4.0.0-rc.2)
 
-| Package |
-|---|
-| @midnight-ntwrk/midnight-js-contracts |
-| @midnight-ntwrk/midnight-js-types |
-| @midnight-ntwrk/midnight-js-node-provider |
-| @midnight-ntwrk/midnight-js-indexer-provider |
-| @midnight-ntwrk/midnight-js-proof-server-provider |
-| @midnight-ntwrk/midnight-js-wallet-provider |
-| @midnight-ntwrk/midnight-js-logger-util |
-| @midnight-ntwrk/midnight-js-network-id |
+All packages at released **3.2.0**, RC **4.0.0-rc.2** unless noted:
+
+| Package | npm | Released | RC |
+|---|---|---|---|
+| @midnight-ntwrk/midnight-js-contracts | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-contracts) | 3.2.0 | 4.0.0-rc.2 |
+| @midnight-ntwrk/midnight-js-types | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-types) | 3.2.0 | 4.0.0-rc.2 |
+| @midnight-ntwrk/midnight-js-compact | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-compact) | 3.2.0 | 4.0.0-rc.2 |
+| @midnight-ntwrk/midnight-js-utils | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-utils) | 3.2.0 | 4.0.0-rc.2 |
+| @midnight-ntwrk/midnight-js-network-id | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-network-id) | 3.2.0 | 4.0.0-rc.2 |
+| @midnight-ntwrk/midnight-js-indexer-public-data-provider | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-indexer-public-data-provider) | 3.2.0 | 4.0.0-rc.2 |
+| @midnight-ntwrk/midnight-js-http-client-proof-provider | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-http-client-proof-provider) | 3.2.0 | 4.0.0-rc.2 |
+| @midnight-ntwrk/midnight-js-node-zk-config-provider | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-node-zk-config-provider) | 3.2.0 | 4.0.0-rc.2 |
+| @midnight-ntwrk/midnight-js-fetch-zk-config-provider | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-fetch-zk-config-provider) | 3.2.0 | 4.0.0-rc.2 |
+| @midnight-ntwrk/midnight-js-level-private-state-provider | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-level-private-state-provider) | 3.2.0 | 4.0.0-rc.2 |
+| @midnight-ntwrk/midnight-js-logger-provider | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-logger-provider) | 3.2.0 | 4.0.0-rc.2 |
+| @midnight-ntwrk/midnight-js-testing | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-testing) | 2.0.2 | — |
 
 ## Docker Images
 
