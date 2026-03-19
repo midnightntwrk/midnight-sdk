@@ -2,30 +2,7 @@
 
 TypeScript monorepo that develops and publishes four npm libraries for building on [Midnight](https://midnight.network). These libraries provide the execution environment for Compact smart contracts and core platform abstractions that higher-level frameworks like [Midnight.js](https://github.com/midnightntwrk/midnight-js) build on.
 
-## Compatibility
-
-See [COMPATIBILITY.md](./COMPATIBILITY.md) for full version details, Docker image tags, and npm packages.
-
-**Infrastructure (server-side)** — deployed per network ([Preview status](https://status.shielded.tools/preview) | [Preprod status](https://status.shielded.tools/preprod))
-
-| Component | Preview | Preprod | Mainnet | Upcoming |
-|---|---|---|---|---|
-| Node | 0.21.0 | 0.21.0 | — | [0.22.0](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.0) (ledger-v8) |
-| Ledger | 7.x | 7.x | — | 8.0.2 |
-| Indexer | 3.1.0 | 3.1.0 | — | [4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) |
-| Faucet | 0.11.5 | 0.11.5 | — | 0.11.8 |
-
-**Client-side (libraries and tools)** — all packages in a project must target the same ledger version. Current networks run ledger-v7.
-
-| Component | ledger-v7 (current) | ledger-v8 (RC) |
-|---|---|---|
-| Compact Compiler (`compactc`) | 0.29.0 | 0.30.0 |
-| Compact JS | 2.4.3 | 2.5.0-rc.3 |
-| Midnight.js | 3.2.0 | 4.0.0-rc.2 |
-| Wallet SDK | 3.0.1 | 3.1.0-rc.0 |
-| DApp Connector API | 4.0.1 | — |
-
-## Ecosystem
+## Repositories and Components
 
 ### Infrastructure (server-side)
 
@@ -52,7 +29,7 @@ See [COMPATIBILITY.md](./COMPATIBILITY.md) for full version details, Docker imag
 | [midnightntwrk/midnight-dapp-connector-api](https://github.com/midnightntwrk/midnight-dapp-connector-api) | DApp Connector API | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) |
 | [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Wallet DApp (reference app) | [Docker](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
 
-**Networks:** Local (`undeployed`) for fastest iteration, Preview / Preprod for public testnets, Mainnet not yet launched.
+**Networks:** Local (`undeployed`) for fastest iteration, Preview / Preprod for public testnets, Mainnet not yet launched. See [COMPATIBILITY.md](./COMPATIBILITY.md) for which versions are deployed on each network and which client libraries are compatible.
 
 ## Developer Paths
 
