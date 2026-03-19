@@ -2,6 +2,22 @@
 
 TypeScript monorepo that develops and publishes four npm libraries for building on [Midnight](https://midnight.network). These libraries provide the execution environment for Compact smart contracts and core platform abstractions that higher-level frameworks like [Midnight.js](https://github.com/midnightntwrk/midnight-js) build on.
 
+## Compatibility
+
+Current versions across Midnight networks (updated 2026-03-18):
+
+| Component | Preview | Preprod | Mainnet |
+|---|---|---|---|
+| Midnight Node | 0.22.0 | 0.22.0 | — |
+| Compact Compiler (`compactc`) | 0.30.0 | 0.30.0 | — |
+| Compact Runtime | 0.15.0 | 0.15.0 | — |
+| Proof Server | 8.0.2 | 8.0.2 | — |
+| Indexer | 4.0.0 | 4.0.0 | — |
+| @midnight-ntwrk/compact-js | 2.4.3 | 2.4.3 | — |
+| @midnight-ntwrk/midnight-js-* | 3.2.0 | 3.2.0 | — |
+
+Full version details including RC versions, Docker image tags, and npm packages in [COMPATIBILITY.md](./COMPATIBILITY.md).
+
 ## Developer Paths
 
 ### Smart Contract Developers
