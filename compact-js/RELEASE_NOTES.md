@@ -3,8 +3,8 @@
 ### Version 2.5.0
 
 **Version:** 2.5.0  
-**Date:** 2026-03-03  
-**Environment:** Preprod, Preview
+**Date:** 2026-03-20  
+**Environment:** Preprod, Preview, Mainnet  
 
 ### High-level summary 
 
@@ -39,8 +39,8 @@ N/A
 
 ### Breaking changes or required actions for developers
 
-This version of Compact.js has been built against `@midnight-ntwrk/compact-runtime` version `0.14.102` which in
-turn will require `compactc` version `0.29.106`. Contracts will have to be re-compiled against these dependencies.
+This version of Compact.js has been built against `@midnight-ntwrk/compact-runtime` version `0.15.0` which in
+turn will require `compactc` version `0.30.0`. Contracts will have to be re-compiled against these dependencies.
 
 ### Known issues
 
