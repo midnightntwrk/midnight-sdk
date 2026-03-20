@@ -41,6 +41,7 @@ Installed by developers via npm or CLI. All client-side packages in a project **
 
 - **Preview** runs ledger-v8 — use the ledger-v8 column
 - **Preprod** runs ledger-v7 — use the ledger-v7 column
+- ledger-v8 infrastructure is backwards compatible with ledger-v7 clients. For example, `wallet-sdk-facade@2.0.0` (ledger-v7) works against Preview (ledger-v8). However, do not mix ledger-v7 and ledger-v8 packages in the same project.
 
 ### Compatible version sets
 
@@ -50,6 +51,7 @@ Installed by developers via npm or CLI. All client-side packages in a project **
 | @midnight-ntwrk/compact-js | [2.4.3](https://www.npmjs.com/package/@midnight-ntwrk/compact-js/v/2.4.3) | [2.5.0-rc.3](https://www.npmjs.com/package/@midnight-ntwrk/compact-js/v/2.5.0-rc.3) |
 | @midnight-ntwrk/compact-runtime | [0.14.0](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime/v/0.14.0) | [0.15.0](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime/v/0.15.0) |
 | @midnight-ntwrk/midnight-js-* | [3.2.0](https://github.com/midnightntwrk/midnight-js/releases/tag/v3.2.0) | [4.0.0-rc.2](https://github.com/midnightntwrk/midnight-js/releases/tag/v4.0.0-rc.2) |
+| @midnight-ntwrk/wallet-sdk-facade | [2.0.0](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-facade/v/2.0.0) | [3.0.0](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-facade/v/3.0.0) |
 | @midnight-ntwrk/wallet-sdk-* | [3.0.1](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format/v/3.0.1) | [3.1.0](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format/v/3.1.0) |
 | @midnight-ntwrk/dapp-connector-api | [4.0.1](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api/v/4.0.1) | — |
 | @midnight-ntwrk/ledger-v* | [ledger-v7 7.0.3](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v7) | [ledger-v8 8.0.2](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v8) |
@@ -89,6 +91,7 @@ Release notes: [v3.2.0](https://github.com/midnightntwrk/midnight-js/releases/ta
 
 | Package | npm | ledger-v7 (Preprod) | ledger-v8 (Preview) |
 |---|---|---|---|
+| @midnight-ntwrk/wallet-sdk-facade | [npm](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-facade) | 2.0.0 | 3.0.0 |
 | @midnight-ntwrk/wallet-sdk-address-format | [npm](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-address-format) | 3.0.1 | 3.1.0 |
 | @midnight-ntwrk/dapp-connector-api | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) | 4.0.1 | — |
 
