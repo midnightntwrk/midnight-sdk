@@ -22,6 +22,12 @@
     "@effect/platform": "^0.95.0",
     "effect": "^3.20.0"
   },
+  "resolutions": {
+    "tar": ">=7.5.11",
+    "flatted": ">=3.4.2",
+    "@isaacs/brace-expansion": ">=5.0.1",
+    "glob": ">=13.0.1"
+  },
   "devDependencies": {
     "@effect/build-utils": "^0.8.9",
     "@effect/vitest": "^0.28.0",
@@ -33,7 +39,7 @@
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.4",
-    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-import-x": "^4.16.2",
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unused-imports": "^4.4.1",
