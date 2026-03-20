@@ -469,9 +469,9 @@ __metadata:
     "@midnight-ntwrk/compact-js": "npm:^2.5.0"
     "@midnight-ntwrk/compact-js-node": "npm:^2.5.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.15.0"
-    "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
+    "@midnight-ntwrk/ledger-v8": "npm:^8.0.3"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
-    "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0-rc.0"
+    "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0"
     effect: "npm:^3.20.0"
     json5: "npm:^2.2.3"
     ts-node: "npm:^10.9.2"
@@ -541,7 +541,7 @@ __metadata:
   dependencies:
     "@effect/platform": "npm:^0.95.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.15.0"
-    "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
+    "@midnight-ntwrk/ledger-v8": "npm:^8.0.3"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
     effect: "npm:^3.20.0"
     tslib: "npm:^2.8.1"
@@ -566,6 +566,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/ledger-v8@npm:^8.0.3":
+  version: 8.0.3
+  resolution: "@midnight-ntwrk/ledger-v8@npm:8.0.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v8%2F8.0.3%2F47e343bc08f4c94162a2f12322e0e0a958743613"
+  checksum: 10/93d24ddeff967a5f5d566a7e8fc0c5586f309e954adf56761fff4ab67874b846c2a4f3f2aede4f51a9e1445d01f52a7446da121473f0120793bc622feeeed207
+  languageName: node
+  linkType: hard
+
 "@midnight-ntwrk/midnight-js-compact@npm:3.2.0":
   version: 3.2.0
   resolution: "@midnight-ntwrk/midnight-js-compact@npm:3.2.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fmidnight-js-compact%2F3.2.0%2F136b7315e86ec429c5353b31bfb02a8fbba97a97"
@@ -576,7 +583,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/onchain-runtime-v3@npm:3.0.0":
+"@midnight-ntwrk/onchain-runtime-v3@npm:^3.0.0":
   version: 3.0.0
   resolution: "@midnight-ntwrk/onchain-runtime-v3@npm:3.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fonchain-runtime-v3%2F3.0.0%2F6b9ddf0dc09c8040175e5b40433bf0ff79425d72"
   checksum: 10/873aeb9e631c3678373c62b5aef847de454de94427028fb3d3f28bfdc8b2c02a3c770bd79d9bfef183eb9db6fb8c23e6826636f2e512ffd6eacbcf7cc0651c5d
@@ -594,14 +601,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/wallet-sdk-address-format@npm:3.1.0-rc.0":
-  version: 3.1.0-rc.0
-  resolution: "@midnight-ntwrk/wallet-sdk-address-format@npm:3.1.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-address-format%2F3.1.0-rc.0%2F4d964fc9686139bc64281edf592845b2a8c6f947"
+"@midnight-ntwrk/wallet-sdk-address-format@npm:3.1.0":
+  version: 3.1.0
+  resolution: "@midnight-ntwrk/wallet-sdk-address-format@npm:3.1.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-address-format%2F3.1.0%2F0c1e29ced1bd51c91376898aa2dfcf97a9503956"
   dependencies:
     "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
     "@scure/base": "npm:^2.0.0"
     "@subsquid/scale-codec": "npm:^4.0.1"
-  checksum: 10/7ef4f10aa7041519c5732bf1dff3301d465505212ae6a9ccc62f70332de9238471dffa75e512286670d54fff7c9e056c345e4b798e638066c5bc04be317da3b6
+  checksum: 10/be1cfde40a7753c62377a914ec72fe29ac57e38895b33d14861b22b7193aa1fdd1989680f5b5907b73a24d9c080e5ea6711a88b4442192fb1b1fa37da0a9009a
   languageName: node
   linkType: hard
 
@@ -2266,7 +2273,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"flatted@npm:>=3.4.2":
+"flatted@npm:3.4.0":
+  version: 3.4.0
+  resolution: "flatted@npm:3.4.0"
+  checksum: 10/6007896f62acb93c811aef52d962c5cd2fa3c703eacfc4146865c3fc8964d3e466c66e10b1c175a84ce0a207fdc761e2e70d7ca982c82604257d45866169af6a
+  languageName: node
+  linkType: hard
+
+"flatted@npm:^3.2.9":
   version: 3.4.2
   resolution: "flatted@npm:3.4.2"
   checksum: 10/a9e78fe5c2c1fcd98209a015ccee3a6caa953e01729778e83c1fe92e68601a63e1e69cd4e573010ca99eaf585a581b80ccf1018b99283e6cbc2117bcba1e030f
@@ -2344,7 +2358,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"glob@npm:>=13.0.1":
+"glob@npm:^13.0.0":
   version: 13.0.6
   resolution: "glob@npm:13.0.6"
   dependencies:
@@ -3651,7 +3665,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tar@npm:>=7.5.11":
+"tar@npm:^7.5.2":
   version: 7.5.12
   resolution: "tar@npm:7.5.12"
   dependencies:
@@ -3866,7 +3880,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"undici@npm:>=7.18.2":
+"undici@npm:^7.10.0":
   version: 7.24.5
   resolution: "undici@npm:7.24.5"
   checksum: 10/1eef66817e5bd1ee6ba908553452e8e23c6b743221f8435e838a87fcec84db901ad9bca5853e7a6e123520abd8d3dd03215b19bf57c2ffb114bfeb0b7c206027

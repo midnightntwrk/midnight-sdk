@@ -58,7 +58,11 @@ const inputsAndOutputs: (
   partitionedTranscript: ContractExecutable.ContractExecutable.PartitionedTranscript
 ) => readonly [any, any] =
   (partitionedTranscript) => {
-    const inputs = partitionedTranscript[0]!.effects.unshieldedInputs.entries()
+    const transcript = partitionedTranscript[0] ?? partitionedTranscript[1];
+    if (!transcript || !transcript.effects) {
+      return [{}, {}];
+    }
+    const inputs = transcript.effects.unshieldedInputs.entries()
       .reduce((agg, [tokenType, amount]) => ({
         ...agg,
         [(tokenType as any).raw]: {
@@ -66,7 +70,7 @@ const inputsAndOutputs: (
           amount
         }
       }), {});
-    const outputs = partitionedTranscript[0]!.effects.unshieldedOutputs.entries()
+    const outputs = transcript.effects.unshieldedOutputs.entries()
       .reduce((agg, [tokenType, amount]) => ({
         ...agg,
         [(tokenType as any).raw]: {
@@ -81,7 +85,11 @@ const spendsAndMints: (
   partitionedTranscript: ContractExecutable.ContractExecutable.PartitionedTranscript
 ) => readonly [any, any] =
   (partitionedTranscript) => {
-    const spends = partitionedTranscript[0]!.effects.claimedUnshieldedSpends.entries()
+    const transcript = partitionedTranscript[0] ?? partitionedTranscript[1];
+    if (!transcript || !transcript.effects) {
+      return [{}, {}];
+    }
+    const spends = transcript.effects.claimedUnshieldedSpends.entries()
       .reduce((agg, [[tokenType, address], amount]) => ({
         ...agg,
         [address.address]: {
@@ -90,7 +98,7 @@ const spendsAndMints: (
           amount
         }
       }), {});
-    const mints = partitionedTranscript[0]!.effects.unshieldedMints.entries()
+    const mints = transcript.effects.unshieldedMints.entries()
       .reduce((agg, [address, amount]) => ({
         ...agg,
         [address]: amount
