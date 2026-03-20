@@ -22,14 +22,6 @@
     "@effect/platform": "^0.95.0",
     "effect": "^3.20.0"
   },
-  "resolutions": {
-    "@midnight-ntwrk/onchain-runtime-v3": "3.0.0",
-    "tar": ">=7.5.11",
-    "flatted": ">=3.4.2",
-    "undici": ">=7.18.2",
-    "@isaacs/brace-expansion": ">=5.0.1",
-    "glob": ">=13.0.1"
-  },
   "devDependencies": {
     "@effect/build-utils": "^0.8.9",
     "@effect/cluster": "^0.57.0",
