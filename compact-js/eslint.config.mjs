@@ -3,7 +3,7 @@
 import js from '@eslint/js';
 import tseslint from 'typescript-eslint';
 import prettierConfig from 'eslint-config-prettier';
-import importPlugin from 'eslint-plugin-import';
+import importPlugin from 'eslint-plugin-import-x';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import unusedImports from 'eslint-plugin-unused-imports';
 
@@ -33,15 +33,15 @@ export default tseslint.config(
     files: ['**/*.ts', '**/*.tsx', '**/*.mts'],
     plugins: {
       '@typescript-eslint': tseslint.plugin,
-      import: importPlugin,
+      'import-x': importPlugin,
       'simple-import-sort': simpleImportSort,
       'unused-imports': unusedImports
     },
     settings: {
-      'import/parsers': {
+      'import-x/parsers': {
         '@typescript-eslint/parser': ['.ts']
       },
-      'import/resolver': {
+      'import-x/resolver': {
         typescript: {
           alwaysTryTypes: false,
           project: ['tsconfig.json', '*/tsconfig.json']
@@ -94,11 +94,11 @@ export default tseslint.config(
       'no-shadow': 'off',
       'prefer-destructuring': 'off',
       'no-use-before-define': 'off',
-      'import/prefer-default-export': 'off',
-      'import/no-default-export': 'off',
-      'import/extensions': 'off',
-      'import/no-unresolved': 'error',
-      'import/no-extraneous-dependencies': 'off',
+      'import-x/prefer-default-export': 'off',
+      'import-x/no-default-export': 'off',
+      'import-x/extensions': 'off',
+      'import-x/no-unresolved': 'error',
+      'import-x/no-extraneous-dependencies': 'off',
       'max-classes-per-file': 'off',
       'lines-between-class-members': 'off',
       'no-restricted-imports': [
