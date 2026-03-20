@@ -76,7 +76,7 @@ Build new tooling, providers, or frameworks on Midnight.
 
 Build wallets or integrate Midnight into existing wallets.
 
-- [midnight-wallet](https://github.com/midnightntwrk/midnight-wallet) — wallet SDK (also used by Node.js DApps as an integration layer)
+- [midnight-wallet](https://github.com/midnightntwrk/midnight-wallet) — wallet SDK; [`wallet-sdk-facade`](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-facade) is the key entry point (also used by Node.js DApps as an integration layer)
 - [DApp Connector API](https://github.com/midnightntwrk/midnight-dapp-connector-api) — the interface between wallets and DApps
 - [platform-js](./platform-js/platform-js) (this repo) — shared types and abstractions
 - [Wallet SDK release notes](https://docs.midnight.network/relnotes/wallet) — latest changes and migration guides
