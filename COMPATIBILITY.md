@@ -6,6 +6,8 @@ What runs on each Midnight network (updated 2026-03-23).
 
 Deployed per network. Developers connect to these services (or run them locally via Docker). Both testnets run **ledger-v8**.
 
+*Italic* versions in the Mainnet column are proposed candidates, not yet deployed.
+
 Proof Server can also be run locally by DApp developers for proof generation.
 
 | Component | Preview | Preprod | Mainnet |
