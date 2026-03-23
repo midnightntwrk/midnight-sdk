@@ -44,17 +44,20 @@ export const parseHex: (source: string) => Either.Either<Hex.ParsedHexString, Pa
       [NodeInspectSymbol]: () => match.groups
     };
     if (parsedHex.incompleteChars) {
-      if (parsedHex.incompleteChars.length % 2 > 0) {
-        return Either.left(ParseError.make(`Last byte of source string '${source}' is incomplete`, source, parsedHex));
+      const offset = parsedHex.byteChars.length + (parsedHex.hasPrefix ? 2 : 0);
+      for (let i = 0; i < parsedHex.incompleteChars.length; i++) {
+        if (!/[0-9A-Fa-f]/.test(parsedHex.incompleteChars[i])) {
+          const invalidCharPos = offset + i;
+          return Either.left(
+            ParseError.make(
+              `Invalid hex-digit '${source[invalidCharPos]}' found in source string at index ${invalidCharPos}`,
+              source,
+              parsedHex
+            )
+          );
+        }
       }
-      const invalidCharPos = parsedHex.byteChars.length + (parsedHex.hasPrefix ? 2 : 0);
-      return Either.left(
-        ParseError.make(
-          `Invalid hex-digit '${source[invalidCharPos]}' found in source string at index ${invalidCharPos}`,
-          source,
-          parsedHex
-        )
-      );
+      return Either.left(ParseError.make(`Last byte of source string '${source}' is incomplete`, source, parsedHex));
     }
     if (!parsedHex.byteChars) {
       return Either.left(ParseError.make(`Source string '${source}' is not a valid hex-string`, source, parsedHex));

@@ -48,6 +48,35 @@ describe('Hex', () => {
         message: 'Invalid hex-digit \'H\' found in source string at index 0'
       });
     }));
+
+    it.effect('should report the invalid character position when valid hex precedes it in incompleteChars', () => Effect.gen(function* () {
+      // "0xaG": prefix="0x", byteChars="" (pair "aG" is not valid), incompleteChars="aG"
+      // The invalid char is 'G' at index 3, not 'a' at index 2.
+      const error = yield* Effect.flip(Hex.parseHex('0xaG'));
+      expect(ParseError.isParseError(error)).toBeTruthy();
+      expect(error).toMatchObject({
+        message: 'Invalid hex-digit \'G\' found in source string at index 3'
+      });
+    }));
+
+    it.effect('should report invalid character instead of incomplete byte when trailing char is not hex', () => Effect.gen(function* () {
+      // "abX": byteChars="ab", incompleteChars="X"
+      // The trailing 'X' is not a hex digit — should not say "last byte is incomplete".
+      const error = yield* Effect.flip(Hex.parseHex('abX'));
+      expect(ParseError.isParseError(error)).toBeTruthy();
+      expect(error).toMatchObject({
+        message: 'Invalid hex-digit \'X\' found in source string at index 2'
+      });
+    }));
+
+    it.effect('should report incomplete byte when trailing char is a valid hex digit', () => Effect.gen(function* () {
+      // "abc": byteChars="ab", incompleteChars="c" — 'c' is valid hex, so the byte is incomplete
+      const error = yield* Effect.flip(Hex.parseHex('abc'));
+      expect(ParseError.isParseError(error)).toBeTruthy();
+      expect(error).toMatchObject({
+        message: 'Last byte of source string \'abc\' is incomplete'
+      });
+    }));
   });
 
   describe('PlainHex', () => {
