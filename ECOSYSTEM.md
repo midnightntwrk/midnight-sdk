@@ -54,7 +54,9 @@ Everything depends on the ledger. The ledger version is the compatibility anchor
 
 | Component | Repository | Description |
 |---|---|---|
-| Midnight Toolkit | [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | CLI for deploying and interacting with contracts |
+| Midnight Toolkit | [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | CLI for deploying and interacting with contracts (client-side) |
+| create-mn-app | [midnightntwrk/create-mn-app](https://github.com/midnightntwrk/create-mn-app) | Scaffold a new Midnight project |
+| Local Dev Stack | [midnightntwrk/midnight-local-dev](https://github.com/midnightntwrk/midnight-local-dev) | Docker Compose stack for local development |
 | Faucet (tNIGHT) | [midnightntwrk/midnight-faucet](https://github.com/midnightntwrk/midnight-faucet) | Test token distribution for testnets |
 | Block Explorer | [midnightntwrk/midnight-explorer](https://github.com/midnightntwrk/midnight-explorer) | On-chain data browser |
 | Wallet DApp | [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Reference DApp showing provider pattern and wallet integration |
@@ -77,20 +79,21 @@ Everything depends on the ledger. The ledger version is the compatibility anchor
 
 | Persona | Components |
 |---|---|
-| Smart Contract Developers | Compact + Toolkit. Optionally: Proof Server + Indexer + Node + Faucet + Wallet |
-| Web DApp Developers | midnight-js + Lace Wallet + Compact + Proof Server + Indexer + Node + Faucet |
-| Tool/System Builders | Midnight SDK + Compact + Proof Server + Indexer + Node Images |
+| Smart Contract Developers | Compact + Toolkit + testkit-js + examples. Optionally: Proof Server + Indexer + Node + Faucet |
+| DApp Developers | midnight-js + create-mn-app + wallet-dapp + wallet-sdk + Compact + Proof Server + Indexer + Node + Faucet |
+| Tool/System Builders | platform-js + compact-js + midnight-js (reference) + wallet-dapp (reference) + dapp-connector-api |
+| Wallet Builders | wallet-sdk (facade) + dapp-connector-api + platform-js |
 
 ## Dependency Flow
 
 The numbered sequence in the diagram shows the development dependency order:
 
-1. midnight-zk → 2. zkir, Ledger → 3. Proof Server, On-chain Runtime, platform-js → 4. Compact, Node → 5. compact-runtime → 6. Contract (compiled) → 7. compact-js → 8. midnight-js, Midnight Toolkit → 9. Indexer → 10. wallet-sdk, Block Explorer → 11. dapp-connector-api, testkit-js, tmNight Faucet → 12. Wallet DApp, Lace Wallet
+1. midnight-zk → 2. zkir, Ledger → 3. Proof Server, On-chain Runtime, platform-js → 4. Compact, Node → 5. compact-runtime → 6. Contract (compiled) → 7. compact-js → 8. midnight-js, Midnight Toolkit → 9. Indexer → 10. wallet-sdk, Block Explorer → 11. dapp-connector-api, testkit-js, tNIGHT Faucet → 12. Wallet DApp, Lace Wallet
 
 ## Runs On
 
 | Environment | Components |
 |---|---|
-| Server / Infrastructure | Node, Indexer, Proof Server (shared), Faucet, Block Explorer |
-| Client / Developer | Compact, compact-js, midnight-js, wallet-sdk, Toolkit, Proof Server (local), Lumen |
-| Both | Proof Server, Wallet DApp |
+| Server / Infrastructure | Node, Indexer, Faucet, Block Explorer |
+| Client / Developer | Compact, compact-js, midnight-js, wallet-sdk, Toolkit, Lumen |
+| Both (server or local) | Proof Server, Wallet DApp |
