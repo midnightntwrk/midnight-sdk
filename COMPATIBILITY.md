@@ -10,14 +10,14 @@ Proof Server can also be run locally by DApp developers for proof generation.
 
 | Component | Preview | Preprod | Mainnet |
 |---|---|---|---|
-| Node | 0.22.2 | 0.22.2 | Proposed |
-| Ledger | ledger-v8 | ledger-v8 | Proposed |
-| Proof Server | 8.0.3 | 8.0.3 | Proposed |
-| On-chain Runtime | 3.0.0 | 3.0.0 | Proposed |
-| Indexer | 4.0.0 | 4.0.0 | Proposed |
+| Node | 0.22.2 | 0.22.2 | *0.22.2* |
+| Ledger | ledger-v8 | ledger-v8 | *ledger-v8* |
+| Proof Server | 8.0.3 | 8.0.3 | *8.0.3* |
+| On-chain Runtime | 3.0.0 | 3.0.0 | *3.0.0* |
+| Indexer | 4.0.0 | 4.0.0 | *4.0.0* |
 | Faucet (tNIGHT) | 0.11.7 | 0.11.5 | — |
-| Partner Chains | 1.8.1 | 1.8.1 | Proposed |
-| Block Explorer | 0.2.0 | 0.2.0 | Proposed |
+| Partner Chains | 1.8.1 | 1.8.1 | *1.8.1* |
+| Block Explorer | 0.2.0 | 0.2.0 | *0.2.0* |
 
 Release notes: [node-0.22.2](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.2) | [ledger-8.0.3](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.3) | [indexer v4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) | [partner-chains v1.8.1](https://github.com/input-output-hk/partner-chains/releases/tag/v1.8.1) | [faucet v0.11.8](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.8)
 
