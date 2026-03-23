@@ -19,7 +19,7 @@ Proof Server can also be run locally by DApp developers for proof generation.
 | Indexer | 4.0.0 | 4.0.0 | *4.0.0* |
 | Faucet (tNIGHT) | 0.11.7 | 0.11.5 | — |
 | Partner Chains | 1.8.1 | 1.8.1 | *1.8.1* |
-| Block Explorer | 0.2.0 | 0.2.0 | *0.2.0* |
+| Block Explorer | 0.5.0 | 0.5.0 | *0.5.0* |
 
 Release notes: [node-0.22.2](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.2) | [ledger-8.0.3](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.3) | [indexer v4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) | [partner-chains v1.8.1](https://github.com/input-output-hk/partner-chains/releases/tag/v1.8.1) | [faucet v0.11.8](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.8)
 
