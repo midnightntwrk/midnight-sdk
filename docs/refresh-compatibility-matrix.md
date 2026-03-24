@@ -8,7 +8,7 @@ Always use `ledger-v7`/`ledger-v8` (hyphenated, lowercase). Never "Ledger v7" or
 
 ## Ledger version policy
 
-**ledger-v8 is the baseline.** All networks run ledger-v8. All client-side versions target ledger-v8. Future ledger versions (v9, etc.) will be added as columns when released.
+**ledger-v8 is the baseline.** Both testnets run ledger-v8. All client-side versions target ledger-v8. Mainnet is not yet launched — proposed versions are shown in italics. Future ledger versions (v9, etc.) will be added as columns when released.
 
 The on-chain runtime major version tracks the ledger major: `onchain-runtime-v2` was for ledger-v7, `onchain-runtime-v3` is for ledger-v8. If ledger bumps to v9, check for `onchain-runtime-v4`.
 
@@ -186,6 +186,21 @@ Update `README.md` only if:
 Update `ECOSYSTEM.md` only if:
 - A new component, layer, or repository appeared
 - Developer Personas changed
+
+Update the **midnight-docs** repo ([midnightntwrk/midnight-docs](https://github.com/midnightntwrk/midnight-docs)). The following files must stay in sync with `COMPATIBILITY.md` in this repo:
+
+- `docs/relnotes/support-matrix.mdx` — the public compatibility matrix at [docs.midnight.network/relnotes/support-matrix](https://docs.midnight.network/relnotes/support-matrix)
+- `docs/relnotes/overview.mdx` — "Latest Stable Release" page with public endpoints and version table
+- `docs/troubleshoot/fix-version-mismatch-errors.mdx` — references ledger version and package names (ensure these match current versions)
+
+PRs for midnight-sdk and midnight-docs are created in parallel. They must be cross-linked:
+- The midnight-sdk PR description must link to the midnight-docs PR
+- The midnight-docs PR description must link to the midnight-sdk PR
+- Both PRs should be merged together to avoid drift
+
+The midnight-docs PR must also:
+- State that it syncs against `COMPATIBILITY.md` in `midnightntwrk/midnight-sdk`
+- Include a note that it **must not be merged without approval from Midnight Foundation leadership**, as these are public-facing pages
 
 ## Step 5: Verify
 
