@@ -120,6 +120,17 @@ Release notes: [v4.0.2](https://github.com/midnightntwrk/midnight-js/releases/ta
 |---|---|---|
 | @midnight-ntwrk/dapp-connector-api | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) | 4.0.1 |
 
+## Public Endpoints
+
+| Service | Preview | Preprod | Mainnet |
+|---|---|---|---|
+| Node RPC | [rpc.preview.midnight.network](https://rpc.preview.midnight.network) | [rpc.preprod.midnight.network](https://rpc.preprod.midnight.network) | TBD |
+| Indexer GraphQL | [indexer.preview.midnight.network](https://indexer.preview.midnight.network/api/v3/graphql) | [indexer.preprod.midnight.network](https://indexer.preprod.midnight.network/api/v3/graphql) | TBD |
+| Proof Server | [lace-proof-pub.preview.midnight.network](https://lace-proof-pub.preview.midnight.network) | [lace-proof-pub.preprod.midnight.network](https://lace-proof-pub.preprod.midnight.network) | TBD |
+| Faucet | [faucet.preview.midnight.network](https://faucet.preview.midnight.network) | [faucet.preprod.midnight.network](https://faucet.preprod.midnight.network) | — |
+| Block Explorer | [explorer.preview.midnight.network](https://explorer.preview.midnight.network) | [explorer.preprod.midnight.network](https://explorer.preprod.midnight.network) | TBD |
+| cNgD DApp | [dust.preview.midnight.network](https://dust.preview.midnight.network) | [dust.preprod.midnight.network](https://dust.preprod.midnight.network) | TBD |
+
 ## Local Development Stack
 
 The recommended local dev setup uses Docker Compose with midnight-node, proof-server, and indexer. See [midnight-wallet-dapp's compose.yml](https://github.com/midnightntwrk/midnight-wallet-dapp) for a reference configuration, or use [midnight-local-dev](https://github.com/midnightntwrk/midnight-local-dev) for a ready-made stack.

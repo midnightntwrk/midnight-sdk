@@ -25,8 +25,21 @@ Ask for:
 - Node version on Preview, Preprod, and Mainnet
 - Indexer version on Preview, Preprod, and Mainnet
 - Faucet version on Preview, Preprod, and Mainnet
+- Any changes to public endpoint URLs
 
 These determine which ledger version the networks are running. The node release notes state which ledger it pins. This is the compatibility anchor — everything else flows from it.
+
+### Public endpoints
+
+The public endpoints table in COMPATIBILITY.md lists service URLs per network. The URL pattern is `{service}.{network}.midnight.network`. Verify these haven't changed. Mainnet endpoints are TBD until launch.
+
+Current pattern:
+- Node RPC: `https://rpc.{network}.midnight.network`
+- Indexer: `https://indexer.{network}.midnight.network/api/v3/graphql`
+- Proof Server: `https://lace-proof-pub.{network}.midnight.network`
+- Faucet: `https://faucet.{network}.midnight.network` (testnets only)
+- Block Explorer: `https://explorer.{network}.midnight.network`
+- cNgD DApp: `https://dust.{network}.midnight.network`
 
 ## Step 1: Validate infrastructure versions from GitHub releases
 
@@ -160,7 +173,8 @@ Browse all images at [hub.docker.com/u/midnightntwrk](https://hub.docker.com/u/m
 ## Step 4: Update files
 
 Update `COMPATIBILITY.md` with validated versions:
-- Infrastructure table: deployed versions per network
+- Infrastructure table: deployed versions per network (Mainnet uses *proposed* until launched)
+- Public endpoints table: verify URLs, update Mainnet when available
 - Compatible version sets: **Stable** and **Pre-release** columns (only show pre-releases newer than stable)
 - All npm package tables: current `latest` dist-tag versions
 - Docker images table: current tags
