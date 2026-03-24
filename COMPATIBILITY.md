@@ -27,7 +27,7 @@ Release notes: [node-0.22.2](https://github.com/midnightntwrk/midnight-node/rele
 
 ### Docker Images
 
-Browse all images at [hub.docker.com/r/midnightntwrk](https://hub.docker.com/u/midnightntwrk).
+Browse all images at [hub.docker.com/u/midnightntwrk](https://hub.docker.com/u/midnightntwrk).
 
 | Image | Tag | Docker Hub |
 |---|---|---|
