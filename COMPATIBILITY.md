@@ -4,7 +4,7 @@ What runs on each Midnight network (updated 2026-03-24).
 
 > **ledger-v8 baseline.** Both testnets run ledger-v8. All versions listed target ledger-v8. ledger-v7 components have been removed from this matrix — upgrade your dApps to a ledger-v8 stack. Future ledger versions (v9, etc.) will be added as they are released.
 
-*proposed* in the Mainnet column indicates candidates not yet deployed.
+*Italic* versions in the Mainnet column are proposed candidates, not yet deployed.
 
 ## Infrastructure (server-side)
 
@@ -14,14 +14,14 @@ Proof Server can also be run locally by DApp developers for proof generation.
 
 | Component | Preview | Preprod | Mainnet |
 |---|---|---|---|
-| Node | 0.22.2 | 0.22.2 | *proposed* |
-| Ledger | ledger-v8 | ledger-v8 | *proposed* |
-| Proof Server | 8.0.3 | 8.0.3 | *proposed* |
-| On-chain Runtime | 3.0.0 | 3.0.0 | *proposed* |
-| Indexer | 4.0.0 | 4.0.0 | *proposed* |
+| Node | 0.22.2 | 0.22.2 | *0.22.2* |
+| Ledger | ledger-v8 | ledger-v8 | *ledger-v8* |
+| Proof Server | 8.0.3 | 8.0.3 | *8.0.3* |
+| On-chain Runtime | 3.0.0 | 3.0.0 | *3.0.0* |
+| Indexer | 4.0.0 | 4.0.0 | *4.0.0* |
 | Faucet (tNIGHT) | 0.11.8 | 0.11.8 | — |
-| Partner Chains | 1.8.1 | 1.8.1 | *proposed* |
-| Block Explorer | 0.5.0 | 0.5.0 | *proposed* |
+| Partner Chains | 1.8.1 | 1.8.1 | *1.8.1* |
+| Block Explorer | 0.5.0 | 0.5.0 | *0.5.0* |
 
 Release notes: [node-0.22.2](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.2) | [ledger-8.0.3](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.3) | [indexer v4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) | [partner-chains v1.8.1](https://github.com/input-output-hk/partner-chains/releases/tag/v1.8.1) | [faucet v0.11.8](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.8)
 
@@ -66,14 +66,20 @@ The **Stable** column is what's deployed on all networks. The **Pre-release** co
 
 ### All npm packages
 
-#### Compact JS (this repo)
+#### Platform (this repo)
 
 | Package | npm | Version |
 |---|---|---|
 | @midnight-ntwrk/compact-js | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-js) | 2.5.0 |
-| @midnight-ntwrk/compact-runtime | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) | 0.15.0 |
-| @midnight-ntwrk/onchain-runtime-v3 | [npm](https://www.npmjs.com/package/@midnight-ntwrk/onchain-runtime-v3) | 3.0.0 |
+| @midnight-ntwrk/platform-js | [npm](https://www.npmjs.com/package/@midnight-ntwrk/platform-js) | 2.2.4 |
+
+#### Ledger and Runtime
+
+| Package | npm | Version |
+|---|---|---|
 | @midnight-ntwrk/ledger-v8 | [npm](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v8) | 8.0.3 |
+| @midnight-ntwrk/onchain-runtime-v3 | [npm](https://www.npmjs.com/package/@midnight-ntwrk/onchain-runtime-v3) | 3.0.0 |
+| @midnight-ntwrk/compact-runtime | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) | 0.15.0 |
 
 #### Midnight.js
 
