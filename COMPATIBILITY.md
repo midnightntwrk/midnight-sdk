@@ -4,7 +4,7 @@ What runs on each Midnight network (updated 2026-03-24).
 
 > **ledger-v8 baseline.** Both testnets run ledger-v8. All versions listed target ledger-v8. ledger-v7 components have been removed from this matrix — upgrade your dApps to a ledger-v8 stack. Future ledger versions (v9, etc.) will be added as they are released.
 
-*Italic* versions in the Mainnet column are proposed candidates, not yet deployed.
+*proposed* in the Mainnet column indicates candidates not yet deployed.
 
 ## Infrastructure (server-side)
 
@@ -14,14 +14,14 @@ Proof Server can also be run locally by DApp developers for proof generation.
 
 | Component | Preview | Preprod | Mainnet |
 |---|---|---|---|
-| Node | 0.22.2 | 0.22.2 | *0.22.2* |
-| Ledger | ledger-v8 | ledger-v8 | *ledger-v8* |
-| Proof Server | 8.0.3 | 8.0.3 | *8.0.3* |
-| On-chain Runtime | 3.0.0 | 3.0.0 | *3.0.0* |
-| Indexer | 4.0.0 | 4.0.0 | *4.0.0* |
+| Node | 0.22.2 | 0.22.2 | *proposed* |
+| Ledger | ledger-v8 | ledger-v8 | *proposed* |
+| Proof Server | 8.0.3 | 8.0.3 | *proposed* |
+| On-chain Runtime | 3.0.0 | 3.0.0 | *proposed* |
+| Indexer | 4.0.0 | 4.0.0 | *proposed* |
 | Faucet (tNIGHT) | 0.11.8 | 0.11.8 | — |
-| Partner Chains | 1.8.1 | 1.8.1 | *1.8.1* |
-| Block Explorer | 0.5.0 | 0.5.0 | *0.5.0* |
+| Partner Chains | 1.8.1 | 1.8.1 | *proposed* |
+| Block Explorer | 0.5.0 | 0.5.0 | *proposed* |
 
 Release notes: [node-0.22.2](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.2) | [ledger-8.0.3](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.3) | [indexer v4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) | [partner-chains v1.8.1](https://github.com/input-output-hk/partner-chains/releases/tag/v1.8.1) | [faucet v0.11.8](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.8)
 
