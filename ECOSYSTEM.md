@@ -21,7 +21,6 @@ Everything depends on the ledger. The ledger version is the compatibility anchor
 |---|---|---|
 | Ledger | [midnightntwrk/midnight-ledger](https://github.com/midnightntwrk/midnight-ledger) | Transaction validation, state management, WASM bindings |
 | Proof Server | [midnightntwrk/midnight-ledger](https://github.com/midnightntwrk/midnight-ledger) | ZK proof generation and verification. Dual-role: shared infrastructure or run locally by DApp developers |
-| On-chain Runtime | [midnightntwrk/midnight-ledger](https://github.com/midnightntwrk/midnight-ledger) | WASM runtime executed on-chain. npm: `@midnight-ntwrk/onchain-runtime-v3` |
 
 ### Core
 
@@ -35,26 +34,38 @@ Everything depends on the ledger. The ledger version is the compatibility anchor
 
 | Component | Repository | Description |
 |---|---|---|
-| Compact | [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) | Smart contract language and compiler (`compactc`) |
-| compact-runtime | [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) | Runtime support for compiled Compact contracts. npm: `@midnight-ntwrk/compact-runtime` |
+| Compact Toolchain (`compact`) | [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) | Toolchain manager — installs compiler versions, compiles contracts (`compact compile`), checks for updates |
+| Compact Compiler (`compactc`) | [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) | Smart contract compiler, installed and managed by the `compact` toolchain |
 | Contract (compiled) | — | Output of `compactc`: JS executable (circuits) + TypeScript declarations |
 
 ### Platform
 
+Lower-level npm packages that provide the foundation for frameworks. compact-js is used by midnight-js and Toolkit to interact with compiled contracts.
+
 | Component | Repository | Description |
 |---|---|---|
+| ledger-v8 | [midnightntwrk/midnight-ledger](https://github.com/midnightntwrk/midnight-ledger) | TypeScript bindings for the ledger. npm: `@midnight-ntwrk/ledger-v8` |
+| onchain-runtime-v3 | [midnightntwrk/midnight-ledger](https://github.com/midnightntwrk/midnight-ledger) | WASM on-chain runtime as an npm package. npm: `@midnight-ntwrk/onchain-runtime-v3` |
+| compact-runtime | [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) | Runtime support for compiled Compact contracts. npm: `@midnight-ntwrk/compact-runtime` |
 | platform-js | [midnightntwrk/midnight-sdk](https://github.com/midnightntwrk/midnight-sdk) (this repo) | Core abstractions and types used by compact-js, wallet-sdk, and midnight-js |
-| compact-js | [midnightntwrk/midnight-sdk](https://github.com/midnightntwrk/midnight-sdk) (this repo) | TypeScript execution environment for compiled Compact contracts |
+| compact-js | [midnightntwrk/midnight-sdk](https://github.com/midnightntwrk/midnight-sdk) (this repo) | TypeScript execution environment for compiled Compact contracts. Used by midnight-js and Toolkit |
+
+### Frameworks
+
+Developer-facing libraries and tools built on the platform layer.
+
+| Component | Repository | Description |
+|---|---|---|
+| midnight-js | [midnightntwrk/midnight-js](https://github.com/midnightntwrk/midnight-js) | DApp framework: contracts, types, providers |
+| testkit-js | [midnightntwrk/midnight-js](https://github.com/midnightntwrk/midnight-js) | E2E testing framework using midnight-js, dapp-connector-api, and wallet-sdk |
 | wallet-sdk | [midnightntwrk/midnight-wallet](https://github.com/midnightntwrk/midnight-wallet) | Wallet operations. Also used by Node.js DApps as an integration layer |
 | dapp-connector-api | [midnightntwrk/midnight-dapp-connector-api](https://github.com/midnightntwrk/midnight-dapp-connector-api) | Interface between DApps and wallets |
-| midnight-js | [midnightntwrk/midnight-js](https://github.com/midnightntwrk/midnight-js) | DApp framework: contracts, types, providers |
-| testkit-js | [midnightntwrk/midnight-js](https://github.com/midnightntwrk/midnight-js) | Contract testing and E2E test suite |
+| Midnight Toolkit | [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | CLI for deploying and interacting with contracts |
 
 ### Tooling
 
 | Component | Repository | Description |
 |---|---|---|
-| Midnight Toolkit | [midnightntwrk/midnight-node](https://github.com/midnightntwrk/midnight-node) | CLI for deploying and interacting with contracts (client-side) |
 | create-mn-app | [midnightntwrk/create-mn-app](https://github.com/midnightntwrk/create-mn-app) | Scaffold a new Midnight project |
 | Local Dev Stack | [midnightntwrk/midnight-local-dev](https://github.com/midnightntwrk/midnight-local-dev) | Docker Compose stack for local development |
 | Faucet (tNIGHT) | [midnightntwrk/midnight-faucet](https://github.com/midnightntwrk/midnight-faucet) | Test token distribution for testnets |
@@ -88,7 +99,7 @@ Everything depends on the ledger. The ledger version is the compatibility anchor
 
 The numbered sequence in the diagram shows the development dependency order:
 
-1. midnight-zk → 2. zkir, Ledger → 3. Proof Server, On-chain Runtime, platform-js → 4. Compact, Node → 5. compact-runtime → 6. Contract (compiled) → 7. compact-js → 8. midnight-js, Midnight Toolkit → 9. Indexer → 10. wallet-sdk, Block Explorer → 11. dapp-connector-api, testkit-js, tNIGHT Faucet → 12. Wallet DApp, Lace Wallet
+1. midnight-zk → 2. zkir → 3. ledger-v8 → 4. Proof Server, onchain-runtime-v3, platform-js → 5. Compact, Node → 6. compact-runtime → 7. Contract (compiled) → 8. compact-js → 9. midnight-js, Midnight Toolkit → 10. Indexer → 11. wallet-sdk, Block Explorer → 12. dapp-connector-api, testkit-js, tNIGHT Faucet → 13. Wallet DApp, Lace Wallet
 
 ## Runs On
 

@@ -2,7 +2,7 @@
 
 Developer hub for [Midnight](https://midnight.network). This repo provides a map of all Midnight repositories and the components they produce, a [compatibility matrix](./COMPATIBILITY.md) for testnets and mainnet, an [ecosystem overview](./ECOSYSTEM.md) of the full architecture, and the source code for four npm libraries (`compact-js`, `platform-js`) that provide the execution environment for Compact smart contracts.
 
-**Networks:** Local (`undeployed`) for fastest iteration, Preview / Preprod for public testnets, Mainnet not yet launched. See [COMPATIBILITY.md](./COMPATIBILITY.md) for which versions are deployed on each network and which client libraries are compatible.
+**Networks:** Local (`undeployed`) for fastest iteration, Preview / Preprod for public testnets, Mainnet for production. See [COMPATIBILITY.md](./COMPATIBILITY.md) for which versions are deployed on each network and which client libraries are compatible.
 
 ## Repositories and Components
 
@@ -25,9 +25,9 @@ Developer hub for [Midnight](https://midnight.network). This repo provides a map
 
 | Repository | Produces | Artifacts |
 |---|---|---|
-| [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) | Compact compiler (`compactc`), Compact language, Compact runtime | [Releases](https://github.com/midnightntwrk/compact/releases), [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) |
+| [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) | Compact toolchain manager (`compact`) — installs and updates compiler versions, compiles contracts (`compact compile`). Also: `compactc` (compiler), Compact language, Compact runtime | [Releases](https://github.com/midnightntwrk/compact/releases), [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime) |
 | [midnightntwrk/midnight-sdk](https://github.com/midnightntwrk/midnight-sdk) (this repo) | compact-js, compact-js-node, compact-js-command, platform-js | [npm](https://www.npmjs.com/package/@midnight-ntwrk/compact-js) |
-| [midnightntwrk/midnight-js](https://github.com/midnightntwrk/midnight-js) | 12 `@midnight-ntwrk/midnight-js-*` packages, [testkit-js](https://github.com/midnightntwrk/midnight-js) (contract testing and E2E) | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-contracts) |
+| [midnightntwrk/midnight-js](https://github.com/midnightntwrk/midnight-js) | 12 `@midnight-ntwrk/midnight-js-*` packages, [testkit-js](https://github.com/midnightntwrk/midnight-js) (E2E testing via midnight-js, dapp-connector-api, and wallet-sdk) | [npm](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js-contracts) |
 | [midnightntwrk/midnight-wallet](https://github.com/midnightntwrk/midnight-wallet) | Wallet SDK (`wallet-sdk-*` packages) | [npm](https://www.npmjs.com/package/@midnight-ntwrk/wallet-sdk-facade) |
 | [midnightntwrk/midnight-dapp-connector-api](https://github.com/midnightntwrk/midnight-dapp-connector-api) | DApp Connector API | [npm](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api) |
 | [midnightntwrk/midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) | Wallet DApp (reference app) | [Docker](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
@@ -40,12 +40,12 @@ Developer hub for [Midnight](https://midnight.network). This repo provides a map
 
 Write and test Compact smart contracts.
 
-- [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) — Compact language and compiler (source of truth)
+- [LFDT-Minokawa/compact](https://github.com/LFDT-Minokawa/compact) — install the `compact` toolchain manager to install compilers and compile contracts (`compact compile`)
 - [Compact language reference](https://docs.midnight.network/compact) — documentation
 - [Midnight Toolkit](https://github.com/midnightntwrk/midnight-node) — CLI for deploying and interacting with contracts
 - [create-mn-app](https://github.com/midnightntwrk/create-mn-app) — scaffold a new project
 - [example-counter](https://github.com/midnightntwrk/example-counter) / [example-bboard](https://github.com/midnightntwrk/example-bboard) — reference contracts (use as templates)
-- [testkit-js](https://github.com/midnightntwrk/midnight-js) — contract testing and E2E test suite (in the midnight-js repo)
+- [testkit-js](https://github.com/midnightntwrk/midnight-js) — E2E testing framework using midnight-js, dapp-connector-api, and wallet-sdk (in the midnight-js repo)
 - [Examples](https://docs.midnight.network/category/examples) — walkthroughs
 
 ### DApp Developers
