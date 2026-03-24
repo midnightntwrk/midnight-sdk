@@ -173,7 +173,7 @@ Browse all images at [hub.docker.com/u/midnightntwrk](https://hub.docker.com/u/m
 ## Step 4: Update files
 
 Update `COMPATIBILITY.md` with validated versions:
-- Infrastructure table: deployed versions per network (Mainnet uses *proposed* until launched)
+- Infrastructure table: deployed versions per network. Mainnet versions are italic to indicate proposed candidates (e.g. `*0.22.2*`). When Mainnet launches, remove the italic formatting.
 - Public endpoints table: verify URLs, update Mainnet when available
 - Compatible version sets: **Stable** and **Pre-release** columns (only show pre-releases newer than stable)
 - All npm package tables: current `latest` dist-tag versions
