@@ -187,13 +187,13 @@ Update `ECOSYSTEM.md` only if:
 - A new component, layer, or repository appeared
 - Developer Personas changed
 
-Update the **midnight-docs** repo ([midnightntwrk/midnight-docs](https://github.com/midnightntwrk/midnight-docs)). The following files must stay in sync with `COMPATIBILITY.md` in this repo:
+After the midnight-sdk PR is raised, raise a corresponding PR in the **midnight-docs** repo ([midnightntwrk/midnight-docs](https://github.com/midnightntwrk/midnight-docs)) to reflect the same changes. The following files must stay in sync with `COMPATIBILITY.md` in this repo:
 
 - `docs/relnotes/support-matrix.mdx` — the public compatibility matrix at [docs.midnight.network/relnotes/support-matrix](https://docs.midnight.network/relnotes/support-matrix)
 - `docs/relnotes/overview.mdx` — "Latest Stable Release" page with public endpoints and version table
 - `docs/troubleshoot/fix-version-mismatch-errors.mdx` — references ledger version and package names (ensure these match current versions)
 
-PRs for midnight-sdk and midnight-docs are created in parallel. They must be cross-linked:
+The two PRs must be cross-linked:
 - The midnight-sdk PR description must link to the midnight-docs PR
 - The midnight-docs PR description must link to the midnight-sdk PR
 - Both PRs should be merged together to avoid drift
