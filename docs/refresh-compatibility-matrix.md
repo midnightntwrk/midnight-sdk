@@ -18,6 +18,7 @@ Before starting, ask the user to check the live status pages and provide the dep
 
 - **Preview:** https://status.shielded.tools/preview
 - **Preprod:** https://status.shielded.tools/preprod
+- **Mainnet:** no status page yet — ask the user directly for deployed versions
 
 These pages show live versions of midnight-node, indexer, and faucet per network. The underlying data loads from Datadog via authenticated JS and cannot be scraped — the user must check visually.
 
@@ -187,13 +188,13 @@ Update `ECOSYSTEM.md` only if:
 - A new component, layer, or repository appeared
 - Developer Personas changed
 
-Update the **midnight-docs** repo ([midnightntwrk/midnight-docs](https://github.com/midnightntwrk/midnight-docs)). The following files must stay in sync with `COMPATIBILITY.md` in this repo:
+After the midnight-sdk PR is raised, raise a corresponding PR in the **midnight-docs** repo ([midnightntwrk/midnight-docs](https://github.com/midnightntwrk/midnight-docs)) to reflect the same changes. The following files must stay in sync with `COMPATIBILITY.md` in this repo:
 
 - `docs/relnotes/support-matrix.mdx` — the public compatibility matrix at [docs.midnight.network/relnotes/support-matrix](https://docs.midnight.network/relnotes/support-matrix)
 - `docs/relnotes/overview.mdx` — "Latest Stable Release" page with public endpoints and version table
 - `docs/troubleshoot/fix-version-mismatch-errors.mdx` — references ledger version and package names (ensure these match current versions)
 
-PRs for midnight-sdk and midnight-docs are created in parallel. They must be cross-linked:
+The two PRs must be cross-linked:
 - The midnight-sdk PR description must link to the midnight-docs PR
 - The midnight-docs PR description must link to the midnight-sdk PR
 - Both PRs should be merged together to avoid drift
@@ -227,6 +228,7 @@ The midnight-docs PR must also:
 - **wallet-sdk-facade is the main entry point.** Most other wallet-sdk packages are transitive deps.
 - **Proof Server is dual-role**: shared infrastructure or run locally by DApp developers.
 - **midnight-js-testing is deprecated** — replaced by `@midnight-ntwrk/testkit-js` which shares versions with other midnight-js packages.
+- **Node versions can differ per network.** When a patch is deployed to one network but not others (e.g. Preview 0.22.3, Preprod 0.22.2), split the node row in the infrastructure table and list all deployed node release notes. Update midnight-docs tables to match (split into separate rows per network).
 - Always verify package names exist on npm. `npm view <pkg> version` — 404 means wrong name.
 
 ## Sources of truth

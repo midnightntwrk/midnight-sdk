@@ -1,6 +1,6 @@
 # Compatibility Matrix
 
-What runs on each Midnight network (updated 2026-03-24).
+What runs on each Midnight network (updated 2026-03-25).
 
 > **ledger-v8 baseline.** Both testnets run ledger-v8. All versions listed target ledger-v8. ledger-v7 components have been removed from this matrix — upgrade your dApps to a ledger-v8 stack. Future ledger versions (v9, etc.) will be added as they are released.
 
@@ -14,7 +14,7 @@ Proof Server can also be run locally by DApp developers for proof generation.
 
 | Component | Preview | Preprod | Mainnet |
 |---|---|---|---|
-| Node | 0.22.2 | 0.22.2 | *0.22.2* |
+| Node | 0.22.3 | 0.22.2 | *0.22.1* |
 | Ledger | ledger-v8 | ledger-v8 | *ledger-v8* |
 | Proof Server | 8.0.3 | 8.0.3 | *8.0.3* |
 | On-chain Runtime | 3.0.0 | 3.0.0 | *3.0.0* |
@@ -23,7 +23,7 @@ Proof Server can also be run locally by DApp developers for proof generation.
 | Partner Chains | 1.8.1 | 1.8.1 | *1.8.1* |
 | Block Explorer | 0.5.0 | 0.5.0 | *0.5.0* |
 
-Release notes: [node-0.22.2](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.2) | [ledger-8.0.3](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.3) | [indexer v4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) | [partner-chains v1.8.1](https://github.com/input-output-hk/partner-chains/releases/tag/v1.8.1) | [faucet v0.11.8](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.8)
+Release notes: [node-0.22.3](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.3) | [node-0.22.2](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.2) | [node-0.22.1](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.1) | [ledger-8.0.3](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.3) | [indexer v4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) | [partner-chains v1.8.1](https://github.com/input-output-hk/partner-chains/releases/tag/v1.8.1) | [faucet v0.11.8](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.8)
 
 ### Docker Images
 
@@ -31,14 +31,14 @@ Browse all images at [hub.docker.com/u/midnightntwrk](https://hub.docker.com/u/m
 
 | Image | Tag | Docker Hub |
 |---|---|---|
-| `midnightntwrk/midnight-node` | 0.22.2 | [hub](https://hub.docker.com/r/midnightntwrk/midnight-node) |
+| `midnightntwrk/midnight-node` | 0.22.3 | [hub](https://hub.docker.com/r/midnightntwrk/midnight-node) |
 | `midnightntwrk/proof-server` | 8.0.3 | [hub](https://hub.docker.com/r/midnightntwrk/proof-server) |
 | `midnightntwrk/indexer-api` | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/indexer-api) |
 | `midnightntwrk/chain-indexer` | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/chain-indexer) |
 | `midnightntwrk/wallet-indexer` | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/wallet-indexer) |
 | `midnightntwrk/indexer-standalone` | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/indexer-standalone) |
 | `midnightntwrk/wallet-dapp` | 1.1.0 | [hub](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
-| `midnightntwrk/midnight-node-toolkit` | 0.22.2 | [hub](https://hub.docker.com/r/midnightntwrk/midnight-node-toolkit) |
+| `midnightntwrk/midnight-node-toolkit` | 0.22.3 | [hub](https://hub.docker.com/r/midnightntwrk/midnight-node-toolkit) |
 
 ## Client-side (libraries and tools)
 
@@ -62,7 +62,7 @@ The **Stable** column is what's deployed on all networks. The **Pre-release** co
 | @midnight-ntwrk/dapp-connector-api | [4.0.1](https://www.npmjs.com/package/@midnight-ntwrk/dapp-connector-api/v/4.0.1) | — |
 | @midnight-ntwrk/ledger-v8 | [8.0.3](https://www.npmjs.com/package/@midnight-ntwrk/ledger-v8/v/8.0.3) | — |
 | @midnight-ntwrk/platform-js | [2.2.4](https://www.npmjs.com/package/@midnight-ntwrk/platform-js/v/2.2.4) | — |
-| Midnight Toolkit | [Docker](https://hub.docker.com/r/midnightntwrk/midnight-node-toolkit) 0.22.2 | — |
+| Midnight Toolkit | [Docker](https://hub.docker.com/r/midnightntwrk/midnight-node-toolkit) 0.22.3 | — |
 
 ### All npm packages
 
