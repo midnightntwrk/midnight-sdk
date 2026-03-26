@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@effect/platform": "^0.95.0",
-    "effect": "^3.20.0"
+    "effect": "^3.21.0"
   },
   "devDependencies": {
     "@effect/build-utils": "^0.8.9",
