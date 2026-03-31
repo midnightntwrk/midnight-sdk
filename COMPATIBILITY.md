@@ -1,10 +1,8 @@
 # Compatibility Matrix
 
-What runs on each Midnight network (updated 2026-03-25).
+What runs on each Midnight network (updated 2026-03-31).
 
-> **ledger-v8 baseline.** Both testnets run ledger-v8. All versions listed target ledger-v8. ledger-v7 components have been removed from this matrix — upgrade your dApps to a ledger-v8 stack. Future ledger versions (v9, etc.) will be added as they are released.
-
-*Italic* versions in the Mainnet column are proposed candidates, not yet deployed.
+> **ledger-v8 baseline.** All three networks run ledger-v8. All versions listed target ledger-v8. Future ledger versions (v9, etc.) will be added as they are released.
 
 ## Infrastructure (server-side)
 
@@ -14,16 +12,16 @@ Proof Server can also be run locally by DApp developers for proof generation.
 
 | Component | Preview | Preprod | Mainnet |
 |---|---|---|---|
-| Node | 0.22.3 | 0.22.2 | *0.22.1* |
-| Ledger | ledger-v8 | ledger-v8 | *ledger-v8* |
-| Proof Server | 8.0.3 | 8.0.3 | *8.0.3* |
-| On-chain Runtime | 3.0.0 | 3.0.0 | *3.0.0* |
-| Indexer | 4.0.0 | 4.0.0 | *4.0.0* |
-| Faucet (tNIGHT) | 0.11.8 | 0.11.8 | — |
-| Partner Chains | 1.8.1 | 1.8.1 | *1.8.1* |
-| Block Explorer | 0.5.0 | 0.5.0 | *0.5.0* |
+| Node | 0.22.3 | 0.22.2 | 0.22.2 |
+| Ledger | ledger-v8 | ledger-v8 | ledger-v8 |
+| Proof Server | 8.0.3 | 8.0.3 | 8.0.3 |
+| On-chain Runtime | 3.0.0 | 3.0.0 | 3.0.0 |
+| Indexer | 4.0.1 | 4.0.1 | 4.0.1 |
+| Faucet (tNIGHT) | 0.11.9 | 0.11.9 | — |
+| Partner Chains | 1.8.1 | 1.8.1 | 1.8.1 |
+| Block Explorer | 0.5.0 | 0.5.0 | 0.5.0 |
 
-Release notes: [node-0.22.3](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.3) | [node-0.22.2](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.2) | [node-0.22.1](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.1) | [ledger-8.0.3](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.3) | [indexer v4.0.0](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.0) | [partner-chains v1.8.1](https://github.com/input-output-hk/partner-chains/releases/tag/v1.8.1) | [faucet v0.11.8](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.8)
+Release notes: [node-0.22.3](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.3) | [node-0.22.2](https://github.com/midnightntwrk/midnight-node/releases/tag/node-0.22.2) | [ledger-8.0.3](https://github.com/midnightntwrk/midnight-ledger/releases/tag/ledger-8.0.3) | [indexer v4.0.1](https://github.com/midnightntwrk/midnight-indexer/releases/tag/v4.0.1) | [partner-chains v1.8.1](https://github.com/input-output-hk/partner-chains/releases/tag/v1.8.1) | [faucet v0.11.9](https://github.com/midnightntwrk/midnight-faucet/releases/tag/v0.11.9)
 
 ### Docker Images
 
@@ -33,11 +31,11 @@ Browse all images at [hub.docker.com/u/midnightntwrk](https://hub.docker.com/u/m
 |---|---|---|
 | `midnightntwrk/midnight-node` | 0.22.3 | [hub](https://hub.docker.com/r/midnightntwrk/midnight-node) |
 | `midnightntwrk/proof-server` | 8.0.3 | [hub](https://hub.docker.com/r/midnightntwrk/proof-server) |
-| `midnightntwrk/indexer-api` | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/indexer-api) |
-| `midnightntwrk/chain-indexer` | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/chain-indexer) |
-| `midnightntwrk/wallet-indexer` | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/wallet-indexer) |
-| `midnightntwrk/indexer-standalone` | 4.0.0 | [hub](https://hub.docker.com/r/midnightntwrk/indexer-standalone) |
-| `midnightntwrk/wallet-dapp` | 1.1.0 | [hub](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
+| `midnightntwrk/indexer-api` | 4.0.1 | [hub](https://hub.docker.com/r/midnightntwrk/indexer-api) |
+| `midnightntwrk/chain-indexer` | 4.0.1 | [hub](https://hub.docker.com/r/midnightntwrk/chain-indexer) |
+| `midnightntwrk/wallet-indexer` | 4.0.1 | [hub](https://hub.docker.com/r/midnightntwrk/wallet-indexer) |
+| `midnightntwrk/indexer-standalone` | 4.0.1 | [hub](https://hub.docker.com/r/midnightntwrk/indexer-standalone) |
+| `midnightntwrk/wallet-dapp` | 3.0.1 | [hub](https://hub.docker.com/r/midnightntwrk/wallet-dapp) |
 | `midnightntwrk/midnight-node-toolkit` | 0.22.3 | [hub](https://hub.docker.com/r/midnightntwrk/midnight-node-toolkit) |
 
 ## Client-side (libraries and tools)
@@ -53,7 +51,7 @@ The **Stable** column is what's deployed on all networks. The **Pre-release** co
 | Component | Stable | Pre-release |
 |---|---|---|
 | Compact Compiler (`compactc`) | [0.30.0](https://github.com/midnightntwrk/compact/releases/tag/compactc-v0.30.0) | — |
-| Compact Toolchain (`compact`) | [0.5.0](https://github.com/midnightntwrk/compact/releases/tag/compact-v0.5.0) | — |
+| Compact Toolchain (`compact`) | [0.5.1](https://github.com/midnightntwrk/compact/releases/tag/compact-v0.5.1) | — |
 | Compact Language | 0.22.0 | — |
 | @midnight-ntwrk/compact-js | [2.5.0](https://www.npmjs.com/package/@midnight-ntwrk/compact-js/v/2.5.0) | — |
 | @midnight-ntwrk/compact-runtime | [0.15.0](https://www.npmjs.com/package/@midnight-ntwrk/compact-runtime/v/0.15.0) | — |
@@ -130,12 +128,12 @@ Release notes: [v4.0.2](https://github.com/midnightntwrk/midnight-js/releases/ta
 
 | Service | Preview | Preprod | Mainnet |
 |---|---|---|---|
-| Node RPC | [rpc.preview.midnight.network](https://rpc.preview.midnight.network) | [rpc.preprod.midnight.network](https://rpc.preprod.midnight.network) | TBD |
-| Indexer GraphQL | [indexer.preview.midnight.network](https://indexer.preview.midnight.network/api/v3/graphql) | [indexer.preprod.midnight.network](https://indexer.preprod.midnight.network/api/v3/graphql) | TBD |
-| Proof Server | [lace-proof-pub.preview.midnight.network](https://lace-proof-pub.preview.midnight.network) | [lace-proof-pub.preprod.midnight.network](https://lace-proof-pub.preprod.midnight.network) | TBD |
+| Node RPC | [rpc.preview.midnight.network](https://rpc.preview.midnight.network) | [rpc.preprod.midnight.network](https://rpc.preprod.midnight.network) | TBC |
+| Indexer GraphQL | [indexer.preview.midnight.network](https://indexer.preview.midnight.network/api/v3/graphql) | [indexer.preprod.midnight.network](https://indexer.preprod.midnight.network/api/v3/graphql) | TBC |
+| Proof Server | [lace-proof-pub.preview.midnight.network](https://lace-proof-pub.preview.midnight.network) | [lace-proof-pub.preprod.midnight.network](https://lace-proof-pub.preprod.midnight.network) | TBC |
 | Faucet | [faucet.preview.midnight.network](https://faucet.preview.midnight.network) | [faucet.preprod.midnight.network](https://faucet.preprod.midnight.network) | — |
-| Block Explorer | [explorer.preview.midnight.network](https://explorer.preview.midnight.network) | [explorer.preprod.midnight.network](https://explorer.preprod.midnight.network) | TBD |
-| cNgD DApp | [dust.preview.midnight.network](https://dust.preview.midnight.network) | [dust.preprod.midnight.network](https://dust.preprod.midnight.network) | TBD |
+| Block Explorer | [explorer.preview.midnight.network](https://explorer.preview.midnight.network) | [explorer.preprod.midnight.network](https://explorer.preprod.midnight.network) | TBC |
+| cNgD DApp | [dust.preview.midnight.network](https://dust.preview.midnight.network) | [dust.preprod.midnight.network](https://dust.preprod.midnight.network) | TBC |
 
 ## Local Development Stack
 

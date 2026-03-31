@@ -4,13 +4,13 @@ Refresh `COMPATIBILITY.md`, `README.md`, and `ECOSYSTEM.md` with current deploye
 
 ## Naming conventions
 
-Always use `ledger-v7`/`ledger-v8` (hyphenated, lowercase). Never "Ledger v7" or "ledger v7".
+Always use `ledger-v8` (hyphenated, lowercase). Never "Ledger v8" or "ledger v8".
 
 ## Ledger version policy
 
-**ledger-v8 is the baseline.** Both testnets run ledger-v8. All client-side versions target ledger-v8. Mainnet is not yet launched — proposed versions are shown in italics. Future ledger versions (v9, etc.) will be added as columns when released.
+**ledger-v8 is the baseline.** All three networks run ledger-v8. All client-side versions target ledger-v8. Future ledger versions (v9, etc.) will be added as columns when released.
 
-The on-chain runtime major version tracks the ledger major: `onchain-runtime-v2` was for ledger-v7, `onchain-runtime-v3` is for ledger-v8. If ledger bumps to v9, check for `onchain-runtime-v4`.
+The on-chain runtime major version tracks the ledger major: `onchain-runtime-v3` is for ledger-v8. If ledger bumps to v9, check for `onchain-runtime-v4`.
 
 ## Step 0: Get deployed versions from the user
 
@@ -19,20 +19,21 @@ Before starting, ask the user to check the live status pages and provide the dep
 - **Preview:** https://status.shielded.tools/preview
 - **Preprod:** https://status.shielded.tools/preprod
 - **Mainnet:** no status page yet — ask the user directly for deployed versions
+<!-- TODO: add Mainnet status page URL when available -->
 
 These pages show live versions of midnight-node, indexer, and faucet per network. The underlying data loads from Datadog via authenticated JS and cannot be scraped — the user must check visually.
 
 Ask for:
 - Node version on Preview, Preprod, and Mainnet
 - Indexer version on Preview, Preprod, and Mainnet
-- Faucet version on Preview, Preprod, and Mainnet
+- Faucet version on Preview and Preprod (no faucet on Mainnet)
 - Any changes to public endpoint URLs
 
 These determine which ledger version the networks are running. The node release notes state which ledger it pins. This is the compatibility anchor — everything else flows from it.
 
 ### Public endpoints
 
-The public endpoints table in COMPATIBILITY.md lists service URLs per network. The URL pattern is `{service}.{network}.midnight.network`. Verify these haven't changed. Mainnet endpoints are TBD until launch.
+The public endpoints table in COMPATIBILITY.md lists service URLs per network. The URL pattern is `{service}.{network}.midnight.network`. Verify these haven't changed.
 
 Current pattern:
 - Node RPC: `https://rpc.{network}.midnight.network`
@@ -174,15 +175,15 @@ Browse all images at [hub.docker.com/u/midnightntwrk](https://hub.docker.com/u/m
 ## Step 4: Update files
 
 Update `COMPATIBILITY.md` with validated versions:
-- Infrastructure table: deployed versions per network. Mainnet versions are italic to indicate proposed candidates (e.g. `*0.22.2*`). When Mainnet launches, remove the italic formatting.
-- Public endpoints table: verify URLs, update Mainnet when available
+- Infrastructure table: deployed versions per network
+- Public endpoints table: verify URLs per network
 - Compatible version sets: **Stable** and **Pre-release** columns (only show pre-releases newer than stable)
 - All npm package tables: current `latest` dist-tag versions
 - Docker images table: current tags
 
 Update `README.md` only if:
 - A new repository or component appeared
-- Network status changed (e.g. Mainnet launched)
+- Network status changed (e.g. new network added, network decommissioned)
 
 Update `ECOSYSTEM.md` only if:
 - A new component, layer, or repository appeared
@@ -205,7 +206,7 @@ The midnight-docs PR must also:
 
 ## Step 5: Verify
 
-1. `ledger-v7`/`ledger-v8` naming throughout — never "Ledger v7" or "ledger v7"
+1. `ledger-v8` naming throughout — never "Ledger v8" or "ledger v8"
 2. npm links resolve: `https://www.npmjs.com/package/@midnight-ntwrk/<name>`
 3. Docker Hub links resolve: `https://hub.docker.com/r/midnightntwrk/<name>`
 4. GitHub release links resolve (spot-check):
@@ -228,7 +229,7 @@ The midnight-docs PR must also:
 - **wallet-sdk-facade is the main entry point.** Most other wallet-sdk packages are transitive deps.
 - **Proof Server is dual-role**: shared infrastructure or run locally by DApp developers.
 - **midnight-js-testing is deprecated** — replaced by `@midnight-ntwrk/testkit-js` which shares versions with other midnight-js packages.
-- **Node versions can differ per network.** When a patch is deployed to one network but not others (e.g. Preview 0.22.3, Preprod 0.22.2), split the node row in the infrastructure table and list all deployed node release notes. Update midnight-docs tables to match (split into separate rows per network).
+- **Node versions can differ per network.** When a patch is deployed to one network but not others (e.g. Preview 0.22.3, Preprod 0.22.2), show the per-network versions in the infrastructure table columns and list all deployed node release notes. Update midnight-docs tables to match.
 - Always verify package names exist on npm. `npm view <pkg> version` — 404 means wrong name.
 
 ## Sources of truth
