@@ -165,8 +165,7 @@ export type GlobalOptions = Command.Command.ParseConfig<typeof GlobalOptions>;
 /** @internal */
 export const GlobalOptions = {
   config: InternalOptions.config,
-  coinPublicKey: InternalOptions.coinPublicKey,
-  network: InternalOptions.network
+  coinPublicKey: InternalOptions.coinPublicKey
 }
 
 /**
