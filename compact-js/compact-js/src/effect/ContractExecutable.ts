@@ -153,7 +153,7 @@ export declare namespace ContractExecutable {
   /**
    * The services required as context for executing contracts.
    */
-  export type Context = ZKConfiguration | Configuration.Keys | Configuration.Network;
+  export type Context = ZKConfiguration | Configuration.Keys;
 
   export type ContractContext = {
     readonly address: ContractAddress.ContractAddress;

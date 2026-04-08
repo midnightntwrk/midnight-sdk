@@ -64,13 +64,13 @@ describe('ContractExecutable', () => {
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
 
-      it('should require Configuration.Network context', () => {
-        expect(executable).type.toBeAssignableFrom<
+      it('should require only the layer context', () => {
+        expect(executable).type.toBe<
           ContractExecutable.ContractExecutable<
             MockCounterContract,
             any,
             ContractExecutable.ContractExecutionError,
-            Configuration.Network
+            never
           >
         >();
       });
@@ -89,20 +89,20 @@ describe('ContractExecutable', () => {
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
 
-      it('should require additional context from the layer and Configuration.Network', () => {
+      it('should require additional context from the layer', () => {
         expect(executable).type.toBe<
           ContractExecutable.ContractExecutable<
             MockCounterContract,
             any,
             ContractExecutable.ContractExecutionError,
-            StringDep | Configuration.Network
+            StringDep
           >
         >();
         expect(executable.initialize({})).type.toBe<
           Effect.Effect<
             ContractExecutable.ContractExecutable.DeployResult<any>,
             ContractExecutable.ContractExecutionError,
-            StringDep | Configuration.Network
+            StringDep
           >
         >();
         expect(executable.circuit(Contract.ProvableCircuitId<MockCounterContract>('reset'), {} as any)).type.toBe<
@@ -113,7 +113,7 @@ describe('ContractExecutable', () => {
               Contract.ProvableCircuitId<MockCounterContract>
             >,
             ContractExecutable.ContractExecutionError,
-            StringDep | Configuration.Network
+            StringDep
           >
         >();
       });
