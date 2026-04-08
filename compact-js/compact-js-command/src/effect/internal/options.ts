@@ -82,13 +82,6 @@ export const outputResultFilePath = Options.file('output-result', { exists: 'eit
 );
 
 /** @internal */
-export const network = Options.text('network').pipe(
-  Options.withAlias('n'),
-  Options.withDescription('Optional network identifier. Defaults to the Midnight \'MainNet\' if not specified.'),
-  Options.optional
-);
-
-/** @internal */
 export const inputFilePath = Options.file('input', { exists: 'either' }).pipe(
   Options.withAlias('i'),
   Options.withDescription('A file path of where the current onchain (or ledger), state data can be read.'),
@@ -133,8 +126,7 @@ export type ConfigOptionInput = Command.Command.ParseConfig<{
  */
 export type AllConfigurableOptionInputs = Command.Command.ParseConfig<{
   coinPublicKey: typeof coinPublicKey,
-  signingKey: typeof signingKey,
-  network: typeof network
+  signingKey: typeof signingKey
 }>;
 
 export const asConfigProvider: (configurableOptions: Partial<AllConfigurableOptionInputs>) => ConfigProvider.ConfigProvider =
@@ -142,6 +134,5 @@ export const asConfigProvider: (configurableOptions: Partial<AllConfigurableOpti
     keys: {
       coinPublic: Option.getOrUndefined(configurableOptions.coinPublicKey ?? Option.none()),
       signing: Option.getOrUndefined(configurableOptions.signingKey ?? Option.none())
-    },
-    network: Option.getOrUndefined(configurableOptions.network ?? Option.none())
+    }
   });

@@ -20,8 +20,6 @@ import {
   ZKConfiguration
 } from '@midnight-ntwrk/compact-js/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
-import * as NetworkIdMoniker from '@midnight-ntwrk/platform-js/effect/NetworkIdMoniker';
 import { Context,Effect, Layer } from 'effect';
 import { describe, expect, it } from 'tstyche';
 
@@ -62,21 +60,17 @@ describe('ContractExecutable', () => {
         Layer.effect(
           Configuration.Keys,
           Effect.sync(() => ({})) as Effect.Effect<Configuration.Configuration.Keys>
-        ),
-        Layer.effect(
-          Configuration.Network,
-          Effect.sync(() => NetworkId.make(NetworkIdMoniker.NetworkIdMoniker('hosky-devnet')))
         )
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
 
-      it('should require no further context', () => {
-        expect(executable).type.toBe<
+      it('should require Configuration.Network context', () => {
+        expect(executable).type.toBeAssignableFrom<
           ContractExecutable.ContractExecutable<
             MockCounterContract,
             any,
             ContractExecutable.ContractExecutionError,
-            never
+            Configuration.Network
           >
         >();
       });
@@ -91,28 +85,24 @@ describe('ContractExecutable', () => {
         Layer.effect(
           Configuration.Keys,
           Effect.sync(() => ({})) as Effect.Effect<Configuration.Configuration.Keys>
-        ),
-        Layer.effect(
-          Configuration.Network,
-          Effect.sync(() => NetworkId.make(NetworkIdMoniker.NetworkIdMoniker('hosky-devnet')))
         )
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
 
-      it('should require additional context from the layer', () => {
+      it('should require additional context from the layer and Configuration.Network', () => {
         expect(executable).type.toBe<
           ContractExecutable.ContractExecutable<
             MockCounterContract,
             any,
             ContractExecutable.ContractExecutionError,
-            StringDep
+            StringDep | Configuration.Network
           >
         >();
         expect(executable.initialize({})).type.toBe<
           Effect.Effect<
             ContractExecutable.ContractExecutable.DeployResult<any>,
             ContractExecutable.ContractExecutionError,
-            StringDep
+            StringDep | Configuration.Network
           >
         >();
         expect(executable.circuit(Contract.ProvableCircuitId<MockCounterContract>('reset'), {} as any)).type.toBe<
@@ -123,7 +113,7 @@ describe('ContractExecutable', () => {
               Contract.ProvableCircuitId<MockCounterContract>
             >,
             ContractExecutable.ContractExecutionError,
-            StringDep
+            StringDep | Configuration.Network
           >
         >();
       });
