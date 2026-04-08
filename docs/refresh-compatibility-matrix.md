@@ -36,7 +36,7 @@ The public endpoints table in COMPATIBILITY.md lists service URLs per network. T
 
 Current pattern:
 - Node RPC: `https://rpc.{network}.midnight.network`
-- Indexer: `https://indexer.{network}.midnight.network/api/v3/graphql`
+- Indexer: `https://indexer.{network}.midnight.network/api/v4/graphql`
 - Proof Server: `https://lace-proof-pub.{network}.midnight.network`
 - Faucet: `https://faucet.{network}.midnight.network` (testnets only)
 - Block Explorer: `https://explorer.{network}.midnight.network`
@@ -196,7 +196,8 @@ Update `ECOSYSTEM.md` only if:
 After the midnight-sdk PR is raised, raise a corresponding PR in the **midnight-docs** repo ([midnightntwrk/midnight-docs](https://github.com/midnightntwrk/midnight-docs)) to reflect the same changes. The following files must stay in sync with `COMPATIBILITY.md` in this repo:
 
 - `docs/relnotes/support-matrix.mdx` — the public compatibility matrix at [docs.midnight.network/relnotes/support-matrix](https://docs.midnight.network/relnotes/support-matrix)
-- `docs/relnotes/overview.mdx` — "Latest Stable Release" page with public endpoints and version table
+- `docs/relnotes/network.mdx` — "Environments and endpoints" page with per-network service URLs
+- `docs/relnotes/overview.mdx` — "Latest Stable Release" hub page (links to support-matrix and network; only update if the release summary text changes)
 - `docs/troubleshoot/fix-version-mismatch-errors.mdx` — references ledger version and package names (ensure these match current versions)
 
 The two PRs must be cross-linked:
