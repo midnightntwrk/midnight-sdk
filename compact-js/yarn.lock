@@ -135,6 +135,23 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@effect/platform-node-shared@npm:^0.59.0":
+  version: 0.59.0
+  resolution: "@effect/platform-node-shared@npm:0.59.0"
+  dependencies:
+    "@parcel/watcher": "npm:^2.5.1"
+    multipasta: "npm:^0.2.7"
+    ws: "npm:^8.18.2"
+  peerDependencies:
+    "@effect/cluster": ^0.58.0
+    "@effect/platform": ^0.96.0
+    "@effect/rpc": ^0.75.0
+    "@effect/sql": ^0.51.0
+    effect: ^3.21.0
+  checksum: 10/47fe0e3ad8187265f6103d019d5c27d21c767db6714ff0c383076b2396e1e693d8850ed2d42a36e2b1a6e2eb9b224c402dfed6b0e8aa7e85261517b09a6215c7
+  languageName: node
+  linkType: hard
+
 "@effect/platform-node@npm:^0.105.0":
   version: 0.105.0
   resolution: "@effect/platform-node@npm:0.105.0"
@@ -459,7 +476,7 @@ __metadata:
     "@effect/experimental": "npm:^0.59.0"
     "@effect/platform": "npm:^0.95.0"
     "@effect/platform-node": "npm:^0.105.0"
-    "@effect/platform-node-shared": "npm:^0.58.0"
+    "@effect/platform-node-shared": "npm:^0.59.0"
     "@effect/printer": "npm:^0.48.0"
     "@effect/printer-ansi": "npm:^0.48.0"
     "@effect/rpc": "npm:^0.74.0"
@@ -506,7 +523,7 @@ __metadata:
     "@effect/experimental": "npm:^0.59.0"
     "@effect/platform": "npm:^0.95.0"
     "@effect/platform-node": "npm:^0.105.0"
-    "@effect/platform-node-shared": "npm:^0.58.0"
+    "@effect/platform-node-shared": "npm:^0.59.0"
     "@effect/rpc": "npm:^0.74.0"
     "@effect/sql": "npm:^0.50.0"
     "@effect/vitest": "npm:^0.28.0"
