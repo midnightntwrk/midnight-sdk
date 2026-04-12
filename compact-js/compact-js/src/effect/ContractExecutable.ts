@@ -227,8 +227,33 @@ type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<
 const DEFAULT_CMA_THRESHOLD = 1;
 const DEFAULT_SIGNATURE_INDEX = 0n;
 
+/**
+ * PATCH: Recursively rehash all dirty Bounded Merkle Trees (BMTs) in a StateValue.
+ * This is required to work around a bug in ledger-v7 partitionTranscripts that panics
+ * when it tries to take the root of a non-rehashed BMT after a circuit write.
+ * Without this patch, any circuit that calls committed_tokens.checkRoot() followed by
+ * committed_tokens.insert() will cause partitionTranscripts to panic with:
+ *   "attempted to take root of non-rehashed bmt (this should not be possible!)"
+ */
+const rehashAllBmts = (sv) => {
+    const bmt = sv.asBoundedMerkleTree();
+    if (bmt !== undefined) {
+        return LedgerStateValue.newBoundedMerkleTree(bmt.rehash());
+    }
+    const arr = sv.asArray();
+    if (arr !== undefined) {
+        let rebuilt = LedgerStateValue.newArray();
+        for (const elem of arr) {
+            rebuilt = rebuilt.arrayPush(rehashAllBmts(elem));
+        }
+        return rebuilt;
+    }
+    return sv;
+};
+
 const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
-  const stateValue = LedgerStateValue.decode(queryContext.state.state.encode());
+  const rawStateValue = LedgerStateValue.decode(queryContext.state.state.encode());
+  const stateValue = rehashAllBmts(rawStateValue);
   const ledgerQueryContext = new LedgerQueryContext(new LedgerChargedState(stateValue), queryContext.address);
   // The above method of converting to ledger query context only retains the state. So, we have to set the settable properties manually
   ledgerQueryContext.block = queryContext.block;
