@@ -472,7 +472,7 @@ __metadata:
     "@midnight-ntwrk/ledger-v8": "npm:^8.0.3"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0"
-    effect: "npm:^3.20.0"
+    effect: "npm:^3.21.0"
     json5: "npm:^2.2.3"
     ts-node: "npm:^10.9.2"
     tslib: "npm:^2.8.1"
@@ -490,7 +490,7 @@ __metadata:
     "@effect/rpc": "npm:^0.74.0"
     "@effect/sql": "npm:^0.50.0"
     "@effect/workflow": "npm:^0.17.0"
-    effect: "npm:^3.20.0"
+    effect: "npm:^3.21.0"
     tslib: "npm:^2.8.1"
   peerDependencies:
     "@midnight-ntwrk/compact-js": ">=2.5.0"
@@ -518,7 +518,7 @@ __metadata:
     "@types/node": "npm:^25.5.0"
     "@vitest/coverage-v8": "npm:^4.1.0"
     "@vitest/ui": "npm:^4.1.0"
-    effect: "npm:^3.20.0"
+    effect: "npm:^3.21.0"
     eslint: "npm:^10.0.3"
     eslint-config-prettier: "npm:^10.1.8"
     eslint-import-resolver-typescript: "npm:^4.4.4"
@@ -543,7 +543,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:0.15.0"
     "@midnight-ntwrk/ledger-v8": "npm:^8.0.3"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
-    effect: "npm:^3.20.0"
+    effect: "npm:^3.21.0"
     tslib: "npm:^2.8.1"
   languageName: unknown
   linkType: soft
@@ -1830,6 +1830,16 @@ __metadata:
     "@standard-schema/spec": "npm:^1.0.0"
     fast-check: "npm:^3.23.1"
   checksum: 10/62c1e43f86db04551aaf494a3d2fe296ce3a7d5e25c79c0b41b88e82152af6bb429ce040c7b51fd1b98d3fe93bef768737967f182b4b88ed488689860b55fc26
+  languageName: node
+  linkType: hard
+
+"effect@npm:^3.21.0":
+  version: 3.21.0
+  resolution: "effect@npm:3.21.0"
+  dependencies:
+    "@standard-schema/spec": "npm:^1.0.0"
+    fast-check: "npm:^3.23.1"
+  checksum: 10/c920efb24ae1f5225069fa47334817372f1b4f37b47f878a7aaf17d0cf870338e21144b3fc6dd6d35044f404bb8313071420bc9139831670995f1f8ebfc70a61
   languageName: node
   linkType: hard
 
