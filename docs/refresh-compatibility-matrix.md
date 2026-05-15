@@ -36,7 +36,7 @@ The public endpoints table in COMPATIBILITY.md lists service URLs per network. T
 
 Current pattern:
 - Node RPC: `https://rpc.{network}.midnight.network`
-- Indexer: `https://indexer.{network}.midnight.network/api/v3/graphql`
+- Indexer: `https://indexer.{network}.midnight.network/api/v4/graphql`
 - Proof Server: `https://lace-proof-pub.{network}.midnight.network`
 - Faucet: `https://faucet.{network}.midnight.network` (testnets only)
 - Block Explorer: `https://explorer.{network}.midnight.network`
