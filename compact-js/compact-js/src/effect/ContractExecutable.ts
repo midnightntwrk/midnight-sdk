@@ -46,12 +46,13 @@ import {
   StateValue as LedgerStateValue,
   type Transcript,
   VerifierKeyInsert,
-  VerifierKeyRemove} from '@midnight-ntwrk/ledger-v8';
+  VerifierKeyRemove
+} from '@midnight-ntwrk/ledger-v8';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Effect, Either,type Layer, Option } from 'effect';
+import { Effect, Either, type Layer, Option } from 'effect';
 import { dual, identity } from 'effect/Function';
 import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 
@@ -284,9 +285,9 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       contract: this.createContract()
     }).pipe(
       Effect.flatMap(({ zkConfigReader, keyConfig, contract }) =>
-        Effect.try({
-          try: () => {
-            const { currentContractState, currentPrivateState, currentZswapLocalState } = contract.initialState(
+        Effect.tryPromise({
+          try: async () => {
+            const { currentContractState, currentPrivateState, currentZswapLocalState } = await contract.initialState(
               createConstructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
               ...args
             );
@@ -300,7 +301,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             err instanceof CompactError
               ? ContractRuntimeError.make('Failed to initialize contract', err)
               : ContractConfigurationError.make(
-                  'Failed to configure constructor context with coin public key', undefined, err)
+                'Failed to configure constructor context with coin public key', undefined, err)
         }).pipe(
           Effect.flatMap(({ contractState, privateState, zswapLocalState }) =>
             Effect.gen(this, function* () {
@@ -315,7 +316,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                     contractState
                   );
                 }
-                
+
                 const operation = contractState.operation(provableCircuitId);
 
                 if (!operation) {
@@ -368,8 +369,8 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       contract: this.createContract()
     }).pipe(
       Effect.flatMap(({ keyConfig, contract }) =>
-        Effect.try({
-          try: () => {
+        Effect.tryPromise({
+          try: async () => {
             const circuit = contract.provableCircuits[provableCircuitId] as Contract.ProvableCircuit<
               PS,
               Contract.Contract.CircuitReturnType<C, K>
@@ -378,12 +379,13 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               throw new Error(`Circuit ${this.compiledContract.tag}#${provableCircuitId} could not be found.`);
             }
             const zswapLocalState = circuitContext.zswapLocalState
-                ? encodeZswapLocalState(circuitContext.zswapLocalState)
-                : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey))
+              ? encodeZswapLocalState(circuitContext.zswapLocalState)
+              : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey))
             const runtimeContext = createCircuitContext(circuitContext.address, zswapLocalState, circuitContext.contractState, circuitContext.privateState)
             const initialTxContext = runtimeContext.currentQueryContext
+            const circuitResult = await circuit(runtimeContext, ...args);
             return {
-              ...circuit(runtimeContext, ...args),
+              ...circuitResult,
               initialTxContext
             };
           },
@@ -432,7 +434,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     return Effect.all({
       keyConfig: Configuration.Keys
     }).pipe(
-      Effect.flatMap(({ keyConfig  }) => Effect.gen(this, function* () {
+      Effect.flatMap(({ keyConfig }) => Effect.gen(this, function* () {
         const { contractState } = contractContext;
         const [cma, signingKey] = yield* this.createMaintenanceAuthority(newSigningKey, contractState);
         const ledger_cma = LedgerContractMaintenanceAuthority.deserialize(cma.serialize()) as unknown as LedgerContractMaintenanceAuthority;
@@ -465,7 +467,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     return Effect.all({
       keyConfig: Configuration.Keys
     }).pipe(
-      Effect.flatMap(({ keyConfig  }) => Effect.gen(this, function* () {
+      Effect.flatMap(({ keyConfig }) => Effect.gen(this, function* () {
         return yield* this.createSignedMaintenanceUpdate(
           () => {
             return Either.right([
@@ -488,7 +490,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     return Effect.all({
       keyConfig: Configuration.Keys
     }).pipe(
-      Effect.flatMap(({ keyConfig  }) => Effect.gen(this, function* () {
+      Effect.flatMap(({ keyConfig }) => Effect.gen(this, function* () {
         return yield* this.createSignedMaintenanceUpdate(
           () => {
             return Either.right([
