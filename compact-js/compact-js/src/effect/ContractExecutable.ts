@@ -18,6 +18,7 @@ import {
   CompactError,
   ContractMaintenanceAuthority,
   type ContractState,
+  type ContractStateProvider,
   createCircuitContext,
   createConstructorContext,
   decodeZswapLocalState,
@@ -165,7 +166,10 @@ export declare namespace ContractExecutable {
     readonly privateState: PS;
     readonly zswapLocalState?: ZswapLocalState;
     readonly ledgerParameters?: LedgerParameters;
-  }
+  } & (
+      | { readonly stateProvider?: undefined; readonly parentBlockHash?: undefined }
+      | { readonly stateProvider: ContractStateProvider; readonly parentBlockHash: string }
+    )
 
   export type DeployResultPublic = {
     readonly contractState: ContractState;
@@ -191,7 +195,7 @@ export declare namespace ContractExecutable {
     readonly output: AlignedValue;
     readonly privateTranscriptOutputs: AlignedValue[];
     readonly result: Contract.Contract.CircuitReturnType<C, K>;
-    readonly privateState: PS;
+    readonly privateState: PS | undefined;
     readonly zswapLocalState: ZswapLocalState;
   };
   export type CallResult<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
@@ -381,8 +385,8 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             const zswapLocalState = circuitContext.zswapLocalState
               ? encodeZswapLocalState(circuitContext.zswapLocalState)
               : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey))
-            const runtimeContext = createCircuitContext(circuitContext.address, zswapLocalState, circuitContext.contractState, circuitContext.privateState)
-            const initialTxContext = runtimeContext.currentQueryContext
+            const runtimeContext = createCircuitContext(provableCircuitId, circuitContext.address, zswapLocalState, circuitContext.contractState, circuitContext.privateState, circuitContext.stateProvider, undefined, undefined, undefined, circuitContext.parentBlockHash)
+            const initialTxContext = runtimeContext.callContext.currentQueryContext
             const circuitResult = await circuit(runtimeContext, ...args);
             return {
               ...circuitResult,
@@ -391,15 +395,20 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
           },
           catch: identity
         }).pipe(
-          Effect.flatMap(({ initialTxContext, result, context, proofData }) =>
+          Effect.flatMap(({ initialTxContext, result, context }) =>
             Effect.gen(function* () {
+              const proofData = context.callProofDataTrace[context.callProofDataTrace.length - 1];
+              const zswapLocalState = context.callContext.currentZswapLocalState;
+              if (zswapLocalState === undefined) {
+                throw new Error(`Circuit '${provableCircuitId}' returned no zswap local state`);
+              }
               return {
                 public: {
-                  contractState: context.currentQueryContext.state.state,
+                  contractState: context.callContext.currentQueryContext.state.state,
                   publicTranscript: proofData.publicTranscript,
                   partitionedTranscript: yield* partitionTranscript(
                     initialTxContext,
-                    context.currentQueryContext,
+                    context.callContext.currentQueryContext,
                     proofData.publicTranscript,
                     circuitContext.ledgerParameters
                   )
@@ -409,8 +418,8 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                   input: proofData.input,
                   output: proofData.output,
                   privateTranscriptOutputs: proofData.privateTranscriptOutputs,
-                  privateState: context.currentPrivateState,
-                  zswapLocalState: decodeZswapLocalState(context.currentZswapLocalState)
+                  privateState: context.callContext.currentPrivateState,
+                  zswapLocalState: decodeZswapLocalState(zswapLocalState)
                 }
               };
             })
