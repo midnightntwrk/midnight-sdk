@@ -300,7 +300,7 @@ __metadata:
     "@tsconfig/node22": "npm:^22.0.5"
     "@types/node": "npm:^25.5.0"
     "@vitest/coverage-v8": "npm:^4.1.1"
-    "@vitest/ui": "npm:^4.1.0"
+    "@vitest/ui": "npm:^4.1.1"
     effect: "npm:^3.21.0"
     eslint: "npm:^10.1.0"
     eslint-config-prettier: "npm:^10.1.8"
@@ -1082,11 +1082,11 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/ui@npm:^4.1.0":
-  version: 4.1.0
-  resolution: "@vitest/ui@npm:4.1.0"
+"@vitest/ui@npm:^4.1.1":
+  version: 4.1.1
+  resolution: "@vitest/ui@npm:4.1.1"
   dependencies:
-    "@vitest/utils": "npm:4.1.0"
+    "@vitest/utils": "npm:4.1.1"
     fflate: "npm:^0.8.2"
     flatted: "npm:3.4.0"
     pathe: "npm:^2.0.3"
@@ -1094,8 +1094,8 @@ __metadata:
     tinyglobby: "npm:^0.2.15"
     tinyrainbow: "npm:^3.0.3"
   peerDependencies:
-    vitest: 4.1.0
-  checksum: 10/800142f7048827ac1fb1f3adba8f222a42fd415833b79844217479f0d8fcb44b9ca774b0aa7549ec36670268614748b4885362a4f702eecb9cac1203056060e7
+    vitest: 4.1.1
+  checksum: 10/d955dc5afc430f39f835cefd84bf4d62c7c77bb2bb37a0530ad11d4ec881e439fe4093e7b902ae4646d13639d0355ba6ec22d63066556dc696dac0cd6b00211c
   languageName: node
   linkType: hard
 
