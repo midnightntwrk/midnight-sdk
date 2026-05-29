@@ -468,7 +468,7 @@ __metadata:
     "@effect/workflow": "npm:^0.17.0"
     "@midnight-ntwrk/compact-js": "npm:^2.5.0"
     "@midnight-ntwrk/compact-js-node": "npm:^2.5.0"
-    "@midnight-ntwrk/compact-runtime": "npm:0.15.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
     "@midnight-ntwrk/ledger-v8": "npm:^8.0.3"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0"
@@ -540,7 +540,7 @@ __metadata:
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js"
   dependencies:
     "@effect/platform": "npm:^0.95.0"
-    "@midnight-ntwrk/compact-runtime": "npm:0.15.0"
+    "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
     "@midnight-ntwrk/ledger-v8": "npm:^8.0.3"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
     effect: "npm:^3.20.0"
@@ -548,14 +548,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/compact-runtime@npm:0.15.0":
-  version: 0.15.0
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.15.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.15.0%2F399021d6e35d3cf25e4bc4ba56f19d5396bbe167"
+"@midnight-ntwrk/compact-runtime@npm:0.16.0":
+  version: 0.16.0
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.16.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.16.0%2F4a2d38a4237b0abd6d833c0ee94baa6318323a79"
   dependencies:
     "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/12ac86a114a404386037547a6eb021694537c0636d24d281b101c5be75e3f5703bad9e0bbcc7ea2a39a96e167d200860049a9957dbb4dbdeb585c3fba696909c
+  checksum: 10/ef0c68d53bba6a04f336094c82c26b781082d7ce4ee09f0539009fb108776b36ea24b9a774292d9bbf9722b8a78d47254b5f80a613d4010a7f7d108514243023
   languageName: node
   linkType: hard
 

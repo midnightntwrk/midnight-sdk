@@ -25,7 +25,7 @@
     "@effect/workflow": "^0.17.0",
     "@midnight-ntwrk/compact-js": "^2.5.0",
     "@midnight-ntwrk/compact-js-node": "^2.5.0",
-    "@midnight-ntwrk/compact-runtime": "0.15.0",
+    "@midnight-ntwrk/compact-runtime": "0.16.0",
     "@midnight-ntwrk/ledger-v8": "^8.0.3",
     "@midnight-ntwrk/platform-js": "^2.2.4",
     "@midnight-ntwrk/wallet-sdk-address-format": "3.1.0",
