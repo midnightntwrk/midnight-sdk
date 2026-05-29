@@ -2,7 +2,7 @@
 
 Developer hub for [Midnight](https://midnight.network). This repo provides a map of all Midnight repositories and the components they produce, a [compatibility matrix](./COMPATIBILITY.md) for testnets and mainnet, an [ecosystem overview](./ECOSYSTEM.md) of the full architecture, and the source code for four npm libraries (`compact-js`, `platform-js`) that provide the execution environment for Compact smart contracts.
 
-**Networks:** Local (`undeployed`) for fastest iteration, Preview / Preprod for public testnets, Mainnet not yet launched. See [COMPATIBILITY.md](./COMPATIBILITY.md) for which versions are deployed on each network and which client libraries are compatible.
+**Networks:** Local (`undeployed`) for fastest iteration, Preview / Preprod for public testnets, Mainnet for production. See [COMPATIBILITY.md](./COMPATIBILITY.md) for which versions are deployed on each network and which client libraries are compatible.
 
 ## Repositories and Components
 
@@ -53,7 +53,7 @@ Write and test Compact smart contracts.
 Build web and Node.js applications on Midnight.
 
 - [Getting started](https://docs.midnight.network/getting-started) — first-time setup
-- [midnight-js](https://github.com/midnightntwrk/midnight-js) — DApp framework (contracts, types, providers)
+- [midnight-js](https://github.com/midnightntwrk/midnight-js) — DApp framework; install [`@midnight-ntwrk/midnight-js`](https://www.npmjs.com/package/@midnight-ntwrk/midnight-js) for core modules, plus individual provider packages as needed
 - [create-mn-app](https://github.com/midnightntwrk/create-mn-app) — scaffold a new project
 - [midnight-wallet-dapp](https://github.com/midnightntwrk/midnight-wallet-dapp) — reference DApp showing the provider pattern and wallet integration
 - [midnight-wallet](https://github.com/midnightntwrk/midnight-wallet) — wallet SDK, useful as an integration layer for Node.js DApps and with [testkit-js](https://github.com/midnightntwrk/midnight-js)
