@@ -189,6 +189,12 @@ export declare namespace ContractExecutable {
     readonly contractState: StateValue;
     readonly publicTranscript: Op<AlignedValue>[];
     readonly partitionedTranscript: PartitionedTranscript;
+    /**
+     * The {@link PreTranscript} used to derive {@link partitionedTranscript}. Pass verbatim to
+     * `Transaction.addCalls(...)` (via `PrePartitionContractCall`) to consume this call in a
+     * higher-level intent without losing the commitment indices accumulated during execution.
+     */
+    readonly preTranscript: PreTranscript;
   };
   export type CallResultPrivate<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
     readonly input: AlignedValue;
@@ -246,21 +252,20 @@ const partitionTranscript = (
   finalTxContext: QueryContext,
   publicTranscript: Op<AlignedValue>[],
   ledgerParameters: LedgerParameters | undefined
-): Either.Either<ContractExecutable.PartitionedTranscript, Error> => {
+): Either.Either<{ preTranscript: PreTranscript; partitionedTranscript: ContractExecutable.PartitionedTranscript }, Error> => {
+  const preTranscript = new PreTranscript(
+    Array.from(finalTxContext.comIndices).reduce(
+      (queryContext, entry) => queryContext.insertCommitment(...entry),
+      asLedgerQueryContext(txContext)
+    ),
+    publicTranscript
+  );
   const partitionedTranscripts = partitionTranscripts(
-    [
-      new PreTranscript(
-        Array.from(finalTxContext.comIndices).reduce(
-          (queryContext, entry) => queryContext.insertCommitment(...entry),
-          asLedgerQueryContext(txContext)
-        ),
-        publicTranscript
-      )
-    ],
+    [preTranscript],
     ledgerParameters ?? LedgerParameters.initialParameters()
   );
   return partitionedTranscripts.length === 1
-    ? Either.right(partitionedTranscripts[0])
+    ? Either.right({ preTranscript, partitionedTranscript: partitionedTranscripts[0] })
     : Either.left(new Error(`Expected one transcript partition pair, received: ${partitionedTranscripts.length}`));
 };
 
@@ -398,20 +403,22 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
           Effect.flatMap(({ initialTxContext, result, context }) =>
             Effect.gen(function* () {
               const proofData = context.callProofDataTrace[context.callProofDataTrace.length - 1];
-              const zswapLocalState = context.callContext.currentZswapLocalState;
-              if (zswapLocalState === undefined) {
+              const currentZswapLocalState = context.callContext.currentZswapLocalState;
+              if (currentZswapLocalState === undefined) {
                 throw new Error(`Circuit '${provableCircuitId}' returned no zswap local state`);
               }
+              const { preTranscript, partitionedTranscript } = yield* partitionTranscript(
+                initialTxContext,
+                context.callContext.currentQueryContext,
+                proofData.publicTranscript,
+                circuitContext.ledgerParameters
+              );
               return {
                 public: {
                   contractState: context.callContext.currentQueryContext.state.state,
                   publicTranscript: proofData.publicTranscript,
-                  partitionedTranscript: yield* partitionTranscript(
-                    initialTxContext,
-                    context.callContext.currentQueryContext,
-                    proofData.publicTranscript,
-                    circuitContext.ledgerParameters
-                  )
+                  partitionedTranscript,
+                  preTranscript
                 },
                 private: {
                   result,
@@ -419,7 +426,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                   output: proofData.output,
                   privateTranscriptOutputs: proofData.privateTranscriptOutputs,
                   privateState: context.callContext.currentPrivateState,
-                  zswapLocalState: decodeZswapLocalState(zswapLocalState)
+                  zswapLocalState: decodeZswapLocalState(currentZswapLocalState)
                 }
               };
             })
