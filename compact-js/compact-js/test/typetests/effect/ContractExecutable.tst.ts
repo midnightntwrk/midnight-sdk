@@ -19,6 +19,7 @@ import {
   ContractExecutable,
   ZKConfiguration
 } from '@midnight-ntwrk/compact-js/effect';
+import type { PreTranscript } from '@midnight-ntwrk/ledger-v8';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { Context,Effect, Layer } from 'effect';
 import { describe, expect, it } from 'tstyche';
@@ -117,6 +118,12 @@ describe('ContractExecutable', () => {
           >
         >();
       });
+    });
+  });
+
+  describe('CallResultPublic', () => {
+    it('should expose preTranscript as PreTranscript', () => {
+      expect<ContractExecutable.ContractExecutable.CallResultPublic['preTranscript']>().type.toBe<PreTranscript>();
     });
   });
 });
