@@ -133,7 +133,7 @@ Release notes: [v4.0.4](https://github.com/midnightntwrk/midnight-js/releases/ta
 | Service | Preview | Preprod | Mainnet |
 |---|---|---|---|
 | Node RPC | [rpc.preview.midnight.network](https://rpc.preview.midnight.network) | [rpc.preprod.midnight.network](https://rpc.preprod.midnight.network) | [rpc.mainnet.midnight.network](https://rpc.mainnet.midnight.network) |
-| Indexer GraphQL | [indexer.preview.midnight.network](https://indexer.preview.midnight.network/api/v3/graphql) | [indexer.preprod.midnight.network](https://indexer.preprod.midnight.network/api/v3/graphql) | [indexer.mainnet.midnight.network](https://indexer.mainnet.midnight.network/api/v3/graphql) |
+| Indexer GraphQL | [indexer.preview.midnight.network](https://indexer.preview.midnight.network/api/v4/graphql) | [indexer.preprod.midnight.network](https://indexer.preprod.midnight.network/api/v4/graphql) | [indexer.mainnet.midnight.network](https://indexer.mainnet.midnight.network/api/v4/graphql) |
 | Proof Server | [lace-proof-pub.preview.midnight.network](https://lace-proof-pub.preview.midnight.network) | [lace-proof-pub.preprod.midnight.network](https://lace-proof-pub.preprod.midnight.network) | [lace-proof-pub.mainnet.midnight.network](https://lace-proof-pub.mainnet.midnight.network) |
 | Faucet | [faucet.preview.midnight.network](https://faucet.preview.midnight.network) | [faucet.preprod.midnight.network](https://faucet.preprod.midnight.network) | — |
 | Block Explorer | [explorer.preview.midnight.network](https://explorer.preview.midnight.network) | [explorer.preprod.midnight.network](https://explorer.preprod.midnight.network) | [explorer.mainnet.midnight.network](https://explorer.mainnet.midnight.network) |

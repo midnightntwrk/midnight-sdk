@@ -184,6 +184,12 @@ export declare namespace ContractExecutable {
     readonly contractState: StateValue;
     readonly publicTranscript: Op<AlignedValue>[];
     readonly partitionedTranscript: PartitionedTranscript;
+    /**
+     * The {@link PreTranscript} used to derive {@link partitionedTranscript}. Pass verbatim to
+     * `Transaction.addCalls(...)` (via `PrePartitionContractCall`) to consume this call in a
+     * higher-level intent without losing the commitment indices accumulated during execution.
+     */
+    readonly preTranscript: PreTranscript;
   };
   export type CallResultPrivate<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
     readonly input: AlignedValue;
@@ -241,21 +247,20 @@ const partitionTranscript = (
   finalTxContext: QueryContext,
   publicTranscript: Op<AlignedValue>[],
   ledgerParameters: LedgerParameters | undefined
-): Either.Either<ContractExecutable.PartitionedTranscript, Error> => {
+): Either.Either<{ preTranscript: PreTranscript; partitionedTranscript: ContractExecutable.PartitionedTranscript }, Error> => {
+  const preTranscript = new PreTranscript(
+    Array.from(finalTxContext.comIndices).reduce(
+      (queryContext, entry) => queryContext.insertCommitment(...entry),
+      asLedgerQueryContext(txContext)
+    ),
+    publicTranscript
+  );
   const partitionedTranscripts = partitionTranscripts(
-    [
-      new PreTranscript(
-        Array.from(finalTxContext.comIndices).reduce(
-          (queryContext, entry) => queryContext.insertCommitment(...entry),
-          asLedgerQueryContext(txContext)
-        ),
-        publicTranscript
-      )
-    ],
+    [preTranscript],
     ledgerParameters ?? LedgerParameters.initialParameters()
   );
   return partitionedTranscripts.length === 1
-    ? Either.right(partitionedTranscripts[0])
+    ? Either.right({ preTranscript, partitionedTranscript: partitionedTranscripts[0] })
     : Either.left(new Error(`Expected one transcript partition pair, received: ${partitionedTranscripts.length}`));
 };
 
@@ -391,16 +396,18 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         }).pipe(
           Effect.flatMap(({ initialTxContext, result, context, proofData }) =>
             Effect.gen(function* () {
+              const { preTranscript, partitionedTranscript } = yield* partitionTranscript(
+                initialTxContext,
+                context.currentQueryContext,
+                proofData.publicTranscript,
+                circuitContext.ledgerParameters
+              );
               return {
                 public: {
                   contractState: context.currentQueryContext.state.state,
                   publicTranscript: proofData.publicTranscript,
-                  partitionedTranscript: yield* partitionTranscript(
-                    initialTxContext,
-                    context.currentQueryContext,
-                    proofData.publicTranscript,
-                    circuitContext.ledgerParameters
-                  )
+                  partitionedTranscript,
+                  preTranscript
                 },
                 private: {
                   result,
