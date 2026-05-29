@@ -302,7 +302,7 @@ __metadata:
     "@vitest/coverage-v8": "npm:^4.1.0"
     "@vitest/ui": "npm:^4.1.0"
     effect: "npm:^3.21.0"
-    eslint: "npm:^10.0.3"
+    eslint: "npm:^10.1.0"
     eslint-config-prettier: "npm:^10.1.8"
     eslint-import-resolver-typescript: "npm:^4.4.4"
     eslint-plugin-import-x: "npm:^4.16.2"
