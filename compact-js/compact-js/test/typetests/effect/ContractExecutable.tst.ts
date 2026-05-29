@@ -20,8 +20,6 @@ import {
   ZKConfiguration
 } from '@midnight-ntwrk/compact-js/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import * as NetworkId from '@midnight-ntwrk/platform-js/effect/NetworkId';
-import * as NetworkIdMoniker from '@midnight-ntwrk/platform-js/effect/NetworkIdMoniker';
 import { Context,Effect, Layer } from 'effect';
 import { describe, expect, it } from 'tstyche';
 
@@ -62,15 +60,11 @@ describe('ContractExecutable', () => {
         Layer.effect(
           Configuration.Keys,
           Effect.sync(() => ({})) as Effect.Effect<Configuration.Configuration.Keys>
-        ),
-        Layer.effect(
-          Configuration.Network,
-          Effect.sync(() => NetworkId.make(NetworkIdMoniker.NetworkIdMoniker('hosky-devnet')))
         )
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
 
-      it('should require no further context', () => {
+      it('should require only the layer context', () => {
         expect(executable).type.toBe<
           ContractExecutable.ContractExecutable<
             MockCounterContract,
@@ -91,10 +85,6 @@ describe('ContractExecutable', () => {
         Layer.effect(
           Configuration.Keys,
           Effect.sync(() => ({})) as Effect.Effect<Configuration.Configuration.Keys>
-        ),
-        Layer.effect(
-          Configuration.Network,
-          Effect.sync(() => NetworkId.make(NetworkIdMoniker.NetworkIdMoniker('hosky-devnet')))
         )
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
