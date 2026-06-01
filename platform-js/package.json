@@ -3,7 +3,7 @@
   "description": "",
   "version": "2.2.0",
   "private": true,
-  "packageManager": "yarn@4.10.3",
+  "packageManager": "yarn@4.15.0",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
     "node": ">=22"
@@ -19,7 +19,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@effect/platform": "^0.95.0",
+    "@effect/platform": "^0.96.0",
     "effect": "^3.21.0"
   },
   "resolutions": {
@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@effect/build-utils": "^0.8.9",
-    "@effect/vitest": "^0.28.0",
+    "@effect/vitest": "^0.29.0",
     "@eslint/js": "^10.0.1",
     "@tsconfig/node22": "^22.0.5",
     "@types/node": "^25.5.0",
@@ -46,7 +46,7 @@
     "shx": "^0.4.0",
     "turbo": "^2.8.19",
     "typescript": "^5.9.3",
-    "typescript-eslint": "^8.57.1",
+    "typescript-eslint": "^8.60.0",
     "vitest": "^4.1.0"
   }
 }
