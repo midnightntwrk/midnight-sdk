@@ -47,7 +47,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/build-utils@npm:^0.8.9":
+"@effect/build-utils@npm:0.8.9":
   version: 0.8.9
   resolution: "@effect/build-utils@npm:0.8.9"
   dependencies:
@@ -72,7 +72,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/vitest@npm:^0.28.0":
+"@effect/vitest@npm:0.28.0":
   version: 0.28.0
   resolution: "@effect/vitest@npm:0.28.0"
   peerDependencies:
@@ -196,7 +196,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@eslint/js@npm:^10.0.1":
+"@eslint/js@npm:10.0.1":
   version: 10.0.1
   resolution: "@eslint/js@npm:10.0.1"
   peerDependencies:
@@ -293,27 +293,27 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/platform-js-sources@workspace:."
   dependencies:
-    "@effect/build-utils": "npm:^0.8.9"
+    "@effect/build-utils": "npm:0.8.9"
     "@effect/platform": "npm:^0.95.0"
-    "@effect/vitest": "npm:^0.28.0"
-    "@eslint/js": "npm:^10.0.1"
-    "@tsconfig/node22": "npm:^22.0.5"
-    "@types/node": "npm:^25.5.0"
-    "@vitest/coverage-v8": "npm:^4.1.1"
-    "@vitest/ui": "npm:^4.1.1"
+    "@effect/vitest": "npm:0.28.0"
+    "@eslint/js": "npm:10.0.1"
+    "@tsconfig/node22": "npm:22.0.5"
+    "@types/node": "npm:25.5.0"
+    "@vitest/coverage-v8": "npm:4.1.1"
+    "@vitest/ui": "npm:4.1.1"
     effect: "npm:^3.21.0"
-    eslint: "npm:^10.1.0"
-    eslint-config-prettier: "npm:^10.1.8"
-    eslint-import-resolver-typescript: "npm:^4.4.4"
-    eslint-plugin-import-x: "npm:^4.16.2"
-    eslint-plugin-prettier: "npm:^5.5.5"
-    eslint-plugin-simple-import-sort: "npm:^12.1.1"
-    eslint-plugin-unused-imports: "npm:^4.4.1"
-    shx: "npm:^0.4.0"
-    turbo: "npm:^2.8.19"
-    typescript: "npm:^5.9.3"
-    typescript-eslint: "npm:^8.57.1"
-    vitest: "npm:^4.1.0"
+    eslint: "npm:10.1.0"
+    eslint-config-prettier: "npm:10.1.8"
+    eslint-import-resolver-typescript: "npm:4.4.4"
+    eslint-plugin-import-x: "npm:4.16.2"
+    eslint-plugin-prettier: "npm:5.5.5"
+    eslint-plugin-simple-import-sort: "npm:12.1.1"
+    eslint-plugin-unused-imports: "npm:4.4.1"
+    shx: "npm:0.4.0"
+    turbo: "npm:2.9.16"
+    typescript: "npm:5.9.3"
+    typescript-eslint: "npm:8.57.1"
+    vitest: "npm:4.1.0"
   languageName: unknown
   linkType: soft
 
@@ -599,7 +599,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node22@npm:^22.0.5":
+"@tsconfig/node22@npm:22.0.5":
   version: 22.0.5
   resolution: "@tsconfig/node22@npm:22.0.5"
   checksum: 10/2e21177946aa0bcd705e8303cd0844eb66d2abc1ceb9ca7bd7762443676e599bb11e7f7b257c027d8dec9d1c62cda114d1a3df5e38699c6b4943e6acadac261d
@@ -695,7 +695,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^25.5.0":
+"@types/node@npm:25.5.0":
   version: 25.5.0
   resolution: "@types/node@npm:25.5.0"
   dependencies:
@@ -974,7 +974,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/coverage-v8@npm:^4.1.1":
+"@vitest/coverage-v8@npm:4.1.1":
   version: 4.1.1
   resolution: "@vitest/coverage-v8@npm:4.1.1"
   dependencies:
@@ -1078,7 +1078,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/ui@npm:^4.1.1":
+"@vitest/ui@npm:4.1.1":
   version: 4.1.1
   resolution: "@vitest/ui@npm:4.1.1"
   dependencies:
@@ -1357,7 +1357,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-config-prettier@npm:^10.1.8":
+"eslint-config-prettier@npm:10.1.8":
   version: 10.1.8
   resolution: "eslint-config-prettier@npm:10.1.8"
   peerDependencies:
@@ -1383,7 +1383,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-import-resolver-typescript@npm:^4.4.4":
+"eslint-import-resolver-typescript@npm:4.4.4":
   version: 4.4.4
   resolution: "eslint-import-resolver-typescript@npm:4.4.4"
   dependencies:
@@ -1407,7 +1407,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-import-x@npm:^4.16.2":
+"eslint-plugin-import-x@npm:4.16.2":
   version: 4.16.2
   resolution: "eslint-plugin-import-x@npm:4.16.2"
   dependencies:
@@ -1434,7 +1434,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-prettier@npm:^5.5.5":
+"eslint-plugin-prettier@npm:5.5.5":
   version: 5.5.5
   resolution: "eslint-plugin-prettier@npm:5.5.5"
   dependencies:
@@ -1454,7 +1454,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-simple-import-sort@npm:^12.1.1":
+"eslint-plugin-simple-import-sort@npm:12.1.1":
   version: 12.1.1
   resolution: "eslint-plugin-simple-import-sort@npm:12.1.1"
   peerDependencies:
@@ -1463,7 +1463,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-unused-imports@npm:^4.4.1":
+"eslint-plugin-unused-imports@npm:4.4.1":
   version: 4.4.1
   resolution: "eslint-plugin-unused-imports@npm:4.4.1"
   peerDependencies:
@@ -1509,7 +1509,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:^10.1.0":
+"eslint@npm:10.1.0":
   version: 10.1.0
   resolution: "eslint@npm:10.1.0"
   dependencies:
@@ -2954,7 +2954,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shx@npm:^0.4.0":
+"shx@npm:0.4.0":
   version: 0.4.0
   resolution: "shx@npm:0.4.0"
   dependencies:
@@ -3183,7 +3183,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"turbo@npm:^2.8.19":
+"turbo@npm:2.9.16":
   version: 2.9.16
   resolution: "turbo@npm:2.9.16"
   dependencies:
@@ -3221,7 +3221,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript-eslint@npm:^8.57.1":
+"typescript-eslint@npm:8.57.1":
   version: 8.57.1
   resolution: "typescript-eslint@npm:8.57.1"
   dependencies:
@@ -3236,7 +3236,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^5.9.3":
+"typescript@npm:5.9.3":
   version: 5.9.3
   resolution: "typescript@npm:5.9.3"
   bin:
@@ -3246,7 +3246,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^5.9.3#optional!builtin<compat/typescript>":
+"typescript@patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>":
   version: 5.9.3
   resolution: "typescript@patch:typescript@npm%3A5.9.3#optional!builtin<compat/typescript>::version=5.9.3&hash=5786d5"
   bin:
@@ -3414,7 +3414,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vitest@npm:^4.1.0":
+"vitest@npm:4.1.0":
   version: 4.1.0
   resolution: "vitest@npm:4.1.0"
   dependencies:
