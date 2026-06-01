@@ -11,7 +11,7 @@
     "./effect/internal/*": null
   },
   "dependencies": {
-    "@effect/platform": "^0.95.0",
+    "@effect/platform": "^0.96.0",
     "@midnight-ntwrk/compact-runtime": "0.16.0",
     "@midnight-ntwrk/ledger-v8": "^8.0.3",
     "@midnight-ntwrk/platform-js": "^2.2.4",
@@ -22,7 +22,7 @@
     "type": "git",
     "url": "git+ssh://git@github.com/midnight-ntwrk/artifacts.git"
   },
-  "packageManager": "yarn@4.10.3",
+  "packageManager": "yarn@4.15.0",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {

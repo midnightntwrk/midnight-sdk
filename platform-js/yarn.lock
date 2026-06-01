@@ -2,7 +2,7 @@
 # Manual changes might be lost - proceed with caution!
 
 __metadata:
-  version: 8
+  version: 10
   cacheKey: 10
 
 "@babel/helper-string-parser@npm:^7.29.7":
@@ -59,26 +59,26 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform@npm:^0.95.0":
-  version: 0.95.0
-  resolution: "@effect/platform@npm:0.95.0"
+"@effect/platform@npm:^0.96.0":
+  version: 0.96.1
+  resolution: "@effect/platform@npm:0.96.1"
   dependencies:
     find-my-way-ts: "npm:^0.1.6"
-    msgpackr: "npm:^1.11.4"
+    msgpackr: "npm:^1.11.10"
     multipasta: "npm:^0.2.7"
   peerDependencies:
-    effect: ^3.20.0
-  checksum: 10/ae3f3bd441f77bb0f3bb71f954d3a06be2565e4d924eba8c7d5c898da32d893f42c4af0e5c6fee5a1ba087ab7d2d1dae8734a4b1e830baeb654fcccd63c996bb
+    effect: ^3.21.2
+  checksum: 10/36d8b1d43d636be02f9119e0e6d981565a88801ec097bda1cae0ed65bea9fb1963226140b3f6b714f4ea9091a248bc20bf2cc0d775b238a9ef4010ddea48fa65
   languageName: node
   linkType: hard
 
-"@effect/vitest@npm:^0.28.0":
-  version: 0.28.0
-  resolution: "@effect/vitest@npm:0.28.0"
+"@effect/vitest@npm:^0.29.0":
+  version: 0.29.0
+  resolution: "@effect/vitest@npm:0.29.0"
   peerDependencies:
-    effect: ^3.20.0
+    effect: ^3.21.0
     vitest: ^3.2.0
-  checksum: 10/19d7028351d08c620a6e9446b2f46d17f7fafd9348b08e328a480ef47e7f5ccccae847f808e84556ca2d5ba1d1187758bec94bb22dac656b32c3ab30fcc1b6a8
+  checksum: 10/76f3846a62082d9220cfb76cc54a07256c4f419a31af0a7817c67f67b70cb8bb4429c50e8c56d5e97a62d37e46f209aeb2031214e4a245dc56f4a3ad0882fe48
   languageName: node
   linkType: hard
 
@@ -265,8 +265,8 @@ __metadata:
   resolution: "@midnight-ntwrk/platform-js-sources@workspace:."
   dependencies:
     "@effect/build-utils": "npm:^0.8.9"
-    "@effect/platform": "npm:^0.95.0"
-    "@effect/vitest": "npm:^0.28.0"
+    "@effect/platform": "npm:^0.96.0"
+    "@effect/vitest": "npm:^0.29.0"
     "@eslint/js": "npm:^10.0.1"
     "@tsconfig/node22": "npm:^22.0.5"
     "@types/node": "npm:^25.5.0"
@@ -292,7 +292,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/platform-js@workspace:platform-js"
   dependencies:
-    "@effect/platform": "npm:^0.95.0"
+    "@effect/platform": "npm:^0.96.0"
     effect: "npm:^3.21.0"
     tslib: "npm:^2.8.1"
   languageName: unknown
@@ -2166,7 +2166,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"msgpackr@npm:^1.11.4":
+"msgpackr@npm:^1.11.10":
   version: 1.11.12
   resolution: "msgpackr@npm:1.11.12"
   dependencies:
