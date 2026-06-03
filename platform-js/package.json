@@ -19,7 +19,7 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@effect/platform": "^0.95.0",
+    "@effect/platform": "^0.96.1",
     "effect": "^3.21.0"
   },
   "resolutions": {
