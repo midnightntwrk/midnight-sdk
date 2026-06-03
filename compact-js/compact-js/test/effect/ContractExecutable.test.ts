@@ -27,9 +27,6 @@ import { ContractState, sampleSigningKey } from '@midnight-ntwrk/compact-runtime
 import {
   ContractDeploy,
   ContractState as LedgerContractState,
-  LedgerParameters,
-  partitionTranscripts,
-  PreTranscript,
   type ReplaceAuthority,
   type VerifierKeyInsert,
   type VerifierKeyRemove
@@ -147,32 +144,11 @@ describe('ContractExecutable', () => {
           privateState: { count: 0 }
         });
 
-        expect(result.public.contractState).toBeDefined();
-        expect(result.private.privateState).toMatchObject({ count: 1 });
+        expect(result.calls[result.calls.length - 1].public.contractState).toBeDefined();
+        expect(result.privateState).toMatchObject({ count: 1 });
       })
     );
 
-    it.effect('should expose the PreTranscript used to derive the partitioned transcript', () =>
-      Effect.gen(function* () {
-        const result = yield* contract.circuit(Contract.ProvableCircuitId<CounterContract>('increment'), {
-          address: ContractAddress.ContractAddress(deployment.address),
-          contractState: asContractState(deployment.initialState),
-          privateState: { count: 0 }
-        });
-
-        expect(result.public.preTranscript).toBeInstanceOf(PreTranscript);
-
-        const [guaranteed, fallible] = result.public.partitionedTranscript;
-        const repartitioned = partitionTranscripts(
-          [result.public.preTranscript],
-          LedgerParameters.initialParameters()
-        );
-        expect(repartitioned).toHaveLength(1);
-        const [reGuaranteed, reFallible] = repartitioned[0];
-        expect(reGuaranteed?.program).toEqual(guaranteed?.program);
-        expect(reFallible?.program).toEqual(fallible?.program);
-      })
-    );
   });
 
   describe('contract maintenance operations', () => {

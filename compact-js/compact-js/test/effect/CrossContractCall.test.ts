@@ -24,7 +24,7 @@ import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import { ContractDeploy, ContractState as LedgerContractState } from '@midnight-ntwrk/ledger-v8';
-import { ConfigProvider, Effect, Layer } from 'effect';
+import { ConfigProvider, Effect, Layer, Option } from 'effect';
 
 import { CCCInnerContract, CCCOuterContract } from '../contract';
 
@@ -107,21 +107,55 @@ describe('cross-contract calls', () => {
     })
   );
 
-  it.effect('getInner reads callee state from stateProvider', () =>
+  it.effect('incrementInner captures every sub-call plus the root, in trace order', () =>
     Effect.gen(function* () {
-      const { public: { contractState } } = yield* inner.circuit(
+      const result = yield* outer.circuit(
+        Contract.ProvableCircuitId<CCCOuterContract>('incrementInner'),
+        outerContext({ getContractState: async (_blockHash, address) => chainStates.get(address) }),
+        1n
+      );
+
+      // incrementInner calls inner.getV() then inner.setV(); both sub-calls precede the root.
+      expect(result.calls.map((call) => call.circuitId)).toEqual(['getV', 'setV', 'incrementInner']);
+
+      const rootCall = result.calls[result.calls.length - 1];
+      const subCalls = result.calls.slice(0, -1);
+
+      // The root call is no one's callee, so it carries no communication commitment.
+      expect(Option.isNone(rootCall.communicationCommitment)).toBe(true);
+      // Each sub-call is bound to its caller by a communication commitment, and targets `inner`
+      // (a different contract than the root).
+      for (const subCall of subCalls) {
+        expect(Option.isSome(subCall.communicationCommitment)).toBe(true);
+        expect(subCall.contractAddress).not.toBe(rootCall.contractAddress);
+      }
+    })
+  );
+
+  it.effect('getInner reads callee state and returns the root result plus one sub-call', () =>
+    Effect.gen(function* () {
+      const setVResult = yield* inner.circuit(
         Contract.ProvableCircuitId<CCCInnerContract>('setV'),
         { address: ContractAddress.ContractAddress(innerDeploy.address), contractState: chainStates.get(innerDeploy.address)!, privateState: undefined },
         5n
       );
+      // inner.setV is a leaf call: a single entry with no communication commitment.
+      expect(setVResult.calls).toHaveLength(1);
+      expect(Option.isNone(setVResult.calls[0].communicationCommitment)).toBe(true);
+      const contractState = setVResult.calls[setVResult.calls.length - 1].public.contractState;
       chainStates.get(innerDeploy.address)!.data = new ChargedState(contractState);
 
-      const { private: { result } } = yield* outer.circuit(
+      const result = yield* outer.circuit(
         Contract.ProvableCircuitId<CCCOuterContract>('getInner'),
         outerContext({ getContractState: async (_blockHash, address) => chainStates.get(address) })
       );
 
-      expect(result).toBe(5n);
+      // The application-facing result belongs to the root contract.
+      expect(result.result).toBe(5n);
+      // getInner calls inner.getV(): one sub-call (commitment present) then the root (none).
+      expect(result.calls.map((call) => call.circuitId)).toEqual(['getV', 'getInner']);
+      expect(Option.isSome(result.calls[0].communicationCommitment)).toBe(true);
+      expect(Option.isNone(result.calls[1].communicationCommitment)).toBe(true);
     })
   );
 });
