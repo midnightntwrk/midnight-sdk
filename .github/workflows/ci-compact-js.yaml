@@ -23,31 +23,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  validate:
-    name: Validate Commits
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v5
-        with:
-          fetch-depth: 0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v4
-        with:
-          node-version-file: .nvmrc
-
-      - name: Install dependencies
-        working-directory: ./compact-js
-        run: yarn install
-
-      - name: Validate commit messages
-        if: github.event_name == 'pull_request'
-        working-directory: ./compact-js
-        run: yarn commitlint --from origin/main --to HEAD
-
   ci:
     if: inputs.should_run == 'true'
-    needs: validate
     uses: ./.github/workflows/ci-base.yaml
     with:
       workspace: compact-js

@@ -67,8 +67,12 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
-      - name: Configure yarn
-        run: yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+      - name: Configure npm registry authentication
+        run: |
+          cat >> ~/.npmrc << EOF
+          @midnight-ntwrk:registry=https://npm.pkg.github.com
+          //npm.pkg.github.com/:_authToken=${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+          EOF
 
       - name: Cache Turbo and Yarn dependencies
         uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
