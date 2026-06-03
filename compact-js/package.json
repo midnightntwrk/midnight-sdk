@@ -27,7 +27,6 @@
   "devDependencies": {
     "@commitlint/cli": "^19.0.0",
     "@commitlint/config-conventional": "^19.0.0",
-    "conventional-changelog-cli": "^4.1.0",
     "@effect/build-utils": "^0.8.9",
     "@effect/cluster": "^0.57.0",
     "@effect/experimental": "^0.59.0",
@@ -44,6 +43,7 @@
     "@types/node": "^25.5.0",
     "@vitest/coverage-v8": "^4.1.0",
     "@vitest/ui": "^4.1.0",
+    "conventional-changelog-cli": "^4.1.0",
     "eslint": "^10.0.3",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.4",

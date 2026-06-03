@@ -24,4 +24,3 @@ logs
 .eslintcache
 .rollup.cache
 .DS_Store
-.changeset-pre.json
