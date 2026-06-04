@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@effect/build-utils": "^0.8.9",
-    "@effect/vitest": "^0.28.0",
+    "@effect/vitest": "^0.29.0",
     "@eslint/js": "^10.0.1",
     "@tsconfig/node22": "^22.0.5",
     "@types/node": "^25.5.0",
