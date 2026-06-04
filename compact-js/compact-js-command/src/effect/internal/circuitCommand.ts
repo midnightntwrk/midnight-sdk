@@ -25,7 +25,6 @@ import {
   ChargedState as LedgerChargedState,
   communicationCommitmentRandomness,
   ContractCallPrototype,
-  type ContractOperation as LedgerContractOption,
   type ContractState as LedgerContractState,
   Intent,
   StateValue as LedgerStateValue,
@@ -193,7 +192,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       intent = intent.addCall(new ContractCallPrototype(
         call.contractAddress,
         call.circuitId,
-        callLedgerState.operation(call.circuitId) as LedgerContractOption,
+        yield* ContractState.operationForCircuit(callLedgerState, call.circuitId, call.contractAddress),
         call.public.partitionedTranscript[0],
         call.public.partitionedTranscript[1],
         call.private.privateTranscriptOutputs,
