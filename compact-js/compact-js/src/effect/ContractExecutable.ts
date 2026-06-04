@@ -15,9 +15,12 @@
 
 import {
   type AlignedValue,
+  type CallProofData,
+  type CommunicationCommitmentData,
   CompactError,
   ContractMaintenanceAuthority,
   type ContractState,
+  type ContractStateProvider,
   createCircuitContext,
   createConstructorContext,
   decodeZswapLocalState,
@@ -46,12 +49,13 @@ import {
   StateValue as LedgerStateValue,
   type Transcript,
   VerifierKeyInsert,
-  VerifierKeyRemove} from '@midnight-ntwrk/ledger-v8';
+  VerifierKeyRemove
+} from '@midnight-ntwrk/ledger-v8';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
+import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Effect, Either,type Layer, Option } from 'effect';
+import { Effect, Either, type Layer, Option } from 'effect';
 import { dual, identity } from 'effect/Function';
 import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 
@@ -164,7 +168,10 @@ export declare namespace ContractExecutable {
     readonly privateState: PS;
     readonly zswapLocalState?: ZswapLocalState;
     readonly ledgerParameters?: LedgerParameters;
-  }
+  } & (
+      | { readonly stateProvider?: undefined; readonly parentBlockHash?: undefined }
+      | { readonly stateProvider: ContractStateProvider; readonly parentBlockHash: string }
+    )
 
   export type DeployResultPublic = {
     readonly contractState: ContractState;
@@ -180,28 +187,49 @@ export declare namespace ContractExecutable {
   };
 
   export type PartitionedTranscript = [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined];
-  export type CallResultPublic = {
+  export type ContractCallPublic = {
     readonly contractState: StateValue;
     readonly publicTranscript: Op<AlignedValue>[];
     readonly partitionedTranscript: PartitionedTranscript;
-    /**
-     * The {@link PreTranscript} used to derive {@link partitionedTranscript}. Pass verbatim to
-     * `Transaction.addCalls(...)` (via `PrePartitionContractCall`) to consume this call in a
-     * higher-level intent without losing the commitment indices accumulated during execution.
-     */
-    readonly preTranscript: PreTranscript;
   };
-  export type CallResultPrivate<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
+  export type ContractCallPrivate = {
     readonly input: AlignedValue;
     readonly output: AlignedValue;
     readonly privateTranscriptOutputs: AlignedValue[];
-    readonly result: Contract.Contract.CircuitReturnType<C, K>;
-    readonly privateState: PS;
-    readonly zswapLocalState: ZswapLocalState;
   };
+
+  /**
+   * Proof data for a single contract call. One {@link ContractCall} is produced for every call
+   * made while executing a circuit — the root call plus one per cross-contract call —
+   * corresponding to the entries of the runtime's `callProofDataTrace`.
+   */
+  export type ContractCall = {
+    readonly contractAddress: ContractAddress.ContractAddress;
+    readonly circuitId: string;
+    readonly public: ContractCallPublic;
+    readonly private: ContractCallPrivate;
+    /**
+     * The communication commitment binding this call to its caller. Present (`Option.some`) for
+     * cross-contract sub-calls (callees); `Option.none` for the root call, which is no one's
+     * callee.
+     */
+    readonly communicationCommitment: Option.Option<CommunicationCommitmentData>;
+  };
+
+  /**
+   * The result of invoking a circuit.
+   *
+   * `calls` holds the proof data for every contract call made during execution, in
+   * `callProofDataTrace` order — callees first, the root call last. The application-facing
+   * `result`, `privateState`, and `zswapLocalState` belong to the root contract and are
+   * statically typed for it; sub-calls expose only proof data (other contracts' types are not
+   * known here, and only the root holds private/zswap state).
+   */
   export type CallResult<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
-    readonly public: CallResultPublic;
-    readonly private: CallResultPrivate<C, PS, K>;
+    readonly result: Contract.Contract.CircuitReturnType<C, K>;
+    readonly privateState: PS | undefined;
+    readonly zswapLocalState: ZswapLocalState;
+    readonly calls: readonly ContractCall[];
   };
 
   export type MaintenanceResultPublic = {
@@ -242,26 +270,37 @@ const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
   return ledgerQueryContext;
 }
 
-const partitionTranscript = (
-  txContext: QueryContext,
-  finalTxContext: QueryContext,
-  publicTranscript: Op<AlignedValue>[],
+// Partition the public transcripts of every call in the trace in a single batch.
+//
+// `partitionTranscripts` builds a caller->callee call graph across the whole batch by matching
+// each callee's communication commitment against the commitments its caller claimed, so it must
+// see every call at once (see midnight-ledger `construct.rs::partition_transcripts`). The
+// commitment rides on the *callee's* pre-transcript (`commCommData.commComm`); the root call has
+// no commitment and becomes the graph root. The returned array is in the same order as `trace`.
+const partitionAllTranscripts = (
+  trace: readonly CallProofData[],
   ledgerParameters: LedgerParameters | undefined
-): Either.Either<{ preTranscript: PreTranscript; partitionedTranscript: ContractExecutable.PartitionedTranscript }, Error> => {
-  const preTranscript = new PreTranscript(
-    Array.from(finalTxContext.comIndices).reduce(
-      (queryContext, entry) => queryContext.insertCommitment(...entry),
-      asLedgerQueryContext(txContext)
-    ),
-    publicTranscript
+): Either.Either<ContractExecutable.PartitionedTranscript[], Error> => {
+  const preTranscripts = trace.map(
+    (entry) =>
+      new PreTranscript(
+        Array.from(entry.finalQueryContext.comIndices).reduce(
+          (queryContext, comEntry) => queryContext.insertCommitment(...comEntry),
+          asLedgerQueryContext(entry.initialQueryContext)
+        ),
+        entry.publicTranscript,
+        entry.commCommData?.commComm
+      )
   );
-  const partitionedTranscripts = partitionTranscripts(
-    [preTranscript],
+  const partitioned = partitionTranscripts(
+    preTranscripts,
     ledgerParameters ?? LedgerParameters.initialParameters()
   );
-  return partitionedTranscripts.length === 1
-    ? Either.right({ preTranscript, partitionedTranscript: partitionedTranscripts[0] })
-    : Either.left(new Error(`Expected one transcript partition pair, received: ${partitionedTranscripts.length}`));
+  return partitioned.length === trace.length
+    ? Either.right(partitioned)
+    : Either.left(
+        new Error(`Expected ${trace.length} transcript partition pairs, received: ${partitioned.length}`)
+      );
 };
 
 class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implements ContractExecutable<C, PS, E, R> {
@@ -289,9 +328,9 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       contract: this.createContract()
     }).pipe(
       Effect.flatMap(({ zkConfigReader, keyConfig, contract }) =>
-        Effect.try({
-          try: () => {
-            const { currentContractState, currentPrivateState, currentZswapLocalState } = contract.initialState(
+        Effect.tryPromise({
+          try: async () => {
+            const { currentContractState, currentPrivateState, currentZswapLocalState } = await contract.initialState(
               createConstructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
               ...args
             );
@@ -305,7 +344,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             err instanceof CompactError
               ? ContractRuntimeError.make('Failed to initialize contract', err)
               : ContractConfigurationError.make(
-                  'Failed to configure constructor context with coin public key', undefined, err)
+                'Failed to configure constructor context with coin public key', undefined, err)
         }).pipe(
           Effect.flatMap(({ contractState, privateState, zswapLocalState }) =>
             Effect.gen(this, function* () {
@@ -320,7 +359,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                     contractState
                   );
                 }
-                
+
                 const operation = contractState.operation(provableCircuitId);
 
                 if (!operation) {
@@ -373,8 +412,8 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       contract: this.createContract()
     }).pipe(
       Effect.flatMap(({ keyConfig, contract }) =>
-        Effect.try({
-          try: () => {
+        Effect.tryPromise({
+          try: async () => {
             const circuit = contract.provableCircuits[provableCircuitId] as Contract.ProvableCircuit<
               PS,
               Contract.Contract.CircuitReturnType<C, K>
@@ -383,40 +422,46 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               throw new Error(`Circuit ${this.compiledContract.tag}#${provableCircuitId} could not be found.`);
             }
             const zswapLocalState = circuitContext.zswapLocalState
-                ? encodeZswapLocalState(circuitContext.zswapLocalState)
-                : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey))
-            const runtimeContext = createCircuitContext(circuitContext.address, zswapLocalState, circuitContext.contractState, circuitContext.privateState)
-            const initialTxContext = runtimeContext.currentQueryContext
-            return {
-              ...circuit(runtimeContext, ...args),
-              initialTxContext
-            };
+              ? encodeZswapLocalState(circuitContext.zswapLocalState)
+              : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey))
+            const runtimeContext = createCircuitContext(provableCircuitId, circuitContext.address, zswapLocalState, circuitContext.contractState, circuitContext.privateState, circuitContext.stateProvider, undefined, undefined, undefined, circuitContext.parentBlockHash)
+            return await circuit(runtimeContext, ...args);
           },
           catch: identity
         }).pipe(
-          Effect.flatMap(({ initialTxContext, result, context, proofData }) =>
+          Effect.flatMap(({ result, context }) =>
             Effect.gen(function* () {
-              const { preTranscript, partitionedTranscript } = yield* partitionTranscript(
-                initialTxContext,
-                context.currentQueryContext,
-                proofData.publicTranscript,
-                circuitContext.ledgerParameters
-              );
-              return {
+              // Every call made while executing the circuit, in trace order (callees first, the
+              // root call last). For a circuit with no cross-contract calls this has length 1.
+              const trace = context.callProofDataTrace;
+              const zswapLocalState = context.callContext.currentZswapLocalState;
+              if (zswapLocalState === undefined) {
+                throw new Error(`Circuit '${provableCircuitId}' returned no zswap local state`);
+              }
+              // Partition all calls' transcripts together (the partitioner needs the whole batch
+              // to reconstruct the caller/callee graph).
+              const partitioned = yield* partitionAllTranscripts(trace, circuitContext.ledgerParameters);
+              const calls: ContractExecutable.ContractCall[] = trace.map((entry, i) => ({
+                contractAddress: ContractAddress.ContractAddress(entry.contractAddress),
+                circuitId: entry.circuitId,
                 public: {
-                  contractState: context.currentQueryContext.state.state,
-                  publicTranscript: proofData.publicTranscript,
-                  partitionedTranscript,
-                  preTranscript
+                  contractState: entry.finalQueryContext.state.state,
+                  publicTranscript: entry.publicTranscript,
+                  partitionedTranscript: partitioned[i]
                 },
                 private: {
-                  result,
-                  input: proofData.input,
-                  output: proofData.output,
-                  privateTranscriptOutputs: proofData.privateTranscriptOutputs,
-                  privateState: context.currentPrivateState,
-                  zswapLocalState: decodeZswapLocalState(context.currentZswapLocalState)
-                }
+                  input: entry.input,
+                  output: entry.output,
+                  privateTranscriptOutputs: entry.privateTranscriptOutputs
+                },
+                communicationCommitment: Option.fromNullable(entry.commCommData)
+              }));
+              // `result`, `privateState`, and `zswapLocalState` belong to the root contract.
+              return {
+                result,
+                privateState: context.callContext.currentPrivateState,
+                zswapLocalState: decodeZswapLocalState(zswapLocalState),
+                calls
               };
             })
           ),
@@ -439,7 +484,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     return Effect.all({
       keyConfig: Configuration.Keys
     }).pipe(
-      Effect.flatMap(({ keyConfig  }) => Effect.gen(this, function* () {
+      Effect.flatMap(({ keyConfig }) => Effect.gen(this, function* () {
         const { contractState } = contractContext;
         const [cma, signingKey] = yield* this.createMaintenanceAuthority(newSigningKey, contractState);
         const ledger_cma = LedgerContractMaintenanceAuthority.deserialize(cma.serialize()) as unknown as LedgerContractMaintenanceAuthority;
@@ -472,7 +517,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     return Effect.all({
       keyConfig: Configuration.Keys
     }).pipe(
-      Effect.flatMap(({ keyConfig  }) => Effect.gen(this, function* () {
+      Effect.flatMap(({ keyConfig }) => Effect.gen(this, function* () {
         return yield* this.createSignedMaintenanceUpdate(
           () => {
             return Either.right([
@@ -495,7 +540,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     return Effect.all({
       keyConfig: Configuration.Keys
     }).pipe(
-      Effect.flatMap(({ keyConfig  }) => Effect.gen(this, function* () {
+      Effect.flatMap(({ keyConfig }) => Effect.gen(this, function* () {
         return yield* this.createSignedMaintenanceUpdate(
           () => {
             return Either.right([

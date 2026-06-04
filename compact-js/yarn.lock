@@ -684,7 +684,7 @@ __metadata:
     "@effect/workflow": "npm:^0.17.0"
     "@midnight-ntwrk/compact-js": "npm:^2.5.0"
     "@midnight-ntwrk/compact-js-node": "npm:^2.5.0"
-    "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
+    "@midnight-ntwrk/compact-runtime": "file:/Users/josephdenman/IdeaProjects/compact/runtime"
     "@midnight-ntwrk/ledger-v8": "npm:^8.0.3"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0"
@@ -760,7 +760,7 @@ __metadata:
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js"
   dependencies:
     "@effect/platform": "npm:^0.95.0"
-    "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
+    "@midnight-ntwrk/compact-runtime": "file:/Users/josephdenman/IdeaProjects/compact/runtime"
     "@midnight-ntwrk/ledger-v8": "npm:^8.0.3"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
     effect: "npm:^3.20.0"
@@ -768,14 +768,27 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/compact-runtime@npm:0.16.0":
-  version: 0.16.0
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.16.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.16.0%2F4a2d38a4237b0abd6d833c0ee94baa6318323a79"
+"@midnight-ntwrk/compact-runtime@file:/Users/josephdenman/IdeaProjects/compact/runtime::locator=%40midnight-ntwrk%2Fcompact-js%40workspace%3Acompact-js":
+  version: 0.16.101
+  resolution: "@midnight-ntwrk/compact-runtime@file:/Users/josephdenman/IdeaProjects/compact/runtime#/Users/josephdenman/IdeaProjects/compact/runtime::hash=e72233&locator=%40midnight-ntwrk%2Fcompact-js%40workspace%3Acompact-js"
   dependencies:
     "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
+    "@noble/hashes": "npm:^2.0.1"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/ef0c68d53bba6a04f336094c82c26b781082d7ce4ee09f0539009fb108776b36ea24b9a774292d9bbf9722b8a78d47254b5f80a613d4010a7f7d108514243023
+  checksum: 10/66d3846b7f0ee3413c5a3977d3c004ae27bd597a479b6ceb0172f53ff73a91e453a4b157d583dea697691264788944ba16f90c6996f0e73c3093ca2848f97a42
+  languageName: node
+  linkType: hard
+
+"@midnight-ntwrk/compact-runtime@file:/Users/josephdenman/IdeaProjects/compact/runtime::locator=%40midnight-ntwrk%2Fcompact-js-command%40workspace%3Acompact-js-command":
+  version: 0.16.101
+  resolution: "@midnight-ntwrk/compact-runtime@file:/Users/josephdenman/IdeaProjects/compact/runtime#/Users/josephdenman/IdeaProjects/compact/runtime::hash=e72233&locator=%40midnight-ntwrk%2Fcompact-js-command%40workspace%3Acompact-js-command"
+  dependencies:
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
+    "@noble/hashes": "npm:^2.0.1"
+    "@types/object-inspect": "npm:^1.8.1"
+    object-inspect: "npm:^1.12.3"
+  checksum: 10/66d3846b7f0ee3413c5a3977d3c004ae27bd597a479b6ceb0172f53ff73a91e453a4b157d583dea697691264788944ba16f90c6996f0e73c3093ca2848f97a42
   languageName: node
   linkType: hard
 
@@ -894,6 +907,13 @@ __metadata:
     "@emnapi/core": ^1.7.1
     "@emnapi/runtime": ^1.7.1
   checksum: 10/1db3dc7eeb981306b09360487bd8ce4dfa5588d273bd8ea9f07dccca1b4ade57b675414180fc9bb66966c6c50b17208b0263194993e2f7f92cc7af28bda4d1af
+  languageName: node
+  linkType: hard
+
+"@noble/hashes@npm:^2.0.1":
+  version: 2.2.0
+  resolution: "@noble/hashes@npm:2.2.0"
+  checksum: 10/b1b78bedc2a01394be047429f3d888905015fe8a09f1b7e43e0b5736b54133df62f73dcc73ede43af38e96e86156afb45b86973fdeaa95d9f0880333c3fc0907
   languageName: node
   linkType: hard
 

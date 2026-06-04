@@ -114,6 +114,35 @@ export const inputLedgerParamsFilePath = Options.file('input-ledger-params', { e
   }))
 );
 
+/** @internal */
+export const outputContractStatesDirPath = Options.directory('output-contract-states-dir', { exists: 'either' }).pipe(
+  Options.withDescription(
+    'A directory into which the updated ledger state of each cross-contract callee is written, each file ' +
+    'named by its contract address. The root contract\'s updated state is written via --output-oc instead. ' +
+    'Lets state be threaded across cross-contract calls without applying the transaction (feed this directory ' +
+    'back as --contract-states-dir). The directory is created if absent.'
+  ),
+  Options.optional,
+  Options.mapEffect((_) => Option.match(_, {
+    onSome: (dirPath) => Path.Path.pipe(Effect.map((path) => Option.some(path.resolve(dirPath)))),
+    onNone: () => Effect.succeed(Option.none())
+  }))
+);
+
+/** @internal */
+export const inputContractStatesDirPath = Options.directory('contract-states-dir', { exists: 'yes' }).pipe(
+  Options.withDescription(
+    'A directory of ledger-serialized contract-state files, each named by its contract address, used to ' +
+    'resolve the targets of cross-contract calls. When provided, the invoked circuit may call into other ' +
+    'contracts and the resulting intent will include a call for each.'
+  ),
+  Options.optional,
+  Options.mapEffect((_) => Option.match(_, {
+    onSome: (dirPath) => Path.Path.pipe(Effect.map((path) => Option.some(path.resolve(dirPath)))),
+    onNone: () => Effect.succeed(Option.none())
+  }))
+);
+
 export type ConfigOptionInput = Command.Command.ParseConfig<{
   config: typeof config;
 }>;
