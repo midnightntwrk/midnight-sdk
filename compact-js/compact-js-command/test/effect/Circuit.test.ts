@@ -20,7 +20,14 @@ import { FileSystem } from '@effect/platform';
 import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
 import { circuitCommand,ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
-import { LedgerParameters } from '@midnight-ntwrk/ledger-v8';
+import {
+  type ContractCall,
+  Intent,
+  LedgerParameters,
+  type PreBinding,
+  type PreProof,
+  type SignatureEnabled
+} from '@midnight-ntwrk/ledger-v8';
 import { Console,Effect, Layer } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
@@ -103,6 +110,47 @@ describe('Circuit Command', () => {
       Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
+      Effect.provide(testLayer)
+    ),
+    30_000
+  );
+
+  it.effect('produces a valid single-call intent for a non-cross-contract circuit', () =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const COUNTER_ADDRESS = '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a';
+      yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
+
+      const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+
+      yield* cli([
+        'node', 'circuit.ts',
+        '-c', COUNTER_CONFIG_FILEPATH,
+        '--input', COUNTER_STATE_FILEPATH,
+        '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
+        '--output', COUNTER_OUTPUT_FILEPATH,
+        '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+        '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
+        '--output-result', COUNTER_RESULT_FILEPATH,
+        COUNTER_ADDRESS, 'increment'
+      ]);
+
+      // With no --contract-states-dir the counter makes no cross-contract calls: the rewritten
+      // prototype-building path must still emit exactly one call — the root — for its own address.
+      const intent = Intent.deserialize<SignatureEnabled, PreProof, PreBinding>(
+        'signature', 'pre-proof', 'pre-binding', yield* fs.readFile(COUNTER_OUTPUT_FILEPATH)
+      );
+      const calls = intent.actions as ContractCall<PreProof>[];
+      expect(calls).toHaveLength(1);
+      expect(calls[0].address).toBe(COUNTER_ADDRESS);
+      const entryPoint = calls[0].entryPoint;
+      expect(typeof entryPoint === 'string' ? entryPoint : new TextDecoder().decode(entryPoint)).toBe('increment');
+    }).pipe(
+      Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
