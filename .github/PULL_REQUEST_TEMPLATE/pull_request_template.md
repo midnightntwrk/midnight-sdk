@@ -2,6 +2,17 @@
 
 <!-- Describe your changes briefly here, with some context as to why this is needed. -->
 
+## Release Notes
+
+<!-- Compact.js uses Conventional Commits for automatic changelog generation.
+CHANGELOGs are generated from commit messages during release. -->
+
+- [ ] My commit messages follow [Conventional Commits](https://www.conventionalcommits.org/) format
+  - Use `feat:` for new features
+  - Use `fix:` for bug fixes
+  - Use `chore:` for tooling/dependencies
+  - Use `BREAKING CHANGE:` footer for breaking changes
+
 ## Submission Checklist
 
 <!-- Please check all the boxes that apply to your pull request. -->

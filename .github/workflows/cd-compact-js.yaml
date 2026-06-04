@@ -3,7 +3,7 @@ env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 permissions:
-  contents: read
+  contents: write
   issues: read
   id-token: write
   packages: write
@@ -35,6 +35,8 @@ jobs:
     needs: ci
     name: Publish Packages
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.extract_version.outputs.version }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v5
 
@@ -54,3 +56,43 @@ jobs:
           package-archive-name: 'compact-js'
           working-directory: ./compact-js
           auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Extract version for release
+        id: extract_version
+        run: |
+          version=$(jq -r '.version' ./compact-js/compact-js/package.json)
+          base_version=$(echo "$version" | sed 's/-alpha.*//')
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "base_version=${base_version}" >> "$GITHUB_OUTPUT"
+
+  release:
+    needs: publish
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v5
+
+      - name: Create git tag
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          base_version=$(echo "${{ needs.publish.outputs.version }}" | sed 's/-alpha.*//')
+          git tag -a "compact-js-v${base_version}" -m "Release compact-js-v${base_version}"
+          git push origin "compact-js-v${base_version}"
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          # Extract the latest release notes from CHANGELOG.md (between first and second ## heading)
+          changelog=$(sed -n '/^## \[/,/^## \[/{/^## \[/!p;}' ./compact-js/CHANGELOG.md | head -n -1 | sed '/^$/d' | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "body=$changelog" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          base_version=$(echo "${{ needs.publish.outputs.version }}" | sed 's/-alpha.*//')
+          gh release create "compact-js-v${base_version}" \
+            --title "compact-js v${base_version}" \
+            --notes "${{ steps.changelog.outputs.body }}" \
+            --repo "${{ github.repository }}"
