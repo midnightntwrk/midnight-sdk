@@ -2,6 +2,8 @@ name: CI
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
+permissions: {}
+
 on:
   push:
     branches:
@@ -11,14 +13,6 @@ on:
   schedule:
     - cron: "30 4 * * *"
 
-permissions:
-  contents: read
-  issues: read
-  id-token: write
-  packages: write
-  checks: write
-  pull-requests: write
-
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
@@ -26,6 +20,8 @@ concurrency:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       build_c_js: ${{ steps.build-targets.outputs.compact-js }}
       build_p_js: ${{ steps.build-targets.outputs.platform-js }}
@@ -48,6 +44,10 @@ jobs:
   ci-platformjs:
     needs: ci
     name: Build, Lint and Test Platform.js
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     with:
       should_run: ${{ needs.ci.outputs.build_p_js }}
     uses: ./.github/workflows/ci-platform-js.yaml
@@ -56,6 +56,10 @@ jobs:
   ci-compactjs:
     needs: ci
     name: Build, Lint and Test Compact.js
+    permissions:
+      contents: read
+      checks: write
+      pull-requests: write
     with:
       should_run: ${{ needs.ci.outputs.build_c_js }}
     uses: ./.github/workflows/ci-compact-js.yaml
