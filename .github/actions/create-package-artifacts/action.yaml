@@ -36,6 +36,25 @@ runs:
       if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
       run: yarn workspaces foreach -A version ${{ steps.vars.outputs.target_version }}
 
+    - name: Generate CHANGELOGs from commits
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
+      run: |
+        for pkg in compact-js compact-js-node compact-js-command; do
+          (cd "$pkg" && yarn changelog || true)
+        done
+
+    - name: Commit CHANGELOG and version updates
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
+      run: |
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        git config user.name "github-actions[bot]"
+        git add -A
+        git commit -m "chore: bump versions and generate CHANGELOGs" || true
+
     - name: Create packages
       shell: bash
       working-directory: ${{ inputs.working-directory }}
