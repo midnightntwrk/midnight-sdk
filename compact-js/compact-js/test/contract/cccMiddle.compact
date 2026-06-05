@@ -15,16 +15,22 @@
 
 import CompactStandardLibrary;
 
-contract cccMiddle {
-  circuit getInner(): Field;
+contract cccInner {
+  circuit getV(): Field;
+  circuit setV(value: Field): [];
 }
 
-export ledger middle: cccMiddle;
+export ledger inner: cccInner;
 
-constructor(m: cccMiddle) {
-  middle = disclose(m);
+constructor(i: cccInner) {
+  inner = disclose(i);
 }
 
-export circuit getThroughMiddle(): Field {
-  return middle.getInner();
+export circuit incrementInner(increment_amount: Field):[] {
+  const current = inner.getV();
+  inner.setV(current + disclose(increment_amount));
+}
+
+export circuit getInner(): Field {
+  return inner.getV();
 }

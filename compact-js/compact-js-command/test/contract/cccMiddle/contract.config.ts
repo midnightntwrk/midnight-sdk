@@ -15,17 +15,17 @@
 
 import { CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
 
-import { Contract as C_ } from '../../../../compact-js/test/contract/managed/cccOuter/contract/index';
+import { Contract as C_ } from '../../../../compact-js/test/contract/managed/cccMiddle/contract/index';
 
-type CCCOuterContract = C_<undefined>;
-const CCCOuterContract = C_;
+type CCCMiddleContract = C_<undefined>;
+const CCCMiddleContract = C_;
 
 const createInitialPrivateState: () => undefined = () => undefined;
 
 export default {
-  contractExecutable: CompiledContract.make<CCCOuterContract>('CCCOuter', CCCOuterContract).pipe(
+  contractExecutable: CompiledContract.make<CCCMiddleContract>('CCCMiddle', CCCMiddleContract).pipe(
     CompiledContract.withVacantWitnesses,
-    CompiledContract.withCompiledFileAssets('../../../../compact-js/test/contract/managed/cccOuter'),
+    CompiledContract.withCompiledFileAssets('../../../../compact-js/test/contract/managed/cccMiddle'),
     ContractExecutable.make
   ),
   createInitialPrivateState,

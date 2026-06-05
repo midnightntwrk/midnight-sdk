@@ -21,7 +21,6 @@ import { Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
-import { afterAll, beforeAll } from 'vitest';
 import { CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
 import { circuitCommand, ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
@@ -37,9 +36,10 @@ import {
 } from '@midnight-ntwrk/ledger-v8';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ConfigProvider, Console, Effect, Layer } from 'effect';
+import { afterAll, beforeAll } from 'vitest';
 
 import { Contract as CCCInner_, ledger as innerLedger } from '../../../compact-js/test/contract/managed/cccInner/contract/index';
-import { Contract as CCCOuter_ } from '../../../compact-js/test/contract/managed/cccOuter/contract/index';
+import { Contract as CCCMiddle_ } from '../../../compact-js/test/contract/managed/cccMiddle/contract/index';
 import { ensureRemovePath } from './cleanup.js';
 import * as MockConsole from './MockConsole.js';
 
@@ -48,15 +48,15 @@ import * as MockConsole from './MockConsole.js';
 // barrel source) keeps these references outside this package's test `rootDir`.
 type CCCInnerContract = CCCInner_<undefined>;
 const CCCInnerContract = CCCInner_;
-type CCCOuterContract = CCCOuter_<undefined>;
-const CCCOuterContract = CCCOuter_;
+type CCCMiddleContract = CCCMiddle_<undefined>;
+const CCCMiddleContract = CCCMiddle_;
 
 const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
 
 const CCC_INNER_ASSETS_PATH = resolve(import.meta.dirname, '../../../compact-js/test/contract/managed/cccInner');
-const CCC_OUTER_ASSETS_PATH = resolve(import.meta.dirname, '../../../compact-js/test/contract/managed/cccOuter');
+const CCC_MIDDLE_ASSETS_PATH = resolve(import.meta.dirname, '../../../compact-js/test/contract/managed/cccMiddle');
 
-const OUTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/cccOuter/contract.config.ts');
+const MIDDLE_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/cccMiddle/contract.config.ts');
 // A working root unique to this process, outside the repo tree, so parallel test files never share
 // or race on filesystem state. Each test gets its own subdirectory within it.
 const WORK_ROOT = mkdtempSync(join(tmpdir(), 'ccc-circuit-'));
@@ -74,8 +74,8 @@ const innerTestLayer = (configMap: Map<string, string>) =>
     Layer.provide(Layer.setConfigProvider(ConfigProvider.fromMap(configMap, { pathDelim: '_' }).pipe(ConfigProvider.constantCase)))
   );
 
-const outerTestLayer = (configMap: Map<string, string>) =>
-  Layer.mergeAll(ZKFileConfiguration.layer(CCC_OUTER_ASSETS_PATH), Configuration.layer).pipe(
+const middleTestLayer = (configMap: Map<string, string>) =>
+  Layer.mergeAll(ZKFileConfiguration.layer(CCC_MIDDLE_ASSETS_PATH), Configuration.layer).pipe(
     Layer.provideMerge(NodeContext.layer),
     Layer.provide(Layer.setConfigProvider(ConfigProvider.fromMap(configMap, { pathDelim: '_' }).pipe(ConfigProvider.constantCase)))
   );
@@ -86,9 +86,9 @@ const innerExecutable = CompiledContract.make<CCCInnerContract>('CCCInner', CCCI
   ContractExecutable.make
 );
 
-const outerExecutable = CompiledContract.make<CCCOuterContract>('CCCOuter', CCCOuterContract).pipe(
+const middleExecutable = CompiledContract.make<CCCMiddleContract>('CCCMiddle', CCCMiddleContract).pipe(
   CompiledContract.withVacantWitnesses,
-  CompiledContract.withCompiledFileAssets(CCC_OUTER_ASSETS_PATH),
+  CompiledContract.withCompiledFileAssets(CCC_MIDDLE_ASSETS_PATH),
   ContractExecutable.make
 );
 
@@ -101,15 +101,15 @@ const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeCon
     );
   }).pipe(Layer.unwrapEffect);
 
-// A `cccOuter` (root) and the `cccInner` it targets, deployed once for the whole file. Deploying is
+// A `cccMiddle` (root) and the `cccInner` it targets, deployed once for the whole file. Deploying is
 // the expensive part (proving), and the resulting initial states never change, so each test reuses
 // these bytes rather than re-deploying — keeping the per-process count of heavy runtime executions
-// low. `outerStateBytes`/`innerStateBytes` are ledger-serialized contract states, exactly the
+// low. `middleStateBytes`/`innerStateBytes` are ledger-serialized contract states, exactly the
 // `--input` / `--contract-states-dir` format the command consumes.
 let innerAddress: string;
-let outerAddress: string;
+let middleAddress: string;
 let innerStateBytes: Uint8Array;
-let outerStateBytes: Uint8Array;
+let middleStateBytes: Uint8Array;
 
 beforeAll(async () => {
   const fixtures = await Effect.runPromise(Effect.gen(function* () {
@@ -119,20 +119,20 @@ beforeAll(async () => {
     const innerResult = yield* inner.initialize(undefined);
     const innerDeploy = new ContractDeploy(asLedgerContractState(innerResult.public.contractState));
 
-    const outer = outerExecutable.pipe(
-      ContractExecutable.provide(outerTestLayer(new Map([['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY]])))
+    const middle = middleExecutable.pipe(
+      ContractExecutable.provide(middleTestLayer(new Map([['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY]])))
     );
-    const outerResult = yield* outer.initialize(undefined, { bytes: Buffer.from(innerDeploy.address, 'hex') });
-    const outerDeploy = new ContractDeploy(asLedgerContractState(outerResult.public.contractState));
+    const middleResult = yield* middle.initialize(undefined, { bytes: Buffer.from(innerDeploy.address, 'hex') });
+    const middleDeploy = new ContractDeploy(asLedgerContractState(middleResult.public.contractState));
 
     return {
       innerAddress: innerDeploy.address,
-      outerAddress: outerDeploy.address,
+      middleAddress: middleDeploy.address,
       innerStateBytes: innerDeploy.initialState.serialize(),
-      outerStateBytes: outerDeploy.initialState.serialize()
+      middleStateBytes: middleDeploy.initialState.serialize()
     };
   }));
-  ({ innerAddress, outerAddress, innerStateBytes, outerStateBytes } = fixtures);
+  ({ innerAddress, middleAddress, innerStateBytes, middleStateBytes } = fixtures);
 }, 60_000);
 
 afterAll(async () => {
@@ -157,7 +157,7 @@ interface Workspace {
 let workspaceCounter = 0;
 
 /**
- * Lays down a fresh, isolated working directory seeded with the command's inputs: the outer (root)
+ * Lays down a fresh, isolated working directory seeded with the command's inputs: the middle (root)
  * state at `--input`, the inner (callee) state under the `--contract-states-dir` directory named by
  * its address, and a `null` private state. Returns the absolute paths for the command's options.
  */
@@ -168,7 +168,7 @@ const prepareWorkspace = Effect.gen(function* () {
   yield* fs.makeDirectory(statesIn, { recursive: true });
   yield* fs.writeFile(join(statesIn, innerAddress), innerStateBytes);
   const input = join(dir, 'input.bin');
-  yield* fs.writeFile(input, outerStateBytes);
+  yield* fs.writeFile(input, middleStateBytes);
   const ps = join(dir, 'input.ps.json');
   yield* fs.writeFileString(ps, JSON.stringify(null));
   return {
@@ -195,7 +195,7 @@ const circuitArgv = (
   ...args: string[]
 ): string[] => [
   'node', 'circuit.ts',
-  '-c', OUTER_CONFIG_FILEPATH,
+  '-c', MIDDLE_CONFIG_FILEPATH,
   '--input', input,
   '--input-ps', w.ps,
   ...(opts.statesIn ? ['--contract-states-dir', opts.statesIn] : []),
@@ -205,7 +205,7 @@ const circuitArgv = (
   '--output-ps', w.outputPs,
   '--output-zswap', w.outputZswap,
   '--output-result', w.outputResult,
-  outerAddress, circuitId, ...args
+  middleAddress, circuitId, ...args
 ];
 
 /** Deserialize the unproven `Intent` the command writes to `--output`, as its contract calls. */
@@ -240,12 +240,12 @@ describe('Circuit Command (cross-contract calls)', () => {
 
       const calls = readIntentCalls(yield* fs.readFile(w.output));
 
-      // incrementInner emits one call per trace entry: the root (incrementInner on outer) plus the
+      // incrementInner emits one call per trace entry: the root (incrementInner on middle) plus the
       // two sub-calls (inner.getV, inner.setV). The serialized intent does not preserve the trace's
       // callees-first ordering, so assert on the multiset rather than a fixed sequence.
       expect(calls).toHaveLength(3);
       const byAddress = (address: string) => calls.filter((c) => c.address === address);
-      expect(byAddress(outerAddress).map(entryPointOf)).toEqual(['incrementInner']);
+      expect(byAddress(middleAddress).map(entryPointOf)).toEqual(['incrementInner']);
       expect(byAddress(innerAddress).map(entryPointOf).sort()).toEqual(['getV', 'setV']);
     }).pipe(Effect.provide(testLayer)),
     60_000
@@ -259,9 +259,9 @@ describe('Circuit Command (cross-contract calls)', () => {
       // The handler resolves each call's `ContractOperation` from that contract's on-chain state:
       // the root from `--input`, sub-calls from `<dir>/<address>`. Assert those source states
       // actually carry the operations the trace names — this is what makes the resolution valid.
-      const outerState = LedgerContractState.deserialize(yield* fs.readFile(w.input));
-      expect(outerState.operation('incrementInner')).toBeDefined();
-      expect(outerState.operation('getInner')).toBeDefined();
+      const middleState = LedgerContractState.deserialize(yield* fs.readFile(w.input));
+      expect(middleState.operation('incrementInner')).toBeDefined();
+      expect(middleState.operation('getInner')).toBeDefined();
 
       const innerState = LedgerContractState.deserialize(yield* fs.readFile(join(w.statesIn, innerAddress)));
       expect(innerState.operation('getV')).toBeDefined();
@@ -276,18 +276,18 @@ describe('Circuit Command (cross-contract calls)', () => {
       // Each prototype is built by resolving its operation from the state addressed by that call.
       // A built prototype proves the lookup succeeded (a missing operation fails loudly and writes
       // no output). The address↔circuit pairing pins each call to its only possible source: the
-      // root's `incrementInner` can come only from the outer `--input` state, and `getV`/`setV` only
+      // root's `incrementInner` can come only from the middle `--input` state, and `getV`/`setV` only
       // from the inner state read out of `--contract-states-dir`.
       const calls = readIntentCalls(yield* fs.readFile(w.output));
       expect(calls).toHaveLength(3);
       const circuitsAt = (address: string) => calls.filter((c) => c.address === address).map(entryPointOf).sort();
-      expect(circuitsAt(outerAddress)).toEqual(['incrementInner']);
+      expect(circuitsAt(middleAddress)).toEqual(['incrementInner']);
       expect(circuitsAt(innerAddress)).toEqual(['getV', 'setV']);
     }).pipe(Effect.provide(testLayer)),
     60_000
   );
 
-  it.effect('--output-oc writes only the root (outer) updated state', () =>
+  it.effect('--output-oc writes only the root (middle) updated state', () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const w = yield* prepareWorkspace;
@@ -296,7 +296,7 @@ describe('Circuit Command (cross-contract calls)', () => {
 
       const ocState = LedgerContractState.deserialize(yield* fs.readFile(w.outputOc));
       const operations = ocState.operations().map(String);
-      // --output-oc is the root contract's state: it exposes the outer circuits, not the inner ones.
+      // --output-oc is the root contract's state: it exposes the middle circuits, not the inner ones.
       expect(operations).toEqual(expect.arrayContaining(['incrementInner', 'getInner']));
       expect(operations).not.toContain('getV');
       expect(operations).not.toContain('setV');
@@ -371,10 +371,10 @@ describe('Circuit Command (cross-contract calls)', () => {
       const fs = yield* FileSystem.FileSystem;
       const w = yield* prepareWorkspace;
 
-      // Replace the callee state with the *outer* state: it is not a valid `cccInner`, so the
+      // Replace the callee state with the *middle* state: it is not a valid `cccInner`, so the
       // cross-contract call cannot be resolved/executed. The command must surface a defined,
       // reported error and write no output — not crash with an opaque native fault.
-      yield* fs.writeFile(join(w.statesIn, innerAddress), outerStateBytes);
+      yield* fs.writeFile(join(w.statesIn, innerAddress), middleStateBytes);
 
       yield* cli(circuitArgv(w, { statesIn: w.statesIn }, w.input, 'incrementInner', '1'));
 
@@ -428,7 +428,7 @@ describe('Circuit Command (cross-contract calls)', () => {
       yield* cli(circuitArgv(w, { statesIn: w.statesIn, statesOut: w.statesOut }, w.input, 'incrementInner', '1'));
       expect(innerV(yield* fs.readFile(join(w.statesOut, innerAddress)))).toBe(1n);
 
-      // getInner just reads inner.getV(): one sub-call (inner) plus the root (outer), and the root's
+      // getInner just reads inner.getV(): one sub-call (inner) plus the root (middle), and the root's
       // result is the inner's value (`1`, serialized by the bigint replacer).
       yield* cli(circuitArgv(w, { statesIn: w.statesOut }, w.outputOc, 'getInner'));
 
@@ -437,7 +437,7 @@ describe('Circuit Command (cross-contract calls)', () => {
       const calls = readIntentCalls(yield* fs.readFile(w.output));
       expect(calls).toHaveLength(2);
       expect(calls.filter((c) => c.address === innerAddress).map(entryPointOf)).toEqual(['getV']);
-      expect(calls.filter((c) => c.address === outerAddress).map(entryPointOf)).toEqual(['getInner']);
+      expect(calls.filter((c) => c.address === middleAddress).map(entryPointOf)).toEqual(['getInner']);
     }).pipe(Effect.provide(testLayer)),
     90_000
   );

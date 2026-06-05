@@ -15,16 +15,33 @@
 
 import CompactStandardLibrary;
 
-contract cccMiddle {
-  circuit getInner(): Field;
+// The callee interface is the (already compiled) cccInner contract. This contract implements that
+// same interface itself, so when `self` points at this contract's own address a call to
+// `self.getV()` is a self-call.
+contract cccInner {
+  circuit getV(): Field;
+  circuit setV(value: Field): [];
 }
 
-export ledger middle: cccMiddle;
+export ledger v: Field;
+export ledger self: cccInner;
 
-constructor(m: cccMiddle) {
-  middle = disclose(m);
+constructor(s: cccInner) {
+  self = disclose(s);
 }
 
-export circuit getThroughMiddle(): Field {
-  return middle.getInner();
+export circuit getV(): Field {
+  return v;
+}
+
+export circuit setV(value: Field): [] {
+  v = disclose(value);
+}
+
+export circuit setSelf(s: cccInner): [] {
+  self = disclose(s);
+}
+
+export circuit callSelfGet(): Field {
+  return self.getV();
 }
