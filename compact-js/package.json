@@ -29,7 +29,7 @@
     "@commitlint/config-conventional": "^19.0.0",
     "@effect/build-utils": "^0.8.9",
     "@effect/cluster": "^0.57.0",
-    "@effect/experimental": "^0.59.0",
+    "@effect/experimental": "^0.60.0",
     "@effect/platform-node": "^0.106.0",
     "@effect/platform-node-shared": "^0.59.0",
     "@effect/rpc": "^0.74.0",
