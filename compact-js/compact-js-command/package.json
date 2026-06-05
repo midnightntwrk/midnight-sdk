@@ -13,7 +13,7 @@
   "dependencies": {
     "@effect/cli": "^0.74.0",
     "@effect/cluster": "^0.57.0",
-    "@effect/experimental": "^0.59.0",
+    "@effect/experimental": "^0.60.0",
     "@effect/platform": "^0.96.1",
     "@effect/platform-node": "^0.106.0",
     "@effect/platform-node-shared": "^0.59.0",
