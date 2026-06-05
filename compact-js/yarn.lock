@@ -375,6 +375,19 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@effect/platform@npm:^0.96.1":
+  version: 0.96.1
+  resolution: "@effect/platform@npm:0.96.1"
+  dependencies:
+    find-my-way-ts: "npm:^0.1.6"
+    msgpackr: "npm:^1.11.10"
+    multipasta: "npm:^0.2.7"
+  peerDependencies:
+    effect: ^3.21.2
+  checksum: 10/36d8b1d43d636be02f9119e0e6d981565a88801ec097bda1cae0ed65bea9fb1963226140b3f6b714f4ea9091a248bc20bf2cc0d775b238a9ef4010ddea48fa65
+  languageName: node
+  linkType: hard
+
 "@effect/printer-ansi@npm:^0.48.0":
   version: 0.48.0
   resolution: "@effect/printer-ansi@npm:0.48.0"
@@ -673,7 +686,7 @@ __metadata:
     "@effect/cli": "npm:^0.74.0"
     "@effect/cluster": "npm:^0.57.0"
     "@effect/experimental": "npm:^0.59.0"
-    "@effect/platform": "npm:^0.95.0"
+    "@effect/platform": "npm:^0.96.1"
     "@effect/platform-node": "npm:^0.106.0"
     "@effect/platform-node-shared": "npm:^0.59.0"
     "@effect/printer": "npm:^0.48.0"
@@ -701,7 +714,7 @@ __metadata:
   dependencies:
     "@effect/cluster": "npm:^0.57.0"
     "@effect/experimental": "npm:^0.59.0"
-    "@effect/platform": "npm:^0.95.0"
+    "@effect/platform": "npm:^0.96.1"
     "@effect/platform-node": "npm:^0.106.0"
     "@effect/rpc": "npm:^0.74.0"
     "@effect/sql": "npm:^0.50.0"
@@ -722,7 +735,7 @@ __metadata:
     "@effect/build-utils": "npm:^0.8.9"
     "@effect/cluster": "npm:^0.57.0"
     "@effect/experimental": "npm:^0.59.0"
-    "@effect/platform": "npm:^0.95.0"
+    "@effect/platform": "npm:^0.96.1"
     "@effect/platform-node": "npm:^0.106.0"
     "@effect/platform-node-shared": "npm:^0.59.0"
     "@effect/rpc": "npm:^0.74.0"
@@ -759,7 +772,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js"
   dependencies:
-    "@effect/platform": "npm:^0.95.0"
+    "@effect/platform": "npm:^0.96.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
     "@midnight-ntwrk/ledger-v8": "npm:^8.0.3"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
@@ -3895,6 +3908,18 @@ __metadata:
   bin:
     download-msgpackr-prebuilds: bin/download-prebuilds.js
   checksum: 10/4bfe45cf6968310570765951691f1b8e85b6a837e5197b8232fc9285eef4b457992e73118d9d07c92a52cc23f9e837897b135e17ea0f73e3604540434051b62f
+  languageName: node
+  linkType: hard
+
+"msgpackr@npm:^1.11.10":
+  version: 1.11.12
+  resolution: "msgpackr@npm:1.11.12"
+  dependencies:
+    msgpackr-extract: "npm:^3.0.2"
+  dependenciesMeta:
+    msgpackr-extract:
+      optional: true
+  checksum: 10/8077d7ebf661df831ba119a277588b7e00149d25b6f5630e311c2415504553ce695347a351a7198cdf1f596feaaf91121adc3181e483f7d2c9822484b73babf2
   languageName: node
   linkType: hard
 
