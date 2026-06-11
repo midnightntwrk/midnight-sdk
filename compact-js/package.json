@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/compact-js-sources",
   "description": "",
-  "version": "2.5.1",
+  "version": "2.5.3",
   "private": true,
   "packageManager": "yarn@4.10.3",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
@@ -18,10 +18,13 @@
     "test": "turbo run test",
     "package": "turbo run package",
     "lint": "eslint",
-    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s"
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
+    "build:submodule-runtime": "cd ../compact-submodule && nix --extra-experimental-features nix-command --extra-experimental-features flakes develop --command bash -c \"cd ./runtime && yarn build\"",
+    "build-submodule": "yarn build:submodule-runtime && turbo run build"
   },
   "dependencies": {
-    "@effect/platform": "^0.95.0",
+    "@effect/platform": "^0.96.1",
+    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.1",
     "effect": "^3.20.0"
   },
   "devDependencies": {
@@ -29,12 +32,12 @@
     "@commitlint/config-conventional": "^19.0.0",
     "@effect/build-utils": "^0.8.9",
     "@effect/cluster": "^0.57.0",
-    "@effect/experimental": "^0.59.0",
+    "@effect/experimental": "^0.60.0",
     "@effect/platform-node": "^0.106.0",
     "@effect/platform-node-shared": "^0.59.0",
     "@effect/rpc": "^0.74.0",
     "@effect/sql": "^0.50.0",
-    "@effect/vitest": "^0.28.0",
+    "@effect/vitest": "^0.29.0",
     "@effect/workflow": "^0.17.0",
     "@eslint/js": "^10.0.1",
     "@midnight-ntwrk/compact-js-node": "workspace:*",
@@ -56,7 +59,7 @@
     "tstyche": "^6.2.0",
     "turbo": "^2.8.20",
     "typescript": "^6.0.2",
-    "typescript-eslint": "^8.57.1",
+    "typescript-eslint": "^8.60.1",
     "vitest": "^4.1.0"
   }
 }

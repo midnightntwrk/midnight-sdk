@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/compact-js-command",
-  "version": "2.5.1",
+  "version": "2.5.3",
   "description": "Command line utilities for working with smart contracts compiled with the Compact language",
   "type": "module",
   "exports": {
@@ -13,8 +13,8 @@
   "dependencies": {
     "@effect/cli": "^0.74.0",
     "@effect/cluster": "^0.57.0",
-    "@effect/experimental": "^0.59.0",
-    "@effect/platform": "^0.95.0",
+    "@effect/experimental": "^0.60.0",
+    "@effect/platform": "^0.96.1",
     "@effect/platform-node": "^0.106.0",
     "@effect/platform-node-shared": "^0.59.0",
     "@effect/printer": "^0.48.0",
@@ -25,7 +25,7 @@
     "@effect/workflow": "^0.17.0",
     "@midnight-ntwrk/compact-js": "^2.5.0",
     "@midnight-ntwrk/compact-js-node": "^2.5.0",
-    "@midnight-ntwrk/compact-runtime": "0.16.0",
+    "@midnight-ntwrk/compact-runtime": "file:../../compact-submodule/runtime",
     "@midnight-ntwrk/ledger-v9": "^0.1.0-alpha.1",
     "@midnight-ntwrk/platform-js": "^2.2.4",
     "@midnight-ntwrk/wallet-sdk-address-format": "3.1.0",
@@ -45,7 +45,7 @@
     "build": "yarn build-esm && build-utils pack-v3",
     "build-esm": "tsc -b tsconfig.build.json",
     "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
-    "test": "vitest run",
+    "test": "npx vitest run",
     "cmd": "NODE_OPTIONS='--loader ts-node/esm --no-warnings' ts-node ./src/index.ts",
     "package": "shx rm -rf ./dist/src && (cd ./dist; npm pack)"
   },
