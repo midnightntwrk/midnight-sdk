@@ -23,6 +23,7 @@ import {
   decodeZswapLocalState,
   emptyZswapLocalState,
   encodeZswapLocalState,
+  type LogEvent,
   type Op,
   type QueryContext,
   sampleSigningKey,
@@ -182,6 +183,7 @@ export declare namespace ContractExecutable {
   export type PartitionedTranscript = [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined];
   export type CallResultPublic = {
     readonly contractState: StateValue;
+    readonly events: LogEvent[];
     readonly publicTranscript: Op<AlignedValue>[];
     readonly partitionedTranscript: PartitionedTranscript;
     /**
@@ -250,9 +252,9 @@ const partitionTranscript = (
 ): Either.Either<{ preTranscript: PreTranscript; partitionedTranscript: ContractExecutable.PartitionedTranscript }, Error> => {
   const preTranscript = new PreTranscript(
     Array.from(finalTxContext.comIndices).reduce(
-      (queryContext, entry) => queryContext.insertCommitment(...entry),
+      (queryContext: QueryContext, entry: any) => queryContext.insertCommitment(...entry),
       asLedgerQueryContext(txContext)
-    ),
+    ) as QueryContext,
     publicTranscript
   );
   const partitionedTranscripts = partitionTranscripts(
@@ -385,11 +387,17 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             const zswapLocalState = circuitContext.zswapLocalState
                 ? encodeZswapLocalState(circuitContext.zswapLocalState)
                 : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey))
-            const runtimeContext = createCircuitContext(circuitContext.address, zswapLocalState, circuitContext.contractState, circuitContext.privateState)
+            const runtimeContext = createCircuitContext(
+              circuitContext.address,
+              zswapLocalState,
+              circuitContext.contractState,
+              circuitContext.privateState
+            );
+
             const initialTxContext = runtimeContext.currentQueryContext
             return {
               ...circuit(runtimeContext, ...args),
-              initialTxContext
+              initialTxContext,
             };
           },
           catch: identity
@@ -400,14 +408,15 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                 initialTxContext,
                 context.currentQueryContext,
                 proofData.publicTranscript,
-                circuitContext.ledgerParameters
+                circuitContext.ledgerParameters, 
               );
               return {
                 public: {
                   contractState: context.currentQueryContext.state.state,
                   publicTranscript: proofData.publicTranscript,
                   partitionedTranscript,
-                  preTranscript
+                  preTranscript,
+                  events: context.events
                 },
                 private: {
                   result,

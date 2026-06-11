@@ -34,6 +34,7 @@ const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counte
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.json');
 const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_zswap.json');
 const COUNTER_RESULT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/result.json');
+const COUNTER_OUTPUT_EVENTS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_events.json');
 
 const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext | FileSystem.FileSystem> =
   Effect.gen(function* () {
@@ -92,13 +93,15 @@ describe('Circuit Command', () => {
         '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
         '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
         '--output-result', COUNTER_RESULT_FILEPATH,
+        '--output-events', COUNTER_OUTPUT_EVENTS_FILEPATH,
         '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
       ]);
 
       const lines = yield* MockConsole.getLines({ stripAnsi: true });
-      
+
       expect(lines.length).toBe(0);
       expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_PS_FILEPATH))).toMatchObject({ count: 101 });
+      expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_EVENTS_FILEPATH))).toEqual([]);
     }).pipe(
       Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
@@ -106,6 +109,7 @@ describe('Circuit Command', () => {
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
+      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_EVENTS_FILEPATH)),
       Effect.provide(testLayer)
     ),
     30_000
