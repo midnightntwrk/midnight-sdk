@@ -82,6 +82,13 @@ export const outputResultFilePath = Options.file('output-result', { exists: 'eit
 );
 
 /** @internal */
+export const outputEventsFilePath = Options.file('output-events', { exists: 'either' }).pipe(
+  Options.withDescription('A file path where contract log events emitted during circuit execution should be written as JSON.'),
+  Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath)))),
+  Options.optional
+);
+
+/** @internal */
 export const inputFilePath = Options.file('input', { exists: 'either' }).pipe(
   Options.withAlias('i'),
   Options.withDescription('A file path of where the current onchain (or ledger), state data can be read.'),

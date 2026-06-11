@@ -58,7 +58,8 @@ export const Options = {
   outputPublicFilePath: InternalOptions.outputPublicFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
   outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath,
-  outputResultFilePath: InternalOptions.outputResultFilePath
+  outputResultFilePath: InternalOptions.outputResultFilePath,
+  outputEventsFilePath: InternalOptions.outputEventsFilePath
 }
 
 /** @internal */
@@ -81,7 +82,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       outputPublicFilePath,
       outputPrivateStateFilePath,
       outputZswapLocalStateFilePath,
-      outputResultFilePath
+      outputResultFilePath,
+      outputEventsFilePath
     },
     moduleSpec
   ) => Effect.gen(function* () {
@@ -175,6 +177,19 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.private.zswapLocalState))
       )
     );
+    if (Option.isSome(outputEventsFilePath)) {
+      yield* fs.writeFileString(
+        Option.getOrThrow(outputEventsFilePath),
+        JSON.stringify(
+          result.public.events,
+          (_, value) => {
+            if (typeof value === 'bigint') return value.toString();
+            if (value instanceof Uint8Array) return Array.from(value);
+            return value;
+          }
+        )
+      );
+    }
   }).pipe(
     Effect.mapError(
       (err) => ContractRuntimeError.make('Failed to invoke circuit', err)
