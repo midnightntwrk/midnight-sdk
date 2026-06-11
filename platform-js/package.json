@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@effect/platform": "^0.96.1",
-    "effect": "^3.21.0"
+    "effect": "^3.21.3"
   },
   "resolutions": {
     "tar": ">=7.5.11",
