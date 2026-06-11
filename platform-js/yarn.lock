@@ -272,7 +272,7 @@ __metadata:
     "@types/node": "npm:^25.5.0"
     "@vitest/coverage-v8": "npm:^4.1.1"
     "@vitest/ui": "npm:^4.1.8"
-    effect: "npm:^3.21.0"
+    effect: "npm:^3.21.3"
     eslint: "npm:^10.1.0"
     eslint-config-prettier: "npm:^10.1.8"
     eslint-import-resolver-typescript: "npm:^4.4.5"
@@ -293,7 +293,7 @@ __metadata:
   resolution: "@midnight-ntwrk/platform-js@workspace:platform-js"
   dependencies:
     "@effect/platform": "npm:^0.96.1"
-    effect: "npm:^3.21.0"
+    effect: "npm:^3.21.3"
     tslib: "npm:^2.8.1"
   languageName: unknown
   linkType: soft
@@ -1229,13 +1229,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"effect@npm:^3.21.0":
-  version: 3.21.2
-  resolution: "effect@npm:3.21.2"
+"effect@npm:^3.21.3":
+  version: 3.21.3
+  resolution: "effect@npm:3.21.3"
   dependencies:
     "@standard-schema/spec": "npm:^1.0.0"
     fast-check: "npm:^3.23.1"
-  checksum: 10/e1bf90d9010e6b4d8389937e80e96884e49164b8b1658230cf2aaf9d2a3844d1698a6854fd8183a82a0335bdcbc37879d9af84491b52a57bf16ab52052cf6f46
+  checksum: 10/3f88c07a398b35a384549db1b0e013806fbb7a5285f52e9c6fb9050ef286ada09e763eed2d9e14839534c40de5f632aabf1ee76487184769aa0a995deec70cf0
   languageName: node
   linkType: hard
 
