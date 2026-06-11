@@ -20,7 +20,7 @@
     "@effect/printer": "^0.48.0",
     "@effect/printer-ansi": "^0.48.0",
     "@effect/rpc": "^0.74.0",
-    "@effect/sql": "^0.50.0",
+    "@effect/sql": "^0.51.1",
     "@effect/typeclass": "^0.39.0",
     "@effect/workflow": "^0.17.0",
     "@midnight-ntwrk/compact-js": "^2.5.0",
