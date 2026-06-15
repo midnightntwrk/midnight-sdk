@@ -65,7 +65,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@commitlint/cli@npm:^19.0.0":
+"@commitlint/cli@npm:19.8.1":
   version: 19.8.1
   resolution: "@commitlint/cli@npm:19.8.1"
   dependencies:
@@ -82,7 +82,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@commitlint/config-conventional@npm:^19.0.0":
+"@commitlint/config-conventional@npm:19.8.1":
   version: 19.8.1
   resolution: "@commitlint/config-conventional@npm:19.8.1"
   dependencies:
@@ -265,7 +265,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/build-utils@npm:^0.8.9":
+"@effect/build-utils@npm:0.8.9":
   version: 0.8.9
   resolution: "@effect/build-utils@npm:0.8.9"
   dependencies:
@@ -293,7 +293,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/cluster@npm:^0.57.0":
+"@effect/cluster@npm:0.57.0, @effect/cluster@npm:^0.57.0":
   version: 0.57.0
   resolution: "@effect/cluster@npm:0.57.0"
   dependencies:
@@ -308,7 +308,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/experimental@npm:^0.60.0":
+"@effect/experimental@npm:0.60.0, @effect/experimental@npm:^0.60.0":
   version: 0.60.0
   resolution: "@effect/experimental@npm:0.60.0"
   dependencies:
@@ -327,7 +327,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform-node-shared@npm:^0.59.0":
+"@effect/platform-node-shared@npm:0.59.0, @effect/platform-node-shared@npm:^0.59.0":
   version: 0.59.0
   resolution: "@effect/platform-node-shared@npm:0.59.0"
   dependencies:
@@ -344,7 +344,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform-node@npm:^0.106.0":
+"@effect/platform-node@npm:0.106.0, @effect/platform-node@npm:^0.106.0":
   version: 0.106.0
   resolution: "@effect/platform-node@npm:0.106.0"
   dependencies:
@@ -410,7 +410,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/rpc@npm:^0.74.0":
+"@effect/rpc@npm:0.74.0, @effect/rpc@npm:^0.74.0":
   version: 0.74.0
   resolution: "@effect/rpc@npm:0.74.0"
   dependencies:
@@ -422,7 +422,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/sql@npm:^0.50.0":
+"@effect/sql@npm:0.50.0, @effect/sql@npm:^0.50.0":
   version: 0.50.0
   resolution: "@effect/sql@npm:0.50.0"
   dependencies:
@@ -444,7 +444,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/vitest@npm:^0.29.0":
+"@effect/vitest@npm:0.29.0":
   version: 0.29.0
   resolution: "@effect/vitest@npm:0.29.0"
   peerDependencies:
@@ -454,7 +454,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/workflow@npm:^0.17.0":
+"@effect/workflow@npm:0.17.0, @effect/workflow@npm:^0.17.0":
   version: 0.17.0
   resolution: "@effect/workflow@npm:0.17.0"
   peerDependencies:
@@ -569,7 +569,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@eslint/js@npm:^10.0.1":
+"@eslint/js@npm:10.0.1":
   version: 10.0.1
   resolution: "@eslint/js@npm:10.0.1"
   peerDependencies:
@@ -730,41 +730,41 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js-sources@workspace:."
   dependencies:
-    "@commitlint/cli": "npm:^19.0.0"
-    "@commitlint/config-conventional": "npm:^19.0.0"
-    "@effect/build-utils": "npm:^0.8.9"
-    "@effect/cluster": "npm:^0.57.0"
-    "@effect/experimental": "npm:^0.60.0"
+    "@commitlint/cli": "npm:19.8.1"
+    "@commitlint/config-conventional": "npm:19.8.1"
+    "@effect/build-utils": "npm:0.8.9"
+    "@effect/cluster": "npm:0.57.0"
+    "@effect/experimental": "npm:0.60.0"
     "@effect/platform": "npm:^0.96.1"
-    "@effect/platform-node": "npm:^0.106.0"
-    "@effect/platform-node-shared": "npm:^0.59.0"
-    "@effect/rpc": "npm:^0.74.0"
-    "@effect/sql": "npm:^0.50.0"
-    "@effect/vitest": "npm:^0.29.0"
-    "@effect/workflow": "npm:^0.17.0"
-    "@eslint/js": "npm:^10.0.1"
+    "@effect/platform-node": "npm:0.106.0"
+    "@effect/platform-node-shared": "npm:0.59.0"
+    "@effect/rpc": "npm:0.74.0"
+    "@effect/sql": "npm:0.50.0"
+    "@effect/vitest": "npm:0.29.0"
+    "@effect/workflow": "npm:0.17.0"
+    "@eslint/js": "npm:10.0.1"
     "@midnight-ntwrk/compact-js-node": "workspace:*"
     "@midnight-ntwrk/midnight-js-compact": "npm:3.2.0"
-    "@tsconfig/node22": "npm:^22.0.5"
-    "@types/node": "npm:^25.5.0"
-    "@vitest/coverage-v8": "npm:^4.1.0"
-    "@vitest/ui": "npm:^4.1.0"
-    conventional-changelog-cli: "npm:^4.1.0"
+    "@tsconfig/node22": "npm:22.0.5"
+    "@types/node": "npm:25.5.0"
+    "@vitest/coverage-v8": "npm:4.1.0"
+    "@vitest/ui": "npm:4.1.0"
+    conventional-changelog-cli: "npm:4.1.0"
     effect: "npm:^3.20.0"
-    eslint: "npm:^10.0.3"
-    eslint-config-prettier: "npm:^10.1.8"
-    eslint-import-resolver-typescript: "npm:^4.4.4"
-    eslint-plugin-import-x: "npm:^4.16.2"
-    eslint-plugin-prettier: "npm:^5.5.5"
-    eslint-plugin-simple-import-sort: "npm:^12.1.1"
-    eslint-plugin-unused-imports: "npm:^4.4.1"
-    husky: "npm:^9.0.0"
-    shx: "npm:^0.4.0"
-    tstyche: "npm:^6.2.0"
-    turbo: "npm:^2.8.20"
-    typescript: "npm:^6.0.2"
-    typescript-eslint: "npm:^8.60.1"
-    vitest: "npm:^4.1.0"
+    eslint: "npm:10.0.3"
+    eslint-config-prettier: "npm:10.1.8"
+    eslint-import-resolver-typescript: "npm:4.4.4"
+    eslint-plugin-import-x: "npm:4.16.2"
+    eslint-plugin-prettier: "npm:5.5.5"
+    eslint-plugin-simple-import-sort: "npm:12.1.1"
+    eslint-plugin-unused-imports: "npm:4.4.1"
+    husky: "npm:9.1.7"
+    shx: "npm:0.4.0"
+    tstyche: "npm:6.2.0"
+    turbo: "npm:2.9.16"
+    typescript: "npm:6.0.2"
+    typescript-eslint: "npm:8.60.1"
+    vitest: "npm:4.1.0"
   languageName: unknown
   linkType: soft
 
@@ -1315,7 +1315,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node22@npm:^22.0.5":
+"@tsconfig/node22@npm:22.0.5":
   version: 22.0.5
   resolution: "@tsconfig/node22@npm:22.0.5"
   checksum: 10/2e21177946aa0bcd705e8303cd0844eb66d2abc1ceb9ca7bd7762443676e599bb11e7f7b257c027d8dec9d1c62cda114d1a3df5e38699c6b4943e6acadac261d
@@ -1429,7 +1429,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/node@npm:^25.5.0":
+"@types/node@npm:25.5.0":
   version: 25.5.0
   resolution: "@types/node@npm:25.5.0"
   dependencies:
@@ -1729,7 +1729,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/coverage-v8@npm:^4.1.0":
+"@vitest/coverage-v8@npm:4.1.0":
   version: 4.1.0
   resolution: "@vitest/coverage-v8@npm:4.1.0"
   dependencies:
@@ -1824,7 +1824,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@vitest/ui@npm:^4.1.0":
+"@vitest/ui@npm:4.1.0":
   version: 4.1.0
   resolution: "@vitest/ui@npm:4.1.0"
   dependencies:
@@ -2132,7 +2132,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"conventional-changelog-cli@npm:^4.1.0":
+"conventional-changelog-cli@npm:4.1.0":
   version: 4.1.0
   resolution: "conventional-changelog-cli@npm:4.1.0"
   dependencies:
@@ -2485,7 +2485,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-config-prettier@npm:^10.1.8":
+"eslint-config-prettier@npm:10.1.8":
   version: 10.1.8
   resolution: "eslint-config-prettier@npm:10.1.8"
   peerDependencies:
@@ -2511,7 +2511,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-import-resolver-typescript@npm:^4.4.4":
+"eslint-import-resolver-typescript@npm:4.4.4":
   version: 4.4.4
   resolution: "eslint-import-resolver-typescript@npm:4.4.4"
   dependencies:
@@ -2535,7 +2535,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-import-x@npm:^4.16.2":
+"eslint-plugin-import-x@npm:4.16.2":
   version: 4.16.2
   resolution: "eslint-plugin-import-x@npm:4.16.2"
   dependencies:
@@ -2562,7 +2562,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-prettier@npm:^5.5.5":
+"eslint-plugin-prettier@npm:5.5.5":
   version: 5.5.5
   resolution: "eslint-plugin-prettier@npm:5.5.5"
   dependencies:
@@ -2582,7 +2582,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-simple-import-sort@npm:^12.1.1":
+"eslint-plugin-simple-import-sort@npm:12.1.1":
   version: 12.1.1
   resolution: "eslint-plugin-simple-import-sort@npm:12.1.1"
   peerDependencies:
@@ -2591,7 +2591,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-unused-imports@npm:^4.4.1":
+"eslint-plugin-unused-imports@npm:4.4.1":
   version: 4.4.1
   resolution: "eslint-plugin-unused-imports@npm:4.4.1"
   peerDependencies:
@@ -2630,7 +2630,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:^10.0.3":
+"eslint@npm:10.0.3":
   version: 10.0.3
   resolution: "eslint@npm:10.0.3"
   dependencies:
@@ -3128,7 +3128,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"husky@npm:^9.0.0":
+"husky@npm:9.1.7":
   version: 9.1.7
   resolution: "husky@npm:9.1.7"
   bin:
@@ -4607,7 +4607,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"shx@npm:^0.4.0":
+"shx@npm:0.4.0":
   version: 0.4.0
   resolution: "shx@npm:0.4.0"
   dependencies:
@@ -4977,7 +4977,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tstyche@npm:^6.2.0":
+"tstyche@npm:6.2.0":
   version: 6.2.0
   resolution: "tstyche@npm:6.2.0"
   peerDependencies:
@@ -4991,7 +4991,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"turbo@npm:^2.8.20":
+"turbo@npm:2.9.16":
   version: 2.9.16
   resolution: "turbo@npm:2.9.16"
   dependencies:
@@ -5043,7 +5043,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript-eslint@npm:^8.60.1":
+"typescript-eslint@npm:8.60.1":
   version: 8.60.1
   resolution: "typescript-eslint@npm:8.60.1"
   dependencies:
@@ -5058,7 +5058,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@npm:^6.0.2":
+"typescript@npm:6.0.2":
   version: 6.0.2
   resolution: "typescript@npm:6.0.2"
   bin:
@@ -5068,7 +5068,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"typescript@patch:typescript@npm%3A^6.0.2#optional!builtin<compat/typescript>":
+"typescript@patch:typescript@npm%3A6.0.2#optional!builtin<compat/typescript>":
   version: 6.0.2
   resolution: "typescript@patch:typescript@npm%3A6.0.2#optional!builtin<compat/typescript>::version=6.0.2&hash=5786d5"
   bin:
@@ -5292,7 +5292,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"vitest@npm:^4.1.0":
+"vitest@npm:4.1.0":
   version: 4.1.0
   resolution: "vitest@npm:4.1.0"
   dependencies:
