@@ -579,7 +579,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       public: {
         maintenanceUpdate: maintenanceUpdate.addSignature(
           DEFAULT_SIGNATURE_INDEX,
-          signData(Option.getOrThrow(currentSigningKey), maintenanceUpdate.dataToSign)
+          signData({ tag: 'schnorr', value: Option.getOrThrow(currentSigningKey) as unknown as string }, maintenanceUpdate.dataToSign)
         )
       },
       private: {
@@ -592,14 +592,15 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     key: Option.Option<SigningKey.SigningKey>,
     contractState?: ContractState
   ): Either.Either<[ContractMaintenanceAuthority, SigningKey.SigningKey], ContractConfigurationError.ContractConfigurationError> {
-    const signingKey = Option.match(key, {
-      onSome: identity,
-      onNone: () => SigningKey.SigningKey(sampleSigningKey())
+    const runtimeKey = Option.match(key, {
+      onSome: (sk) => ({ tag: 'schnorr' as const, value: sk as string }),
+      onNone: sampleSigningKey
     });
+    const signingKey = SigningKey.SigningKey(runtimeKey.value);
     try {
       return Either.right([
         new ContractMaintenanceAuthority(
-          [signatureVerifyingKey(signingKey)],
+          [signatureVerifyingKey(runtimeKey)],
           DEFAULT_CMA_THRESHOLD,
           contractState ? contractState.maintenanceAuthority.counter + 1n : 0n
         ),
