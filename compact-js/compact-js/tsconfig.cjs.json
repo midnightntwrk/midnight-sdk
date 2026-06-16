@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.src.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": ".tsbuildinfo/cjs.tsbuildinfo",
+    "outDir": "build/cjs",
+    "module": "commonjs",
+    "stripInternal": true
+  }
+}
