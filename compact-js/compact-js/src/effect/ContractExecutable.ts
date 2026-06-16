@@ -45,12 +45,13 @@ import {
   QueryContext as LedgerQueryContext,
   ReplaceAuthority,
   signData,
+  type SigningKey as LedgerSigningKey,
   type SingleUpdate,
   StateValue as LedgerStateValue,
   type Transcript,
   VerifierKeyInsert,
   VerifierKeyRemove
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnightntwrk/ledger-v9';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
@@ -261,6 +262,16 @@ type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<
 const DEFAULT_CMA_THRESHOLD = 1;
 const DEFAULT_SIGNATURE_INDEX = 0n;
 
+// Ledger v9 tags signing keys with their signature scheme ('schnorr' | 'ecdsa'), while
+// platform-js still models a signing key as a bare hex string. Untagged keys in earlier
+// ledger versions were Schnorr keys, so tagging with 'schnorr' preserves the previous
+// semantics. The onchain-runtime `SigningKey` is structurally identical, so this adapter
+// serves both `signData` (ledger) and `signatureVerifyingKey` (compact-runtime).
+const asTaggedSigningKey = (signingKey: SigningKey.SigningKey): LedgerSigningKey => ({
+  tag: 'schnorr',
+  value: signingKey
+});
+
 const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
   const stateValue = LedgerStateValue.decode(queryContext.state.state.encode());
   const ledgerQueryContext = new LedgerQueryContext(new LedgerChargedState(stateValue), queryContext.address);
@@ -441,21 +452,29 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               // Partition all calls' transcripts together (the partitioner needs the whole batch
               // to reconstruct the caller/callee graph).
               const partitioned = yield* partitionAllTranscripts(trace, circuitContext.ledgerParameters);
-              const calls: ContractExecutable.ContractCall[] = trace.map((entry, i) => ({
-                contractAddress: ContractAddress.ContractAddress(entry.contractAddress),
-                circuitId: entry.circuitId,
-                public: {
-                  contractState: entry.finalQueryContext.state.state,
-                  publicTranscript: entry.publicTranscript,
-                  partitionedTranscript: partitioned[i]
-                },
-                private: {
-                  input: entry.input,
-                  output: entry.output,
-                  privateTranscriptOutputs: entry.privateTranscriptOutputs
-                },
-                communicationCommitment: Option.fromNullable(entry.commCommData)
-              }));
+              const calls: ContractExecutable.ContractCall[] = trace.map((entry, i) => {
+                const partitionedTranscript = partitioned[i];
+                if (partitionedTranscript === undefined) {
+                  // Unreachable: `partitionAllTranscripts` guarantees one partition pair per
+                  // trace entry. Guarded so the mapping is sound under `noUncheckedIndexedAccess`.
+                  throw new Error(`Missing partitioned transcript for call ${i} ('${entry.circuitId}')`);
+                }
+                return {
+                  contractAddress: ContractAddress.ContractAddress(entry.contractAddress),
+                  circuitId: entry.circuitId,
+                  public: {
+                    contractState: entry.finalQueryContext.state.state,
+                    publicTranscript: entry.publicTranscript,
+                    partitionedTranscript
+                  },
+                  private: {
+                    input: entry.input,
+                    output: entry.output,
+                    privateTranscriptOutputs: entry.privateTranscriptOutputs
+                  },
+                  communicationCommitment: Option.fromNullable(entry.commCommData)
+                };
+              });
               // `result`, `privateState`, and `zswapLocalState` belong to the root contract.
               return {
                 result,
@@ -579,7 +598,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       public: {
         maintenanceUpdate: maintenanceUpdate.addSignature(
           DEFAULT_SIGNATURE_INDEX,
-          signData({ tag: 'schnorr', value: Option.getOrThrow(currentSigningKey) as unknown as string }, maintenanceUpdate.dataToSign)
+          signData(asTaggedSigningKey(Option.getOrThrow(currentSigningKey)), maintenanceUpdate.dataToSign)
         )
       },
       private: {
@@ -592,15 +611,14 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     key: Option.Option<SigningKey.SigningKey>,
     contractState?: ContractState
   ): Either.Either<[ContractMaintenanceAuthority, SigningKey.SigningKey], ContractConfigurationError.ContractConfigurationError> {
-    const runtimeKey = Option.match(key, {
-      onSome: (sk) => ({ tag: 'schnorr' as const, value: sk as string }),
-      onNone: sampleSigningKey
+    const signingKey = Option.match(key, {
+      onSome: identity,
+      onNone: () => SigningKey.SigningKey(sampleSigningKey('schnorr').value)
     });
-    const signingKey = SigningKey.SigningKey(runtimeKey.value);
     try {
       return Either.right([
         new ContractMaintenanceAuthority(
-          [signatureVerifyingKey(runtimeKey)],
+          [signatureVerifyingKey(asTaggedSigningKey(signingKey))],
           DEFAULT_CMA_THRESHOLD,
           contractState ? contractState.maintenanceAuthority.counter + 1n : 0n
         ),

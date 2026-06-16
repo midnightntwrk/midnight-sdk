@@ -20,7 +20,7 @@ import { beforeEach, describe, expect, it } from '@effect/vitest';
 import { CompiledContract, Contract, ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ChargedState, ContractState, type ContractStateProvider } from '@midnight-ntwrk/compact-runtime';
-import { ContractDeploy, ContractState as LedgerContractState, partitionTranscripts } from '@midnight-ntwrk/ledger-v8';
+import { ContractDeploy, ContractState as LedgerContractState, partitionTranscripts } from '@midnightntwrk/ledger-v9';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import { Cause, ConfigProvider, Effect, Exit, Layer, Option } from 'effect';
@@ -32,9 +32,9 @@ import { ledger as cccSelfLedger } from '../contract/managed/cccSelf/contract';
 
 // Wrap `partitionTranscripts` so it delegates to the real implementation by default; individual
 // tests can override a single call (see the wrong-partition-count test below).
-vi.mock('@midnight-ntwrk/ledger-v8', async (importActual) => {
+vi.mock('@midnightntwrk/ledger-v9', async (importActual) => {
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports
-  const actual = await importActual<typeof import('@midnight-ntwrk/ledger-v8')>();
+  const actual = await importActual<typeof import('@midnightntwrk/ledger-v9')>();
   return { ...actual, partitionTranscripts: vi.fn(actual.partitionTranscripts) };
 });
 

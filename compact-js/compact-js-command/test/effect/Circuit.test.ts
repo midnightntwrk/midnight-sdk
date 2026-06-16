@@ -27,7 +27,7 @@ import {
   type PreBinding,
   type PreProof,
   type SignatureEnabled
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnightntwrk/ledger-v9';
 import { Console,Effect, Layer } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';

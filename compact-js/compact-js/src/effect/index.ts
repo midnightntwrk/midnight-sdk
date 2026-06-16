@@ -19,6 +19,7 @@ export * as Contract from './Contract.js';
 export * as ContractConfigurationError from './ContractConfigurationError.js';
 export * as ContractExecutable from './ContractExecutable.js';
 export * as ContractExecutableRuntime from './ContractExecutableRuntime.js';
+export * as ContractKeyLocation from './ContractKeyLocation.js';
 export * as ContractRuntimeError from './ContractRuntimeError.js';
 export * as ZKConfiguration from './ZKConfiguration.js';
 export * as ZKConfigurationReadError from './ZKConfigurationReadError.js';

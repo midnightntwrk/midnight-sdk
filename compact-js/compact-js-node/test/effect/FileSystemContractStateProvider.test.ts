@@ -19,7 +19,7 @@ import { join } from 'node:path';
 
 import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState as RuntimeContractState } from '@midnight-ntwrk/compact-runtime';
-import { ContractOperation, ContractState as LedgerContractState } from '@midnight-ntwrk/ledger-v8';
+import { ContractOperation, ContractState as LedgerContractState } from '@midnightntwrk/ledger-v9';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const ADDRESS = '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a';

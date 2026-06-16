@@ -17,7 +17,7 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { ContractState, type ContractStateProvider } from '@midnight-ntwrk/compact-runtime';
-import { ContractState as LedgerContractState } from '@midnight-ntwrk/ledger-v8';
+import { ContractState as LedgerContractState } from '@midnightntwrk/ledger-v9';
 
 /**
  * A {@link ContractStateProvider} that resolves contract states lazily from the file system.

@@ -33,7 +33,7 @@ import {
   type PreBinding,
   type PreProof,
   type SignatureEnabled
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnightntwrk/ledger-v9';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ConfigProvider, Console, Effect, Layer } from 'effect';
 import { afterAll, beforeAll } from 'vitest';

@@ -30,7 +30,7 @@ import {
   type ReplaceAuthority,
   type VerifierKeyInsert,
   type VerifierKeyRemove
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnightntwrk/ledger-v9';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import { ConfigProvider, Effect, Layer, Option } from 'effect';
@@ -41,7 +41,8 @@ const COUNTER_ASSETS_PATH = resolve(import.meta.dirname, '../contract/managed/co
 
 const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
 const INVALID_COIN_PUBLIC_KEY = 'INVALIDd9da5fcd4c601';
-const VALID_SIGNING_KEY = sampleSigningKey();
+// Ledger v9 signing keys are tagged objects; the configuration layer expects the bare hex string.
+const VALID_SIGNING_KEY = sampleSigningKey('schnorr').value;
 
 const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize());

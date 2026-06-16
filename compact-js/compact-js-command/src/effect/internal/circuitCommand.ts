@@ -17,7 +17,7 @@ import { join } from 'node:path';
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { Contract, type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import { Contract, type ContractExecutable, ContractKeyLocation, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
 import { decodeZswapLocalState, type EncodedZswapLocalState,
   encodeZswapLocalState, type StateValue } from '@midnight-ntwrk/compact-runtime';
@@ -28,7 +28,7 @@ import {
   type ContractState as LedgerContractState,
   Intent,
   StateValue as LedgerStateValue,
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnightntwrk/ledger-v9';
 import { type ConfigError, Console,Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -189,10 +189,11 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
           `no --contract-states-dir was provided.`
         );
       }
+      const callOperation = yield* ContractState.operationForCircuit(callLedgerState, call.circuitId, call.contractAddress);
       intent = intent.addCall(new ContractCallPrototype(
         call.contractAddress,
         call.circuitId,
-        yield* ContractState.operationForCircuit(callLedgerState, call.circuitId, call.contractAddress),
+        callOperation,
         call.public.partitionedTranscript[0],
         call.public.partitionedTranscript[1],
         call.private.privateTranscriptOutputs,
@@ -202,7 +203,14 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
           onSome: (c) => c.commCommRand,
           onNone: () => communicationCommitmentRandomness()
         }),
-        call.circuitId
+        // The canonical key location routes the proof for this call to the key material of the
+        // specific deployed circuit (by contract address and verifier-key content), so that
+        // identically named circuits across contracts in one transaction cannot collide.
+        ContractKeyLocation.encodeContractKeyLocation({
+          contractAddress: call.contractAddress,
+          circuitId: call.circuitId,
+          verifierKeyHash: ContractKeyLocation.hashVerifierKey(callOperation.verifierKey)
+        })
       ));
       // Record callee states only; the root's updated state is handled by `--output-oc`.
       if (call.contractAddress !== address) {
