@@ -44,7 +44,7 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unused-imports": "^4.4.1",
     "shx": "^0.4.0",
-    "turbo": "^2.8.19",
+    "turbo": "^2.9.18",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.57.1",
     "vitest": "^4.1.8"
