@@ -33,7 +33,7 @@
     "@effect/platform-node": "^0.106.0",
     "@effect/platform-node-shared": "^0.59.0",
     "@effect/rpc": "^0.74.0",
-    "@effect/sql": "^0.50.0",
+    "@effect/sql": "^0.51.1",
     "@effect/vitest": "^0.29.0",
     "@effect/workflow": "^0.17.0",
     "@eslint/js": "^10.0.1",
