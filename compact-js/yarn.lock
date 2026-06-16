@@ -471,16 +471,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/sql@npm:^0.50.0":
-  version: 0.50.0
-  resolution: "@effect/sql@npm:0.50.0"
+"@effect/sql@npm:^0.51.1":
+  version: 0.51.1
+  resolution: "@effect/sql@npm:0.51.1"
   dependencies:
     uuid: "npm:^11.0.3"
   peerDependencies:
-    "@effect/experimental": ^0.59.0
-    "@effect/platform": ^0.95.0
-    effect: ^3.20.0
-  checksum: 10/d0b0f52b9d0712d40faf4f6bb15d167c7f8edcd8ffe803faec33b01efe45eb35f054124c4936c0d974fe4bc5d2d1dbf9704573c7c091b55c6ce38bd2f54388fd
+    "@effect/experimental": ^0.60.0
+    "@effect/platform": ^0.96.1
+    effect: ^3.21.2
+  checksum: 10/005120f8c2915483f3ec57a41dd434f36e0e48bfa21e72e7d0787be5becadacf12f8eb085ba71e8f4517ee27e8725625a25b45fd4ed83b53f808157141c6ae5b
   languageName: node
   linkType: hard
 
@@ -741,7 +741,7 @@ __metadata:
     "@effect/printer": "npm:^0.48.0"
     "@effect/printer-ansi": "npm:^0.49.0"
     "@effect/rpc": "npm:^0.74.0"
-    "@effect/sql": "npm:^0.50.0"
+    "@effect/sql": "npm:^0.51.1"
     "@effect/typeclass": "npm:^0.39.0"
     "@effect/workflow": "npm:^0.17.0"
     "@midnight-ntwrk/compact-js": "npm:^2.5.0"
@@ -766,7 +766,7 @@ __metadata:
     "@effect/platform": "npm:^0.96.1"
     "@effect/platform-node": "npm:^0.107.0"
     "@effect/rpc": "npm:^0.74.0"
-    "@effect/sql": "npm:^0.50.0"
+    "@effect/sql": "npm:^0.51.1"
     "@effect/workflow": "npm:^0.17.0"
     effect: "npm:^3.20.0"
     tslib: "npm:^2.8.1"
@@ -788,7 +788,7 @@ __metadata:
     "@effect/platform-node": "npm:^0.107.0"
     "@effect/platform-node-shared": "npm:^0.59.0"
     "@effect/rpc": "npm:^0.74.0"
-    "@effect/sql": "npm:^0.50.0"
+    "@effect/sql": "npm:^0.51.1"
     "@effect/vitest": "npm:^0.29.0"
     "@effect/workflow": "npm:^0.17.0"
     "@eslint/js": "npm:^10.0.1"
