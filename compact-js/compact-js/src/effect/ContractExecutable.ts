@@ -48,7 +48,7 @@ import {
   type Transcript,
   VerifierKeyInsert,
   VerifierKeyRemove
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnight-ntwrk/ledger-v9';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';

@@ -19,7 +19,7 @@ import {
   ContractExecutable,
   ZKConfiguration
 } from '@midnight-ntwrk/compact-js/effect';
-import type { PreTranscript } from '@midnight-ntwrk/ledger-v8';
+import type { PreTranscript } from '@midnight-ntwrk/ledger-v9';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { Context,Effect, Layer } from 'effect';
 import { describe, expect, it } from 'tstyche';
