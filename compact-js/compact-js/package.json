@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/compact-js",
-  "version": "2.5.3",
+  "version": "2.5.4-alpha.2",
   "description": "Typescript-based execution environment for smart contracts compiled with the Compact language",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -41,5 +41,6 @@
   },
   "files": [
     "dist/"
-  ]
+  ],
+  "stableVersion": "2.5.4"
 }

@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/compact-js-sources",
   "description": "",
-  "version": "2.5.3",
+  "version": "2.5.4-alpha.2",
   "private": true,
   "packageManager": "yarn@4.10.3",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
@@ -58,5 +58,6 @@
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.60.1",
     "vitest": "^4.1.0"
-  }
+  },
+  "stableVersion": "2.5.4"
 }
