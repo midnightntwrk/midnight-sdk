@@ -784,23 +784,23 @@ __metadata:
 
 "@midnight-ntwrk/compact-runtime@file:../../compact-submodule/runtime::locator=%40midnight-ntwrk%2Fcompact-js%40workspace%3Acompact-js":
   version: 0.16.103
-  resolution: "@midnight-ntwrk/compact-runtime@file:../../compact-submodule/runtime#../../compact-submodule/runtime::hash=410069&locator=%40midnight-ntwrk%2Fcompact-js%40workspace%3Acompact-js"
+  resolution: "@midnight-ntwrk/compact-runtime@file:../../compact-submodule/runtime#../../compact-submodule/runtime::hash=4a1837&locator=%40midnight-ntwrk%2Fcompact-js%40workspace%3Acompact-js"
   dependencies:
     "@noble/hashes": "npm:^2.0.1"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/e3db3fcac1801d2d07fd3a97ca9ced316f720966ce2927a3777cafb40abf97e71a4de52ff6b51faa2ff6d40a5e4e86562f55440a37adae059d40efa975416e30
+  checksum: 10/c1c7b23f4c26d9dc4df478a3b2f2b9b6d07547f750798187efe73b31c81e50af7debae835d50599f576cf3ac528fcf7ecc03cb3187f1e0eb52493e64a6a4377f
   languageName: node
   linkType: hard
 
 "@midnight-ntwrk/compact-runtime@file:../../compact-submodule/runtime::locator=%40midnight-ntwrk%2Fcompact-js-command%40workspace%3Acompact-js-command":
   version: 0.16.103
-  resolution: "@midnight-ntwrk/compact-runtime@file:../../compact-submodule/runtime#../../compact-submodule/runtime::hash=410069&locator=%40midnight-ntwrk%2Fcompact-js-command%40workspace%3Acompact-js-command"
+  resolution: "@midnight-ntwrk/compact-runtime@file:../../compact-submodule/runtime#../../compact-submodule/runtime::hash=4a1837&locator=%40midnight-ntwrk%2Fcompact-js-command%40workspace%3Acompact-js-command"
   dependencies:
     "@noble/hashes": "npm:^2.0.1"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/e3db3fcac1801d2d07fd3a97ca9ced316f720966ce2927a3777cafb40abf97e71a4de52ff6b51faa2ff6d40a5e4e86562f55440a37adae059d40efa975416e30
+  checksum: 10/c1c7b23f4c26d9dc4df478a3b2f2b9b6d07547f750798187efe73b31c81e50af7debae835d50599f576cf3ac528fcf7ecc03cb3187f1e0eb52493e64a6a4377f
   languageName: node
   linkType: hard
 
