@@ -84,7 +84,7 @@ jobs:
         id: changelog
         run: |
           # Extract the latest release notes from CHANGELOG.md (between first and second ## heading)
-          changelog=$(sed -n '/^## \[/,/^## \[/{/^## \[/!p;}' ./compact-js/CHANGELOG.md | head -n -1 | sed '/^$/d' | sed ':a;N;$!ba;s/\n/\\n/g')
+          changelog=$(sed -n '/^## /,/^## /{/^## /!p;}' ./compact-js/CHANGELOG.md | head -n -1 | sed '/^$/d' | sed ':a;N;$!ba;s/\n/\\n/g')
           echo "body=$changelog" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
