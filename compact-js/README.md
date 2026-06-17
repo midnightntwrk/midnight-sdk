@@ -28,43 +28,76 @@ the contract and its circuits more convenient, and TypeScript idiomatic.
 
 ## Release Process
 
-Releases are automated via GitHub Actions triggered by git tags. To release:
+Releases are cut from `main` via a manual versioning workflow. The CI/CD pipeline automatically creates git tags, publishes to npm, and generates GitHub releases.
 
-### Step 1: Determine the new version
-Decide on the version:
-- **Patch** (2.5.1): Bug fixes only
-- **Minor** (2.6.0): New features, backwards compatible
-- **Major** (3.0.0): Breaking changes
-
-### Step 2: Update versions on main
-Update the version in all four `package.json` files:
-- Root: `/package.json`
-- `compact-js/package.json`
-- `compact-js-node/package.json`
-- `compact-js-command/package.json`
+### Step 1: Create a release branch
 
 ```bash
 git checkout main
 git pull origin main
-# Edit all package.json files with new version
-git add -A
-git commit -m "chore: bump to 2.5.1"
-git push origin main
+git checkout -b chore/release-X.Y.Z
 ```
 
-### Step 3: Create and push the release tag
+### Step 2: Bump the version
+
+Use `yarn version` to update all workspace package.json files:
+
 ```bash
-git tag -a cjs-2.5.1 -m "Release 2.5.1"
-git push origin cjs-2.5.1
+yarn version X.Y.Z-alpha.N     # For prerelease (e.g., 2.5.4-alpha.2)
+yarn version X.Y.Z              # For stable release (e.g., 2.5.4)
 ```
 
-That's it! The GitHub Action will automatically:
-- Build all packages
-- Run tests
-- Publish to npm
-- Create a GitHub release
+This updates:
+- Root: `package.json`
+- `compact-js/package.json`
+- `compact-js-node/package.json`
+- `compact-js-command/package.json`
+
+### Step 3: Update the CHANGELOG
+
+Edit `CHANGELOG.md` and add a new section at the top with your version:
+
+```markdown
+## [X.Y.Z-alpha.N]
+
+### Added
+- Feature description
+
+### Fixed
+- Bug fix description
+
+### Breaking Changes
+- If any
+```
+
+### Step 4: Create and merge the PR
+
+```bash
+git add package.json */package.json CHANGELOG.md
+git commit -m "chore: release version X.Y.Z"
+git push origin chore/release-X.Y.Z
+```
+
+Open a PR to `main`, get it reviewed, and merge.
+
+### Step 5: CI handles the rest
+
+Once merged to `main`, the GitHub Actions workflow automatically:
+- Builds all packages
+- Runs tests
+- Extracts release notes from `CHANGELOG.md`
+- Creates a git tag: `compact-js-vX.Y.Z` (alpha suffix stripped)
+- Publishes to npm with `--tag alpha` (for prerelease versions)
+- Creates a GitHub release with changelog notes
+
+### Version Format
+
+- **Stable**: `X.Y.Z` (e.g., `2.5.4`) → tags as `compact-js-v2.5.4`
+- **Prerelease**: `X.Y.Z-alpha.N` (e.g., `2.5.4-alpha.2`) → tags as `compact-js-v2.5.4`
 
 ### Notes
-- **Tag format**: `cjs-X.Y.Z` (e.g., `cjs-2.5.1`)
+
 - **All three packages release together** at the same version
-- Releases happen directly from `main`—no release branches needed
+- Versioning is manual—not automatic from `version.json`
+- CHANGELOG entries are required for the release to have proper notes
+- Only merge to `main` when ready to release immediately
