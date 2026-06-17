@@ -61,9 +61,7 @@ jobs:
         id: extract_version
         run: |
           version=$(jq -r '.version' ./compact-js/package.json)
-          base_version=$(echo "$version" | sed 's/-alpha.*//')
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "base_version=${base_version}" >> "$GITHUB_OUTPUT"
 
   release:
     needs: publish
