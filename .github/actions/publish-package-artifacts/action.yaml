@@ -1,5 +1,5 @@
-name: 'Publish Package Artifacts'
-description: 'Publishes packages to a package registry'
+name: "Publish Package Artifacts"
+description: "Publishes packages to a package registry"
 
 inputs:
   working-directory:
@@ -13,7 +13,7 @@ inputs:
     required: true
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Download packages artifact
       uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # ratchet:actions/download-artifact@v4
@@ -31,7 +31,7 @@ runs:
     - name: Publish packages
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: find "./Packages $PACKAGE_ARCHIVE_NAME" -type f -name '*.tgz' -execdir npm publish '{}' --tag alpha --access public ';'
+      run: find "./Packages $PACKAGE_ARCHIVE_NAME" -type f -name '*.tgz' -execdir npm publish '{}' --access public ';'
       env:
         PACKAGE_ARCHIVE_NAME: ${{ inputs.package-archive-name }}
         GITHUB_TOKEN: ${{ inputs.auth-token }}
