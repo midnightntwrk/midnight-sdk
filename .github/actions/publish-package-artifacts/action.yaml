@@ -24,12 +24,15 @@ runs:
     - name: Extract packages archive
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: find "./Packages ${{ inputs.package-archive-name }}" -type f -name '*.zip' -execdir unzip '{}' ';'
+      run: find "./Packages $PACKAGE_ARCHIVE_NAME" -type f -name '*.zip' -execdir unzip '{}' ';'
+      env:
+        PACKAGE_ARCHIVE_NAME: ${{ inputs.package-archive-name }}
 
     - name: Publish packages
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: find "./Packages ${{ inputs.package-archive-name }}" -type f -name '*.tgz' -execdir npm publish '{}' --tag alpha --access public ';'
+      run: find "./Packages $PACKAGE_ARCHIVE_NAME" -type f -name '*.tgz' -execdir npm publish '{}' --tag alpha --access public ';'
       env:
+        PACKAGE_ARCHIVE_NAME: ${{ inputs.package-archive-name }}
         GITHUB_TOKEN: ${{ inputs.auth-token }}
         NODE_AUTH_TOKEN: ${{ inputs.auth-token }}
