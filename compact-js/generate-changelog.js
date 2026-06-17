@@ -6,11 +6,10 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
-// Read version from version.json
-const versionJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'version.json'), 'utf8'));
-const version = versionJson.v_info.version;
-const preRelease = versionJson.v_info.preRelease;
-const releaseVersion = version + preRelease;
+// Read version from package.json
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, 'package.json'), 'utf8'));
+const releaseVersion = packageJson.version;
+const version = releaseVersion.split(/[-+]/)[0];
 
 // Get commits since last release tag
 const lastTag = `compact-js-v${version}`;
@@ -61,11 +60,17 @@ const changelog = Object.entries(grouped)
   .join('\n\n');
 
 if (changelog) {
-  const date = new Date().toISOString().split('T')[0];
-
-  const entry = `## ${releaseVersion} (${date})\n\n${changelog}\n\n`;
   const changelogPath = path.join(__dirname, 'CHANGELOG.md');
   const existing = fs.readFileSync(changelogPath, 'utf8');
+
+  // Check if entry for this version already exists
+  if (existing.includes(`## ${releaseVersion}`)) {
+    console.log(`Entry for ${releaseVersion} already added`);
+    process.exit(0);
+  }
+
+  const date = new Date().toISOString().split('T')[0];
+  const entry = `## ${releaseVersion} (${date})\n\n${changelog}\n\n`;
 
   fs.writeFileSync(changelogPath, entry + existing);
   console.log(`Generated changelog entry for ${releaseVersion}`);
