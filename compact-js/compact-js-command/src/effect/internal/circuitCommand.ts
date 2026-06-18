@@ -16,31 +16,34 @@
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { Contract, type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { decodeZswapLocalState, type EncodedZswapLocalState,
-  encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import {
+  decodeZswapLocalState,
+  type EncodedZswapLocalState,
+  encodeZswapLocalState
+} from '@midnight-ntwrk/compact-runtime';
 import {
   ChargedState as LedgerChargedState,
   communicationCommitmentRandomness,
   ContractCallPrototype,
   type ContractOperation as LedgerContractOption,
   Intent,
-  StateValue as LedgerStateValue,
-} from '@midnight-ntwrk/ledger-v9';
-import { type ConfigError, Console,Duration, Effect, Option } from 'effect';
+  StateValue as LedgerStateValue
+} from '@midnightntwrk/ledger-v9';
+import { type ConfigError, Console, Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
 import * as ContractState from './contractState.js';
-import { decodeZswapLocalStateObject, encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
+import { decodeZswapLocalStateObject, encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js';
 import * as LedgerParameters from './ledgerParameters.js';
 import * as InternalOptions from './options.js';
 
 /** @internal */
 export type Args = Command.Command.ParseConfig<typeof Args>;
 /** @internal */
-export const Args = { 
+export const Args = {
   address: InternalArgs.contractAddress,
   circuitId: InternalArgs.circuitId,
   args: InternalArgs.contractArgs
@@ -60,52 +63,52 @@ export const Options = {
   outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath,
   outputResultFilePath: InternalOptions.outputResultFilePath,
   outputEventsFilePath: InternalOptions.outputEventsFilePath
-}
+};
 
 /** @internal */
-export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.ModuleSpec) =>
-  Effect.Effect<
-    void,
-    ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
-    CompiledContractReflection.CompiledContractReflection | FileSystem.FileSystem
-  > =
-  (
-    {
-      address,
-      circuitId,
-      args,
-      inputFilePath,
-      inputPrivateStateFilePath,
-      inputZswapLocalStateFilePath,
-      inputLedgerParamsFilePath,
-      outputFilePath,
-      outputPublicFilePath,
-      outputPrivateStateFilePath,
-      outputZswapLocalStateFilePath,
-      outputResultFilePath,
-      outputEventsFilePath
-    },
-    moduleSpec
-  ) => Effect.gen(function* () {
+export const handler: (
+  inputs: Args & Options,
+  moduleSpec: ConfigCompiler.ModuleSpec
+) => Effect.Effect<
+  void,
+  ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
+  CompiledContractReflection.CompiledContractReflection | FileSystem.FileSystem
+> = (
+  {
+    address,
+    circuitId,
+    args,
+    inputFilePath,
+    inputPrivateStateFilePath,
+    inputZswapLocalStateFilePath,
+    inputLedgerParamsFilePath,
+    outputFilePath,
+    outputPublicFilePath,
+    outputPrivateStateFilePath,
+    outputZswapLocalStateFilePath,
+    outputResultFilePath,
+    outputEventsFilePath
+  },
+  moduleSpec
+) =>
+  Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
-    const { module: { default: contractModule } } = moduleSpec;
+    const {
+      module: { default: contractModule }
+    } = moduleSpec;
     const contractReflector = yield* CompiledContractReflection.CompiledContractReflection;
-    const argsParser = yield* contractReflector.createArgumentParser(contractModule.contractExecutable.compiledContract);
-    const ledgerContractState = yield* fs.readFile(inputFilePath).pipe(
-      Effect.flatMap(ContractState.asLedgerContractStateFromBytes)
+    const argsParser = yield* contractReflector.createArgumentParser(
+      contractModule.contractExecutable.compiledContract
     );
+    const ledgerContractState = yield* fs
+      .readFile(inputFilePath)
+      .pipe(Effect.flatMap(ContractState.asLedgerContractStateFromBytes));
     const privateState = JSON.parse(yield* fs.readFileString(inputPrivateStateFilePath));
-    const encodedZswapLocalState = Option.map(
-      inputZswapLocalStateFilePath,
-      (filePath) => fs.readFileString(filePath).pipe(
-        Effect.flatMap((str) => decodeZswapLocalStateObject(JSON.parse(str))
-      ))
+    const encodedZswapLocalState = Option.map(inputZswapLocalStateFilePath, (filePath) =>
+      fs.readFileString(filePath).pipe(Effect.flatMap((str) => decodeZswapLocalStateObject(JSON.parse(str))))
     );
-    const decodedLedgerParameters = Option.map(
-      inputLedgerParamsFilePath,
-      (filePath) => fs.readFile(filePath).pipe(
-        Effect.flatMap(LedgerParameters.asLedgerParameters)
-      )
+    const decodedLedgerParameters = Option.map(inputLedgerParamsFilePath, (filePath) =>
+      fs.readFile(filePath).pipe(Effect.flatMap(LedgerParameters.asLedgerParameters))
     );
 
     const result = yield* contractModule.contractExecutable.circuit(
@@ -137,8 +140,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         2
       )
     );
-    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
-      .addCall(new ContractCallPrototype(
+    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addCall(
+      new ContractCallPrototype(
         address,
         circuitId,
         ledgerContractState.operation(circuitId) as LedgerContractOption,
@@ -149,49 +152,36 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         result.private.output,
         communicationCommitmentRandomness(),
         circuitId
-      ));
+      )
+    );
 
     // If the output public file path is provided, write the on-chain (public state) data to the specified file.
     if (Option.isSome(outputPublicFilePath)) {
-      ledgerContractState.data = new LedgerChargedState(
-        LedgerStateValue.decode(result.public.contractState.encode())
-      );
+      ledgerContractState.data = new LedgerChargedState(LedgerStateValue.decode(result.public.contractState.encode()));
       yield* fs.writeFile(Option.getOrThrow(outputPublicFilePath), ledgerContractState.serialize());
     }
     yield* fs.writeFileString(
       outputResultFilePath,
-      JSON.stringify(
-        result.private.result,
-        (_, value) => {
-          if (typeof value === 'bigint') return value.toString();
-          if (value instanceof Uint8Array) return Array.from(value);
-          return value;
-        }
-      )
+      JSON.stringify(result.private.result, (_, value) => {
+        if (typeof value === 'bigint') return value.toString();
+        if (value instanceof Uint8Array) return Array.from(value);
+        return value;
+      })
     );
     yield* fs.writeFile(outputFilePath, intent.serialize());
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.private.privateState));
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,
-      JSON.stringify(
-        yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.private.zswapLocalState))
-      )
+      JSON.stringify(yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.private.zswapLocalState)))
     );
     if (Option.isSome(outputEventsFilePath)) {
       yield* fs.writeFileString(
         Option.getOrThrow(outputEventsFilePath),
-        JSON.stringify(
-          result.public.events,
-          (_, value) => {
-            if (typeof value === 'bigint') return value.toString();
-            if (value instanceof Uint8Array) return Array.from(value);
-            return value;
-          }
-        )
+        JSON.stringify(result.public.events, (_, value) => {
+          if (typeof value === 'bigint') return value.toString();
+          if (value instanceof Uint8Array) return Array.from(value);
+          return value;
+        })
       );
     }
-  }).pipe(
-    Effect.mapError(
-      (err) => ContractRuntimeError.make('Failed to invoke circuit', err)
-    )
-  );
+  }).pipe(Effect.mapError((err) => ContractRuntimeError.make('Failed to invoke circuit', err)));

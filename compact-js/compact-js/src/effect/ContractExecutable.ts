@@ -27,6 +27,7 @@ import {
   type Op,
   type QueryContext,
   sampleSigningKey,
+  signingKeyFromBip340,
   signatureVerifyingKey,
   type StateValue,
   type ZswapLocalState
@@ -48,7 +49,7 @@ import {
   type Transcript,
   VerifierKeyInsert,
   VerifierKeyRemove
-} from '@midnight-ntwrk/ledger-v9';
+} from '@midnightntwrk/ledger-v9';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
@@ -62,6 +63,7 @@ import * as Contract from './Contract.js';
 import * as ContractConfigurationError from './ContractConfigurationError.js';
 import * as ContractRuntimeError from './ContractRuntimeError.js';
 import * as CompactContextInternal from './internal/compactContext.js';
+import { toLedgerSigningKey } from './internal/ledger-signing-key.js';
 import { ZKConfiguration } from './ZKConfiguration.js';
 import { type ZKConfigurationReadError } from './ZKConfigurationReadError.js';
 
@@ -246,6 +248,32 @@ type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<
 const DEFAULT_CMA_THRESHOLD = 1;
 const DEFAULT_SIGNATURE_INDEX = 0n;
 
+const hexToBytes = (hex: string): Uint8Array => {
+  const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
+  if (clean.length % 2 !== 0) {
+    throw new Error(`Invalid hex string: odd length (${clean.length})`);
+  }
+  const out = new Uint8Array(clean.length / 2);
+  for (let i = 0; i < out.length; i++) {
+    out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
+  }
+  return out;
+};
+
+const toRuntimeSigningKey = (platformKey: string) => {
+  const bytes = hexToBytes(platformKey);
+  const BIP340_KEY_BYTES = 32;
+  let bip340: Uint8Array;
+  if (bytes.length === BIP340_KEY_BYTES) {
+    bip340 = bytes;
+  } else if (bytes.length > BIP340_KEY_BYTES) {
+    bip340 = bytes.subarray(bytes.length - BIP340_KEY_BYTES);
+  } else {
+    throw new Error(`Signing key too short: ${bytes.length} bytes, need ${BIP340_KEY_BYTES}`);
+  }
+  return signingKeyFromBip340(bip340);
+};
+
 const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
   const stateValue = LedgerStateValue.decode(queryContext.state.state.encode());
   const ledgerQueryContext = new LedgerQueryContext(new LedgerChargedState(stateValue), queryContext.address);
@@ -266,7 +294,7 @@ const partitionTranscript = (
 > => {
   const preTranscript = new PreTranscript(
     Array.from(finalTxContext.comIndices).reduce(
-      (queryContext: QueryContext, entry: any) => queryContext.insertCommitment(...entry),
+      (queryContext: QueryContext, entry: any) => queryContext.insertCommitment(...(entry as [any, any])),
       asLedgerQueryContext(txContext)
     ) as QueryContext,
     publicTranscript
@@ -563,7 +591,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       public: {
         maintenanceUpdate: maintenanceUpdate.addSignature(
           DEFAULT_SIGNATURE_INDEX,
-          signData(Option.getOrThrow(currentSigningKey), maintenanceUpdate.dataToSign)
+          signData(toLedgerSigningKey(Option.getOrThrow(currentSigningKey)), maintenanceUpdate.dataToSign)
         )
       },
       private: {
@@ -579,23 +607,27 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     [ContractMaintenanceAuthority, SigningKey.SigningKey],
     ContractConfigurationError.ContractConfigurationError
   > {
-    const signingKey = Option.match(key, {
+    const platformSigningKey = Option.match(key, {
       onSome: identity,
-      onNone: () => SigningKey.SigningKey(sampleSigningKey())
+      onNone: () => sampleSigningKey().value as SigningKey.SigningKey
+    });
+    const runtimeSigningKey = Option.match(key, {
+      onSome: (platformKey) => toRuntimeSigningKey(platformKey),
+      onNone: () => sampleSigningKey()
     });
     try {
       return Either.right([
         new ContractMaintenanceAuthority(
-          [signatureVerifyingKey(signingKey)],
+          [signatureVerifyingKey(runtimeSigningKey)],
           DEFAULT_CMA_THRESHOLD,
           contractState ? contractState.maintenanceAuthority.counter + 1n : 0n
         ),
-        signingKey
+        platformSigningKey
       ]);
     } catch (err: unknown) {
       return Either.left(
         ContractConfigurationError.make(
-          `Failed to create a signature verifying key for signing key '${signingKey}'`,
+          `Failed to create a signature verifying key for signing key '${platformSigningKey}'`,
           contractState,
           err
         )

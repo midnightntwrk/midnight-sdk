@@ -12,9 +12,9 @@
   },
   "dependencies": {
     "@effect/platform": "^0.96.1",
-    "@midnight-ntwrk/compact-runtime": "file:../../compact-submodule/runtime",
-    "@midnight-ntwrk/ledger-v9": "^0.1.0-alpha.1",
+    "@midnight-ntwrk/compact-runtime": "0.16.103-dev.3a289c2e7811d2868e7810bd5a5f1f0b7055995f",
     "@midnight-ntwrk/platform-js": "^2.2.4",
+    "@midnightntwrk/ledger-v9": "^1.0.0-rc.2",
     "effect": "^3.20.0",
     "tslib": "^2.8.1"
   },
