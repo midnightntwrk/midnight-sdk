@@ -277,19 +277,19 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/cli@npm:^0.74.0":
-  version: 0.74.0
-  resolution: "@effect/cli@npm:0.74.0"
+"@effect/cli@npm:^0.75.0":
+  version: 0.75.2
+  resolution: "@effect/cli@npm:0.75.2"
   dependencies:
     ini: "npm:^4.1.3"
     toml: "npm:^3.0.0"
     yaml: "npm:^2.5.0"
   peerDependencies:
-    "@effect/platform": ^0.95.0
-    "@effect/printer": ^0.48.0
-    "@effect/printer-ansi": ^0.48.0
-    effect: ^3.20.0
-  checksum: 10/bac85568a6abbf4302fff41fd63b8f4965adeffcaff86dd2a9f90cdb86782ba055e6a63e7bfd2b438e6c2d03211bf09381b9cfbfd938c35c02184a47e261092a
+    "@effect/platform": ^0.96.1
+    "@effect/printer": ^0.49.0
+    "@effect/printer-ansi": ^0.49.0
+    effect: ^3.21.2
+  checksum: 10/eb9f927c26985d77bdf7be51bb4ce7e77e4181266db8ba7c24a6ee0b89b6a114d6b9ceaf636a5ecf350d7afd9234b6b4a871240f8d70424509bc785807d314ae
   languageName: node
   linkType: hard
 
@@ -388,25 +388,25 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/printer-ansi@npm:^0.48.0":
-  version: 0.48.0
-  resolution: "@effect/printer-ansi@npm:0.48.0"
+"@effect/printer-ansi@npm:^0.49.0":
+  version: 0.49.0
+  resolution: "@effect/printer-ansi@npm:0.49.0"
   dependencies:
-    "@effect/printer": "npm:^0.48.0"
+    "@effect/printer": "npm:^0.49.0"
   peerDependencies:
-    "@effect/typeclass": ^0.39.0
-    effect: ^3.20.0
-  checksum: 10/2d106cfec3978b65ac4cb0366e1b004392935ca70cd3567e838463779af92e6a460f0113eb0bc5f825af1c4c6f50d702389e9c71135a5ca6a8f7a1ebe380efe2
+    "@effect/typeclass": ^0.40.0
+    effect: ^3.21.0
+  checksum: 10/4168d9f4d826f2f9c19bf1d7bd79402670df321a9d106224ce156c3017343e7f1c19b353d07c41d980d1ea332de2a016e1df731482ddf50a89525fa196fb834a
   languageName: node
   linkType: hard
 
-"@effect/printer@npm:^0.48.0":
-  version: 0.48.0
-  resolution: "@effect/printer@npm:0.48.0"
+"@effect/printer@npm:^0.49.0":
+  version: 0.49.0
+  resolution: "@effect/printer@npm:0.49.0"
   peerDependencies:
-    "@effect/typeclass": ^0.39.0
-    effect: ^3.20.0
-  checksum: 10/a8ab26016b64b783bc2a1855f5f053b0555164e6c08fd6f6b0ed0efa41756e4f6b1121f694c62307270164e255e4a05ac50d893339842406115f4779d0364ee1
+    "@effect/typeclass": ^0.40.0
+    effect: ^3.21.0
+  checksum: 10/7e063413d10086a79a5a4315b98cc4b546bc22408876f92421b567a1bfdb85d88d36466341e7c51987972949fe2fd31f15576a57fd9dd82f2ba7418bc62ad88d
   languageName: node
   linkType: hard
 
@@ -683,14 +683,14 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js-command@workspace:compact-js-command"
   dependencies:
-    "@effect/cli": "npm:^0.74.0"
+    "@effect/cli": "npm:^0.75.0"
     "@effect/cluster": "npm:^0.57.0"
     "@effect/experimental": "npm:^0.60.0"
     "@effect/platform": "npm:^0.96.1"
     "@effect/platform-node": "npm:^0.106.0"
     "@effect/platform-node-shared": "npm:^0.59.0"
-    "@effect/printer": "npm:^0.48.0"
-    "@effect/printer-ansi": "npm:^0.48.0"
+    "@effect/printer": "npm:^0.49.0"
+    "@effect/printer-ansi": "npm:^0.49.0"
     "@effect/rpc": "npm:^0.74.0"
     "@effect/sql": "npm:^0.50.0"
     "@effect/typeclass": "npm:^0.39.0"
@@ -701,7 +701,7 @@ __metadata:
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0"
     "@midnightntwrk/ledger-v9": "npm:^1.0.0-rc.2"
-    effect: "npm:^3.20.0"
+    effect: "npm:^3.21.2"
     json5: "npm:^2.2.3"
     ts-node: "npm:^10.9.2"
     tslib: "npm:^2.8.1"
@@ -2429,6 +2429,16 @@ __metadata:
     "@standard-schema/spec": "npm:^1.0.0"
     fast-check: "npm:^3.23.1"
   checksum: 10/62c1e43f86db04551aaf494a3d2fe296ce3a7d5e25c79c0b41b88e82152af6bb429ce040c7b51fd1b98d3fe93bef768737967f182b4b88ed488689860b55fc26
+  languageName: node
+  linkType: hard
+
+"effect@npm:^3.21.2":
+  version: 3.21.3
+  resolution: "effect@npm:3.21.3"
+  dependencies:
+    "@standard-schema/spec": "npm:^1.0.0"
+    fast-check: "npm:^3.23.1"
+  checksum: 10/3f88c07a398b35a384549db1b0e013806fbb7a5285f52e9c6fb9050ef286ada09e763eed2d9e14839534c40de5f632aabf1ee76487184769aa0a995deec70cf0
   languageName: node
   linkType: hard
 
