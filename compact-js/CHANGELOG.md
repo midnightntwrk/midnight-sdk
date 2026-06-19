@@ -1,3 +1,19 @@
+## 2.5.5-rc.1 (2026-06-19)
+
+### Features
+
+### Chores
+
+- update readme
+- fix version bump one more
+- update-version-bump
+- disable broken run
+- version bump and release version bump
+- update contents permissions in cd file
+- fix version bump
+- update compact-js to ledger9-rc2
+- bumpint-platform-js
+
 ## 2.5.4-alpha (2026-06-16)
 
 ### Features

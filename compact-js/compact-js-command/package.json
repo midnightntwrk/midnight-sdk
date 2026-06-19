@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/compact-js-command",
-  "version": "2.5.3",
+  "version": "2.5.5-rc.1",
   "description": "Command line utilities for working with smart contracts compiled with the Compact language",
   "type": "module",
   "exports": {
@@ -23,12 +23,12 @@
     "@effect/sql": "^0.51.1",
     "@effect/typeclass": "^0.39.0",
     "@effect/workflow": "^0.17.0",
-    "@midnight-ntwrk/compact-js": "^2.5.0",
-    "@midnight-ntwrk/compact-js-node": "^2.5.0",
+    "@midnight-ntwrk/compact-js": "workspace:^",
+    "@midnight-ntwrk/compact-js-node": "workspace:^",
     "@midnight-ntwrk/compact-runtime": "0.16.0",
-    "@midnight-ntwrk/ledger-v9": "^0.1.0-alpha.1",
     "@midnight-ntwrk/platform-js": "^2.2.4",
     "@midnight-ntwrk/wallet-sdk-address-format": "3.1.0",
+    "@midnightntwrk/ledger-v9": "^1.0.0-rc.2",
     "effect": "^3.20.0",
     "json5": "^2.2.3",
     "ts-node": "^10.9.2",

@@ -744,12 +744,12 @@ __metadata:
     "@effect/sql": "npm:^0.51.1"
     "@effect/typeclass": "npm:^0.39.0"
     "@effect/workflow": "npm:^0.17.0"
-    "@midnight-ntwrk/compact-js": "npm:^2.5.0"
-    "@midnight-ntwrk/compact-js-node": "npm:^2.5.0"
+    "@midnight-ntwrk/compact-js": "workspace:^"
+    "@midnight-ntwrk/compact-js-node": "workspace:^"
     "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
-    "@midnight-ntwrk/ledger-v9": "npm:^0.1.0-alpha.1"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0"
+    "@midnightntwrk/ledger-v9": "npm:^1.0.0-rc.2"
     effect: "npm:^3.20.0"
     json5: "npm:^2.2.3"
     ts-node: "npm:^10.9.2"
@@ -757,7 +757,7 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/compact-js-node@npm:^2.5.0, @midnight-ntwrk/compact-js-node@workspace:*, @midnight-ntwrk/compact-js-node@workspace:compact-js-node":
+"@midnight-ntwrk/compact-js-node@workspace:*, @midnight-ntwrk/compact-js-node@workspace:^, @midnight-ntwrk/compact-js-node@workspace:compact-js-node":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js-node@workspace:compact-js-node"
   dependencies:
@@ -817,14 +817,14 @@ __metadata:
   languageName: unknown
   linkType: soft
 
-"@midnight-ntwrk/compact-js@npm:^2.5.0, @midnight-ntwrk/compact-js@workspace:compact-js":
+"@midnight-ntwrk/compact-js@workspace:^, @midnight-ntwrk/compact-js@workspace:compact-js":
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js@workspace:compact-js"
   dependencies:
     "@effect/platform": "npm:^0.96.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.16.0"
-    "@midnight-ntwrk/ledger-v9": "npm:^0.1.0-alpha.1"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
+    "@midnightntwrk/ledger-v9": "npm:^1.0.0-rc.2"
     effect: "npm:^3.20.0"
     tslib: "npm:^2.8.1"
   languageName: unknown
@@ -845,13 +845,6 @@ __metadata:
   version: 8.0.2
   resolution: "@midnight-ntwrk/ledger-v8@npm:8.0.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v8%2F8.0.2%2F89f539aa03677c5d966c1adae48e4dfc89df292a"
   checksum: 10/2c4b9a8cadbd22da8fc23652f598467b670a062b515a5a67de9a03ac09b597bf93ee36d1122f196933cf5c6897eca55d383e683959449d21fb9dd7f831bf3656
-  languageName: node
-  linkType: hard
-
-"@midnight-ntwrk/ledger-v9@npm:^0.1.0-alpha.1":
-  version: 0.1.0-alpha.1
-  resolution: "@midnight-ntwrk/ledger-v9@npm:0.1.0-alpha.1::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v9%2F0.1.0-alpha.1%2Fa5533dc1678f37cdb57e586f85b5b4e885e80622"
-  checksum: 10/ed6408bea78de5c67e65e586538afce238b9c72b22f1f203cad7ad1c58c5c62fec7236358edc6d92805e4d7fe81c44943bc40d5166ae76b1ae728f17f65fb6bc
   languageName: node
   linkType: hard
 
@@ -891,6 +884,13 @@ __metadata:
     "@scure/base": "npm:^2.0.0"
     "@subsquid/scale-codec": "npm:^4.0.1"
   checksum: 10/be1cfde40a7753c62377a914ec72fe29ac57e38895b33d14861b22b7193aa1fdd1989680f5b5907b73a24d9c080e5ea6711a88b4442192fb1b1fa37da0a9009a
+  languageName: node
+  linkType: hard
+
+"@midnightntwrk/ledger-v9@npm:^1.0.0-rc.2":
+  version: 1.0.0-rc.2
+  resolution: "@midnightntwrk/ledger-v9@npm:1.0.0-rc.2"
+  checksum: 10/84dc2c7774c23a8122f5f7ccb535ab4a725afd7a02e6c7cdd685e248cbbd151ce5f803056b16061462e6be36d99f8a5162d6db4de8b41a38bd1d5474fde7805c
   languageName: node
   linkType: hard
 
