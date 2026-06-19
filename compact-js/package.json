@@ -4,6 +4,9 @@
   "version": "2.5.3",
   "private": true,
   "packageManager": "yarn@4.10.3",
+  "resolutions": {
+    "effect": "^3.21.2"
+  },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
     "node": ">=22"
@@ -25,7 +28,7 @@
   "dependencies": {
     "@effect/platform": "^0.96.1",
     "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.1",
-    "effect": "^3.20.0"
+    "effect": "^3.21.2"
   },
   "devDependencies": {
     "@commitlint/cli": "^19.0.0",
