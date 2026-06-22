@@ -24,6 +24,8 @@ import {
 import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import {
   ContractDeploy,
   ContractState as LedgerContractState,
@@ -34,8 +36,6 @@ import {
   type VerifierKeyInsert,
   type VerifierKeyRemove
 } from '@midnightntwrk/ledger-v9';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import { ConfigProvider, Effect, Layer, Option } from 'effect';
 
 import { CounterContract } from '../contract';

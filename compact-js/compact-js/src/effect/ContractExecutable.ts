@@ -294,6 +294,7 @@ const partitionTranscript = (
 > => {
   const preTranscript = new PreTranscript(
     Array.from(finalTxContext.comIndices).reduce(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (queryContext: QueryContext, entry: any) => queryContext.insertCommitment(...(entry as [any, any])),
       asLedgerQueryContext(txContext)
     ) as QueryContext,
