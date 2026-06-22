@@ -17,7 +17,10 @@ import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import { ContractDeploy, Intent } from '@midnightntwrk/ledger-v9';
+import {
+  ContractDeploy,
+  Intent
+} from '@midnight-ntwrk/ledger-v8';
 import { type ConfigError, Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -25,7 +28,7 @@ import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
 import * as ContractState from './contractState.js';
-import { encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js';
+import { encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
 import * as InternalOptions from './options.js';
 
 /** @internal */
@@ -42,29 +45,29 @@ export const Options = {
   outputPublicFilePath: InternalOptions.outputPublicFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
   outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath
-};
+}
 
 /** @internal */
-export const handler: (
-  inputs: Args & Options,
-  moduleSpec: ConfigCompiler.ModuleSpec
-) => Effect.Effect<
-  void,
-  ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
-  CompiledContractReflection.CompiledContractReflection | FileSystem.FileSystem
-> = (
-  { outputFilePath, outputPublicFilePath, outputPrivateStateFilePath, outputZswapLocalStateFilePath, args },
-  moduleSpec
-) =>
-  Effect.gen(function* () {
+export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.ModuleSpec) =>
+  Effect.Effect<
+    void,
+    ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
+    CompiledContractReflection.CompiledContractReflection | FileSystem.FileSystem
+  > =
+  (
+    {
+      outputFilePath,
+      outputPublicFilePath,
+      outputPrivateStateFilePath,
+      outputZswapLocalStateFilePath,
+      args
+    },
+    moduleSpec
+  ) => Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
-    const {
-      module: { default: contractModule }
-    } = moduleSpec;
+    const { module: { default: contractModule } } = moduleSpec;
     const contractReflector = yield* CompiledContractReflection.CompiledContractReflection;
-    const argsParser = yield* contractReflector.createArgumentParser(
-      contractModule.contractExecutable.compiledContract
-    );
+    const argsParser = yield* contractReflector.createArgumentParser(contractModule.contractExecutable.compiledContract);
     const result = yield* contractModule.contractExecutable.initialize(
       contractModule.createInitialPrivateState(),
       ...(yield* argsParser.parseInitializationArgs(args))
@@ -82,6 +85,12 @@ export const handler: (
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.private.privateState));
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,
-      JSON.stringify(yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.private.zswapLocalState)))
+      JSON.stringify(
+        yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.private.zswapLocalState))
+      )
     );
-  }).pipe(Effect.mapError((err) => ContractRuntimeError.make('Failed to initialize contract', err)));
+  }).pipe(
+    Effect.mapError(
+      (err) => ContractRuntimeError.make('Failed to initialize contract', err)
+    )
+  );

@@ -15,32 +15,32 @@
 
 import { ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
-import { ContractState as LedgerContractState } from '@midnightntwrk/ledger-v9';
+import { ContractState as LedgerContractState } from '@midnight-ntwrk/ledger-v8';
 import { Effect } from 'effect';
 
 /** @internal */
 export const asLedgerContractState: (
   contractState: ContractState
-) => Effect.Effect<LedgerContractState, ContractRuntimeError.ContractRuntimeError> = (state) =>
-  Effect.try({
+) => Effect.Effect<LedgerContractState, ContractRuntimeError.ContractRuntimeError> =
+  (state) => Effect.try({
     try: () => LedgerContractState.deserialize(state.serialize()),
-    catch: (err) => ContractRuntimeError.make('Unexpected error converting runtime contract state', err)
+    catch: (err) => ContractRuntimeError.make('Unexpected error converting runtime contract state', err),
   });
 
 /** @internal */
 export const asLedgerContractStateFromBytes: (
   bytes: Uint8Array
-) => Effect.Effect<LedgerContractState, ContractRuntimeError.ContractRuntimeError> = (bytes) =>
-  Effect.try({
+) => Effect.Effect<LedgerContractState, ContractRuntimeError.ContractRuntimeError> =
+  (bytes) => Effect.try({
     try: () => LedgerContractState.deserialize(bytes),
-    catch: (err) => ContractRuntimeError.make('Unexpected error deserializing ledger contract state from bytes', err)
+    catch: (err) => ContractRuntimeError.make('Unexpected error deserializing ledger contract state from bytes', err),
   });
 
 /** @internal */
 export const asContractState: (
   contractState: LedgerContractState
-) => Effect.Effect<ContractState, ContractRuntimeError.ContractRuntimeError> = (state) =>
-  Effect.try({
+) => Effect.Effect<ContractState, ContractRuntimeError.ContractRuntimeError> =
+  (state) => Effect.try({
     try: () => ContractState.deserialize(state.serialize()),
-    catch: (err) => ContractRuntimeError.make('Unexpected error converting ledger contract state', err)
+    catch: (err) => ContractRuntimeError.make('Unexpected error converting ledger contract state', err),
   });

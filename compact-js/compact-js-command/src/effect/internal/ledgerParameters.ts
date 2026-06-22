@@ -14,14 +14,14 @@
  */
 
 import { ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { LedgerParameters } from '@midnightntwrk/ledger-v9';
+import { LedgerParameters } from '@midnight-ntwrk/ledger-v8';
 import { Effect } from 'effect';
 
 /** @internal */
 export const asLedgerParameters: (
   bytes: Uint8Array
-) => Effect.Effect<LedgerParameters, ContractRuntimeError.ContractRuntimeError> = (bytes) =>
-  Effect.try({
+) => Effect.Effect<LedgerParameters, ContractRuntimeError.ContractRuntimeError> =
+  (bytes) => Effect.try({
     try: () => LedgerParameters.deserialize(bytes),
-    catch: (err) => ContractRuntimeError.make('Unexpected error deserializing ledger parameters', err)
+    catch: (err) => ContractRuntimeError.make('Unexpected error deserializing ledger parameters', err),
   });

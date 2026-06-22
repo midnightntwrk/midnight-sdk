@@ -16,7 +16,7 @@
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { Contract, type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { Intent } from '@midnightntwrk/ledger-v9';
+import { Intent } from '@midnight-ntwrk/ledger-v8';
 import { type ConfigError, Duration, Effect, Option } from 'effect';
 
 import { type ConfigCompiler } from '../ConfigCompiler.js';
@@ -40,8 +40,8 @@ export type Options = Command.Command.ParseConfig<typeof Options>;
 /** @internal */
 export const Options = {
   ...InternalMaintainCommand.Options,
-  signingKey: InternalOptions.signingKey
-};
+  signingKey: InternalOptions.signingKey,
+}
 
 const removeCircuit = (
   contract: ContractExecutable.ContractExecutable<any, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
@@ -57,44 +57,41 @@ const addOrReplaceCircuit = (
 ) => contract.addOrReplaceContractOperation(circuitId, verifierKey, contractContext);
 
 /** @internal */
-export const handler: (
-  inputs: Args & Options,
-  moduleSpec: ConfigCompiler.ModuleSpec
-) => Effect.Effect<void, ContractExecutable.ContractExecutionError | ConfigError.ConfigError, FileSystem.FileSystem> = (
-  { inputFilePath, outputFilePath, address, circuitId, verifierKeyPath },
-  moduleSpec
-) =>
-  Effect.gen(function* () {
+export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.ModuleSpec) =>
+  Effect.Effect<
+    void,
+    ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
+    FileSystem.FileSystem
+  > =
+  (
+    { inputFilePath, outputFilePath, address, circuitId, verifierKeyPath },
+    moduleSpec
+  ) => Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
-    const {
-      module: { default: contractModule }
-    } = moduleSpec;
-    const ledgerContractState = yield* fs
-      .readFile(inputFilePath)
-      .pipe(Effect.flatMap(ContractState.asLedgerContractStateFromBytes));
+    const { module: { default: contractModule } } = moduleSpec;
+    const ledgerContractState = yield* fs.readFile(inputFilePath).pipe(
+      Effect.flatMap(ContractState.asLedgerContractStateFromBytes)
+    );
     const contractContext: ContractExecutable.ContractExecutable.ContractContext = {
       address,
       contractState: yield* ContractState.asContractState(ledgerContractState)
-    };
+    }
     const result = yield* Option.match(verifierKeyPath, {
-      onSome: (filePath) =>
-        fs
-          .readFile(filePath)
-          .pipe(
-            Effect.flatMap((data) =>
-              addOrReplaceCircuit(
-                contractModule.contractExecutable,
-                Contract.ProvableCircuitId(circuitId),
-                Contract.VerifierKey(data),
-                contractContext
-              )
-            )
-          ),
-      onNone: () =>
-        removeCircuit(contractModule.contractExecutable, Contract.ProvableCircuitId(circuitId), contractContext)
+      onSome: (filePath) => fs.readFile(filePath).pipe(
+        Effect.flatMap((data) => addOrReplaceCircuit(
+          contractModule.contractExecutable,
+          Contract.ProvableCircuitId(circuitId),
+          Contract.VerifierKey(data),
+          contractContext)
+        )
+      ),
+      onNone: () => removeCircuit(contractModule.contractExecutable, Contract.ProvableCircuitId(circuitId), contractContext)
     });
-    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addMaintenanceUpdate(
-      result.public.maintenanceUpdate
-    );
+    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
+      .addMaintenanceUpdate(result.public.maintenanceUpdate);
     yield* fs.writeFile(outputFilePath, intent.serialize());
-  }).pipe(Effect.mapError((err) => ContractRuntimeError.make('Failed to apply maintenance operation', err)));
+  }).pipe(
+    Effect.mapError(
+      (err) => ContractRuntimeError.make('Failed to apply maintenance operation', err)
+    )
+  );
