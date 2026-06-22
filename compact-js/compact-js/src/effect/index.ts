@@ -17,7 +17,7 @@ export * as CompactContext from './CompactContext.js';
 export * as CompiledContract from './CompiledContract.js';
 export * as Contract from './Contract.js';
 export * as ContractConfigurationError from './ContractConfigurationError.js';
-export * as ContractEventConstants from './ContractEventContstants.js';
+export * as ContractEventConstants from './ContractEventConstants.js';
 export * from './ContractEventValidator.js';
 export * as ContractExecutable from './ContractExecutable.js';
 export * as ContractExecutableRuntime from './ContractExecutableRuntime.js';

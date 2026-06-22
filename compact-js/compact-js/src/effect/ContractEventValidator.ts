@@ -1,6 +1,6 @@
 import { type LogEvent } from '@midnight-ntwrk/compact-runtime';
 
-import { MAX_EVENT_SIZE } from './ContractEventContstants.js';
+import { MAX_EVENT_SIZE } from './ContractEventConstants.js';
 
 export class ContractEventValidationError extends Error {
   constructor(message: string) {
