@@ -19,6 +19,37 @@ import { MAX_EVENT_SIZE } from './ContractEventConstants.js';
 import * as ContractEventValidationError from './ContractEventValidationError.js';
 
 /**
+ * Validates that a single event complies with system constraints.
+ *
+ * @param event The event to validate.
+ * @param index The index of the event within the batch being validated.
+ * @returns An {@link Effect} that fails with a
+ * {@link ContractEventValidationError.ContractEventValidationError} if validation fails.
+ */
+const validateEvent = (
+  event: LogEvent,
+  index: number
+): Effect.Effect<void, ContractEventValidationError.ContractEventValidationError> => {
+  if (!event || typeof event !== 'object') {
+    return ContractEventValidationError.make(`Event at index ${index} is not a valid object`);
+  }
+
+  // Check that event has required fields from GatherResult
+  if (!('tag' in event) || event.tag !== 'log') {
+    return ContractEventValidationError.make(`Event at index ${index} must have tag: 'log'`);
+  }
+
+  // Validate content size
+  if ('content' in event && event.content instanceof Uint8Array && event.content.byteLength > MAX_EVENT_SIZE) {
+    return ContractEventValidationError.make(
+      `Event at index ${index} exceeds max size: ${event.content.byteLength} > ${MAX_EVENT_SIZE}`
+    );
+  }
+
+  return Effect.void;
+};
+
+/**
  * Validates that events comply with system constraints.
  *
  * @param events Events to validate.
@@ -27,27 +58,9 @@ import * as ContractEventValidationError from './ContractEventValidationError.js
  *
  * @category validation
  */
-export const validateEvents = (events: LogEvent[]): Effect.Effect<void, ContractEventValidationError.ContractEventValidationError> =>
-  Effect.gen(function* () {
-    if (!Array.isArray(events)) {
-      return yield* ContractEventValidationError.make('Events must be an array');
-    }
-
-    for (const [index, event] of events.entries()) {
-      if (!event || typeof event !== 'object') {
-        return yield* ContractEventValidationError.make(`Event at index ${index} is not a valid object`);
-      }
-
-      // Check that event has required fields from GatherResult
-      if (!('tag' in event) || event.tag !== 'log') {
-        return yield* ContractEventValidationError.make(`Event at index ${index} must have tag: 'log'`);
-      }
-
-      // Validate content size
-      if ('content' in event && event.content instanceof Uint8Array && event.content.byteLength > MAX_EVENT_SIZE) {
-        return yield* ContractEventValidationError.make(
-          `Event at index ${index} exceeds max size: ${event.content.byteLength} > ${MAX_EVENT_SIZE}`
-        );
-      }
-    }
-  });
+export const validateEvents = (
+  events: LogEvent[]
+): Effect.Effect<void, ContractEventValidationError.ContractEventValidationError> =>
+  Array.isArray(events)
+    ? Effect.forEach(events, validateEvent, { discard: true })
+    : ContractEventValidationError.make('Events must be an array');
