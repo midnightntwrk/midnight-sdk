@@ -12,55 +12,66 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-import { type LogEvent } from '@midnight-ntwrk/compact-runtime';
 import { Effect } from 'effect';
+import { TreeFormatter } from 'effect/ParseResult';
+import * as Schema from 'effect/Schema';
 
-import { MAX_EVENT_SIZE } from './ContractEventConstants.js';
 import * as ContractEventValidationError from './ContractEventValidationError.js';
 
+/** The standard `LogEventType` variants emitted by Compact contracts (see contract-runtime). */
+const LogEventTypeSchema = Schema.Literal(
+  'shielded-spend',
+  'shielded-receive',
+  'shielded-mint',
+  'shielded-burn',
+  'unshielded-spend',
+  'unshielded-receive',
+  'unshielded-mint',
+  'unshielded-burn',
+  'paused',
+  'unpaused',
+  'misc'
+);
+
 /**
- * Validates that a single event complies with system constraints.
+ * Structural schema for a single contract log event — the `content` of a `log`-tagged
+ * `GatherResult`.
  *
- * @param event The event to validate.
- * @param index The index of the event within the batch being validated.
- * @returns An {@link Effect} that fails with a
- * {@link ContractEventValidationError.ContractEventValidationError} if validation fails.
+ * The `data` payload is an on-chain `EncodedStateValue` whose deep structure is parsed (and
+ * gracefully degraded) by the ledger/VM per MIP-0002, so it is accepted as-is here: this
+ * boundary check only asserts that the event envelope is well-formed.
  */
-const validateEvent = (
-  event: LogEvent,
-  index: number
-): Effect.Effect<void, ContractEventValidationError.ContractEventValidationError> => {
-  if (!event || typeof event !== 'object') {
-    return ContractEventValidationError.make(`Event at index ${index} is not a valid object`);
-  }
+const LogEventSchema = Schema.Struct({
+  version: Schema.Number,
+  eventType: LogEventTypeSchema,
+  data: Schema.Unknown
+});
 
-  // Check that event has required fields from GatherResult
-  if (!('tag' in event) || event.tag !== 'log') {
-    return ContractEventValidationError.make(`Event at index ${index} must have tag: 'log'`);
-  }
-
-  // Validate content size
-  if ('content' in event && event.content instanceof Uint8Array && event.content.byteLength > MAX_EVENT_SIZE) {
-    return ContractEventValidationError.make(
-      `Event at index ${index} exceeds max size: ${event.content.byteLength} > ${MAX_EVENT_SIZE}`
-    );
-  }
-
-  return Effect.void;
-};
+const decodeLogEvents = Schema.decodeUnknown(Schema.Array(LogEventSchema), { errors: 'all' });
 
 /**
- * Validates that events comply with system constraints.
+ * Validates that `events` is a well-formed array of contract log events.
  *
- * @param events Events to validate.
+ * Events reach this boundary as untrusted input, so they are decoded from `unknown` with a
+ * {@link Schema} — yielding both the structural validation and a typed failure, rather than
+ * hand-rolled `in`/`instanceof` checks.
+ *
+ * @param events The value to validate.
  * @returns An {@link Effect} that fails with a
- * {@link ContractEventValidationError.ContractEventValidationError} if validation fails.
+ * {@link ContractEventValidationError.ContractEventValidationError} if `events` is not a valid
+ * array of log events.
  *
  * @category validation
  */
 export const validateEvents = (
-  events: LogEvent[]
+  events: unknown
 ): Effect.Effect<void, ContractEventValidationError.ContractEventValidationError> =>
-  Array.isArray(events)
-    ? Effect.forEach(events, validateEvent, { discard: true })
-    : ContractEventValidationError.make('Events must be an array');
+  decodeLogEvents(events).pipe(
+    Effect.asVoid,
+    Effect.mapError((parseError) =>
+      ContractEventValidationError.make(
+        `Invalid contract log events: ${TreeFormatter.formatErrorSync(parseError)}`,
+        parseError
+      )
+    )
+  );

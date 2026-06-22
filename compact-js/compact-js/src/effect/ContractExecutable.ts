@@ -28,7 +28,6 @@ import {
   type QueryContext,
   sampleSigningKey,
   signatureVerifyingKey,
-  signingKeyFromBip340,
   type StateValue,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
@@ -192,8 +191,8 @@ export declare namespace ContractExecutable {
     readonly contractState: StateValue;
     /**
      * Events emitted by the circuit during execution via the `emit` expression.
-     * Events are NOT consensus state and are handled by the indexer.
-     * Complies with EVENT_VERSION (phase 1) and MAX_EVENT_SIZE constraints.
+     * Events are NOT consensus state and are handled by the indexer; size and well-formedness
+     * are enforced on-chain by the ledger/VM (degraded, not failed) per MIP-0002.
      * @see ContractLog for event format details
      */
     readonly events: LogEvent[];
@@ -248,32 +247,6 @@ type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<
 const DEFAULT_CMA_THRESHOLD = 1;
 const DEFAULT_SIGNATURE_INDEX = 0n;
 
-const hexToBytes = (hex: string): Uint8Array => {
-  const clean = hex.startsWith('0x') ? hex.slice(2) : hex;
-  if (clean.length % 2 !== 0) {
-    throw new Error(`Invalid hex string: odd length (${clean.length})`);
-  }
-  const out = new Uint8Array(clean.length / 2);
-  for (let i = 0; i < out.length; i++) {
-    out[i] = parseInt(clean.slice(i * 2, i * 2 + 2), 16);
-  }
-  return out;
-};
-
-const toRuntimeSigningKey = (platformKey: string) => {
-  const bytes = hexToBytes(platformKey);
-  const BIP340_KEY_BYTES = 32;
-  let bip340: Uint8Array;
-  if (bytes.length === BIP340_KEY_BYTES) {
-    bip340 = bytes;
-  } else if (bytes.length > BIP340_KEY_BYTES) {
-    bip340 = bytes.subarray(bytes.length - BIP340_KEY_BYTES);
-  } else {
-    throw new Error(`Signing key too short: ${bytes.length} bytes, need ${BIP340_KEY_BYTES}`);
-  }
-  return signingKeyFromBip340(bip340);
-};
-
 const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
   const stateValue = LedgerStateValue.decode(queryContext.state.state.encode());
   const ledgerQueryContext = new LedgerQueryContext(new LedgerChargedState(stateValue), queryContext.address);
@@ -294,10 +267,9 @@ const partitionTranscript = (
 > => {
   const preTranscript = new PreTranscript(
     Array.from(finalTxContext.comIndices).reduce(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (queryContext: QueryContext, entry: any) => queryContext.insertCommitment(...(entry as [any, any])),
+      (queryContext, [commitment, index]) => queryContext.insertCommitment(commitment, index),
       asLedgerQueryContext(txContext)
-    ) as QueryContext,
+    ),
     publicTranscript
   );
   const partitionedTranscripts = partitionTranscripts(
@@ -581,24 +553,30 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         ContractConfigurationError.make('Signing key required to authorize contract maintenance update', contractState)
       );
     }
+    const signingKey = currentSigningKey.value;
     const update = createUpdateFn();
     if (Either.isLeft(update)) return Either.left(update.left);
     const maintenanceUpdate = new MaintenanceUpdate(
       address,
-      Either.getOrThrow(update),
+      update.right,
       contractState.maintenanceAuthority.counter
     );
-    return Either.right({
-      public: {
-        maintenanceUpdate: maintenanceUpdate.addSignature(
+    // `toLedgerSigningKey`/`signData` throw on a malformed or too-short key; funnel that through the
+    // typed error channel this method advertises rather than letting it surface as an unhandled defect.
+    return Either.try({
+      try: () =>
+        maintenanceUpdate.addSignature(
           DEFAULT_SIGNATURE_INDEX,
-          signData(toLedgerSigningKey(Option.getOrThrow(currentSigningKey)), maintenanceUpdate.dataToSign)
-        )
-      },
-      private: {
-        signingKey: Option.getOrThrow(currentSigningKey)
-      }
-    });
+          signData(toLedgerSigningKey(signingKey), maintenanceUpdate.dataToSign)
+        ),
+      catch: (err) =>
+        ContractConfigurationError.make('Failed to sign contract maintenance update', contractState, err)
+    }).pipe(
+      Either.map((signedMaintenanceUpdate) => ({
+        public: { maintenanceUpdate: signedMaintenanceUpdate },
+        private: { signingKey }
+      }))
+    );
   }
 
   protected createMaintenanceAuthority(
@@ -608,18 +586,18 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     [ContractMaintenanceAuthority, SigningKey.SigningKey],
     ContractConfigurationError.ContractConfigurationError
   > {
+    // Sample a throwaway key only when none is configured, and derive the verifying key from the
+    // SAME key we hand back to the caller. Sampling twice would embed a verifying key that does not
+    // correspond to the returned signing key, so signatures made with it would never verify.
     const platformSigningKey = Option.match(key, {
       onSome: identity,
       onNone: () => sampleSigningKey().value as SigningKey.SigningKey
     });
-    const runtimeSigningKey = Option.match(key, {
-      onSome: (platformKey) => toRuntimeSigningKey(platformKey),
-      onNone: () => sampleSigningKey()
-    });
     try {
+      const ledgerSigningKey = toLedgerSigningKey(platformSigningKey);
       return Either.right([
         new ContractMaintenanceAuthority(
-          [signatureVerifyingKey(runtimeSigningKey)],
+          [signatureVerifyingKey(ledgerSigningKey)],
           DEFAULT_CMA_THRESHOLD,
           contractState ? contractState.maintenanceAuthority.counter + 1n : 0n
         ),

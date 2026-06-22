@@ -20,8 +20,8 @@
  * @remarks
  * - **Event Version**: Phase 1 wire format (version 1). Bumped when on-chain
  *   VersionedLogItem layout or per-event payload format changes.
- * - **Max Event Size**: 512 KiB (524,288 bytes) per event. Must match
- *   MAX_EVENT_SIZE in midnight-ledger's onchain-vm.
+ * - **Event Size**: Bounded and enforced on-chain by the ledger/VM. Per MIP-0002 an oversized
+ *   event is dropped (degraded) rather than causing a failure, so no size limit is enforced here.
  * - **Standard Events**: Fixed schemas for token operations and lifecycle events
  *   - `ShieldedSpend`, `ShieldedReceive`, `ShieldedMint`, `ShieldedBurn`
  *     (indexed fields: `nullifier`, `commitment`)
