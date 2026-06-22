@@ -27,11 +27,15 @@ import {
   type Op,
   type QueryContext,
   sampleSigningKey,
-  signingKeyFromBip340,
   signatureVerifyingKey,
+  signingKeyFromBip340,
   type StateValue,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
+import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
+import type * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import {
   ChargedState as LedgerChargedState,
   ContractMaintenanceAuthority as LedgerContractMaintenanceAuthority,
@@ -50,10 +54,6 @@ import {
   VerifierKeyInsert,
   VerifierKeyRemove
 } from '@midnightntwrk/ledger-v9';
-import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
-import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { Effect, Either, type Layer, Option } from 'effect';
 import { dual, identity } from 'effect/Function';
 import { type Pipeable, pipeArguments } from 'effect/Pipeable';

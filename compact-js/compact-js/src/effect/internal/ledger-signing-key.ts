@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { signingKeyFromBip340, type SigningKey as LedgerSigningKey } from '@midnightntwrk/ledger-v9';
+import { type SigningKey as LedgerSigningKey,signingKeyFromBip340 } from '@midnightntwrk/ledger-v9';
 
 const BIP340_KEY_BYTES = 32;
 
