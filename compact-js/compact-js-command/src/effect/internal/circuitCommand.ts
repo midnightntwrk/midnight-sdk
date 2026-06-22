@@ -25,7 +25,7 @@ import {
   type ContractOperation as LedgerContractOption,
   Intent,
   StateValue as LedgerStateValue,
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnightntwrk/ledger-v9';
 import { type ConfigError, Console,Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
