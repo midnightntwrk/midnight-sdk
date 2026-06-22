@@ -18,6 +18,7 @@ export * as CompiledContract from './CompiledContract.js';
 export * as Contract from './Contract.js';
 export * as ContractConfigurationError from './ContractConfigurationError.js';
 export * as ContractEventConstants from './ContractEventConstants.js';
+export * as ContractEventValidationError from './ContractEventValidationError.js';
 export * from './ContractEventValidator.js';
 export * as ContractExecutable from './ContractExecutable.js';
 export * as ContractExecutableRuntime from './ContractExecutableRuntime.js';
