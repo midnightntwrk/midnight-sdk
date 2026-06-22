@@ -1,8 +1,10 @@
 {
   "name": "@midnight-ntwrk/compact-js",
-  "version": "2.5.3",
+  "version": "2.5.5-rc.1",
   "description": "Typescript-based execution environment for smart contracts compiled with the Compact language",
   "type": "module",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/dts/index.d.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
@@ -26,10 +28,11 @@
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
-    "build": "yarn build-compact && yarn build-esm && build-utils pack-v3",
+    "build": "yarn build-compact && yarn build-esm && yarn build-cjs && build-utils pack-v3",
     "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "tsc -b tsconfig.cjs.json",
     "build-compact": "(shx --negate test -d ./test/contract/managed && yarn compact || true)",
-    "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
+    "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage .tsbuildinfo",
     "test": "yarn build-compact && vitest run && tstyche",
     "package": "shx rm -rf ./dist/src && (cd ./dist; npm pack)",
     "compact": "fetch-compactc && yarn compact-counter && yarn compact-unshielded",

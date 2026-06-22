@@ -1,5 +1,5 @@
-name: 'Create Package Artifacts'
-description: 'Creates versioned packages that can be published to a package registry'
+name: "Create Package Artifacts"
+description: "Creates versioned packages that can be published to a package registry"
 
 inputs:
   package-archive-name:
@@ -10,7 +10,7 @@ inputs:
     required: true
 
 runs:
-  using: 'composite'
+  using: "composite"
   steps:
     - name: Determine Version
       id: vars
@@ -24,17 +24,24 @@ runs:
         version=$(jq -r '.v_info.version' version.json)
         preRelease=$(jq -r '.v_info.preRelease' version.json)
         tag=$(jq -r '.v_info.tag' version.json)
-        target_version="$version$preRelease.$commit_height"
+        # If preRelease already carries an explicit numeric suffix (e.g. -rc.1),
+        # publish that exact version. Otherwise append the commit height for
+        # continuous prereleases (e.g. -alpha.42).
+        if [[ "$preRelease" =~ \.[0-9]+$ ]]; then
+          target_version="$version$preRelease"
+        else
+          target_version="$version$preRelease.$commit_height"
+        fi
 
         echo "target_version=${target_version}" >> "$GITHUB_OUTPUT"
         echo "tag=${tag}" >> "$GITHUB_OUTPUT"
         echo "on_release_branch=${on_release_branch}" >> "$GITHUB_OUTPUT"
 
-    # - name: Bump versions
-    #   shell: bash
-    #   working-directory: ${{ inputs.working-directory }}
-    #   if: ${{ steps.vars.outputs.on_release_branch == 'true' && false}}
-    #   run: yarn workspaces foreach -A version ${{ steps.vars.outputs.target_version }}
+    - name: Bump versions
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
+      run: yarn workspaces foreach -A version ${{ steps.vars.outputs.target_version }}
 
     - name: Generate CHANGELOGs from commits
       shell: bash
