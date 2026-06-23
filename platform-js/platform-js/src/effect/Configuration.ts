@@ -82,7 +82,9 @@ const KeysConfig = Config.all([
       Schema.String.pipe(Schema.fromBrand(CoinPublicKey.Bech32m))
     )
   ),
-  Config.option(Schema.Config('signing', Schema.String.pipe(Schema.fromBrand(SigningKey.SigningKey))))
+  Config.option(Schema.Config('signing', Schema.String.pipe(Schema.fromBrand(SigningKey.Value)))),
+  Schema.Config('signingKind', Schema.Literal(...SigningKey.SignatureKinds))
+    .pipe(Config.withDefault(SigningKey.DefaultSignatureKind))
 ]).pipe(Config.nested('keys'));
 
 const NetworkIdConfig = Config.option(Schema.Config(
@@ -92,11 +94,11 @@ const NetworkIdConfig = Config.option(Schema.Config(
 
 const makeKeys: () => Layer.Layer<Keys, ConfigError>
   = () => Layer.effect(Keys, Effect.gen(function* () {
-    const [coinPublic, signing] = yield* KeysConfig;
+    const [coinPublic, signing, signingKind] = yield* KeysConfig;
 
     return Keys.of({
       coinPublicKey: coinPublic,
-      getSigningKey: () => signing
+      getSigningKey: () => Option.map(signing, (value) => SigningKey.make(value, signingKind))
     });
   }));
 
