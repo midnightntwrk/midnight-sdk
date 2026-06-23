@@ -95,10 +95,11 @@ const NetworkIdConfig = Config.option(Schema.Config(
 const makeKeys: () => Layer.Layer<Keys, ConfigError>
   = () => Layer.effect(Keys, Effect.gen(function* () {
     const [coinPublic, signing, signingKind] = yield* KeysConfig;
+    const signingKey = Option.map(signing, (value) => SigningKey.make(value, signingKind));
 
     return Keys.of({
       coinPublicKey: coinPublic,
-      getSigningKey: () => Option.map(signing, (value) => SigningKey.make(value, signingKind))
+      getSigningKey: () => signingKey
     });
   }));
 
