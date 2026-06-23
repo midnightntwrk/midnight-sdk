@@ -68,6 +68,10 @@ export declare namespace Configuration {
      * new contracts. If `Option.None` is returned, then a new singing key is sampled and used for the CMA
      * instead. Returning the same signing key is useful when that key is to be used to maintain multiple contracts.
      *
+     * The returned key carries its {@link SigningKey.SignatureKind | kind} (the `tag`), taken from the
+     * `keys.signingKind` configuration value. When `signingKind` is not configured it defaults to
+     * {@link SigningKey.DefaultSignatureKind} (`'schnorr'`).
+     *
      * @category keys
      */
     getSigningKey(): Option.Option<SigningKey.SigningKey>;
