@@ -771,7 +771,6 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@midnight-ntwrk/compact-js-node": "workspace:*"
     "@midnight-ntwrk/midnight-js-compact": "npm:3.2.0"
-    "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0-rc.1"
     "@tsconfig/node22": "npm:^22.0.5"
     "@types/node": "npm:^25.5.0"
     "@vitest/coverage-v8": "npm:^4.1.9"
@@ -863,13 +862,6 @@ __metadata:
   version: 1.0.0-rc.2
   resolution: "@midnightntwrk/ledger-v9@npm:1.0.0-rc.2"
   checksum: 10/84dc2c7774c23a8122f5f7ccb535ab4a725afd7a02e6c7cdd685e248cbbd151ce5f803056b16061462e6be36d99f8a5162d6db4de8b41a38bd1d5474fde7805c
-  languageName: node
-  linkType: hard
-
-"@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.1":
-  version: 4.0.0-rc.1
-  resolution: "@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.1"
-  checksum: 10/dcf651f1c6df6791c838648aa895eefbf43f10c559cb00d907ca49b09b6d498fcbbbc1b81aa2c7710dee4de0852595fd9652c11946446694efde8f01c26e8e97
   languageName: node
   linkType: hard
 
@@ -2497,12 +2489,12 @@ __metadata:
   linkType: hard
 
 "effect@npm:^3.21.2":
-  version: 3.21.3
-  resolution: "effect@npm:3.21.3"
+  version: 3.21.2
+  resolution: "effect@npm:3.21.2"
   dependencies:
     "@standard-schema/spec": "npm:^1.0.0"
     fast-check: "npm:^3.23.1"
-  checksum: 10/3f88c07a398b35a384549db1b0e013806fbb7a5285f52e9c6fb9050ef286ada09e763eed2d9e14839534c40de5f632aabf1ee76487184769aa0a995deec70cf0
+  checksum: 10/e1bf90d9010e6b4d8389937e80e96884e49164b8b1658230cf2aaf9d2a3844d1698a6854fd8183a82a0335bdcbc37879d9af84491b52a57bf16ab52052cf6f46
   languageName: node
   linkType: hard
 
