@@ -25,7 +25,6 @@
   },
   "dependencies": {
     "@effect/platform": "^0.96.1",
-    "@midnightntwrk/onchain-runtime-v4": "4.0.0-rc.1",
     "effect": "^3.21.2"
   },
   "devDependencies": {
