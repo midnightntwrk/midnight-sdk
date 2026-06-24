@@ -25,7 +25,7 @@ import {
   type ContractOperation as LedgerContractOption,
   Intent,
   StateValue as LedgerStateValue,
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnightntwrk/ledger-v9';
 import { type ConfigError, Console,Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -34,6 +34,7 @@ import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
 import * as ContractState from './contractState.js';
 import { decodeZswapLocalStateObject, encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
+import { stringifyCircuitOutput } from './json.js';
 import * as LedgerParameters from './ledgerParameters.js';
 import * as InternalOptions from './options.js';
 
@@ -58,7 +59,8 @@ export const Options = {
   outputPublicFilePath: InternalOptions.outputPublicFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
   outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath,
-  outputResultFilePath: InternalOptions.outputResultFilePath
+  outputResultFilePath: InternalOptions.outputResultFilePath,
+  outputEventsFilePath: InternalOptions.outputEventsFilePath
 }
 
 /** @internal */
@@ -81,7 +83,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       outputPublicFilePath,
       outputPrivateStateFilePath,
       outputZswapLocalStateFilePath,
-      outputResultFilePath
+      outputResultFilePath,
+      outputEventsFilePath
     },
     moduleSpec
   ) => Effect.gen(function* () {
@@ -121,20 +124,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       },
       ...(yield* argsParser.parseCircuitArgs(Contract.ProvableCircuitId(circuitId), args))
     );
-    // Replacer function handles types that don't serialize properly in JSON:
-    // - Uint8Array serializes as {"0": 215, "1": 182, ...} instead of [215, 182, ...]
-    // - bigint cannot be serialized and throws TypeError without conversion
-    yield* Console.log(
-      JSON.stringify(
-        result.private.result,
-        (_, value) => {
-          if (typeof value === 'bigint') return value.toString();
-          if (value instanceof Uint8Array) return Array.from(value);
-          return value;
-        },
-        2
-      )
-    );
+    yield* Console.log(stringifyCircuitOutput(result.private.result, 2));
     const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
       .addCall(new ContractCallPrototype(
         address,
@@ -156,17 +146,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       );
       yield* fs.writeFile(Option.getOrThrow(outputPublicFilePath), ledgerContractState.serialize());
     }
-    yield* fs.writeFileString(
-      outputResultFilePath,
-      JSON.stringify(
-        result.private.result,
-        (_, value) => {
-          if (typeof value === 'bigint') return value.toString();
-          if (value instanceof Uint8Array) return Array.from(value);
-          return value;
-        }
-      )
-    );
+    yield* fs.writeFileString(outputResultFilePath, stringifyCircuitOutput(result.private.result));
     yield* fs.writeFile(outputFilePath, intent.serialize());
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.private.privateState));
     yield* fs.writeFileString(
@@ -175,6 +155,14 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.private.zswapLocalState))
       )
     );
+    // Contract log events (MIP-0002) are non-consensus output; only write them when a destination
+    // is requested.
+    if (Option.isSome(outputEventsFilePath)) {
+      yield* fs.writeFileString(
+        Option.getOrThrow(outputEventsFilePath),
+        stringifyCircuitOutput(result.public.events)
+      );
+    }
   }).pipe(
     Effect.mapError(
       (err) => ContractRuntimeError.make('Failed to invoke circuit', err)
