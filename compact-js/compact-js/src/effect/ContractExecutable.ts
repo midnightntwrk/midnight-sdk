@@ -26,7 +26,6 @@ import {
   type LogEvent,
   type Op,
   type QueryContext,
-  sampleSigningKey,
   signatureVerifyingKey,
   type StateValue,
   type ZswapLocalState
@@ -46,6 +45,7 @@ import {
   PreTranscript,
   QueryContext as LedgerQueryContext,
   ReplaceAuthority,
+  sampleSigningKey,
   signData,
   type SingleUpdate,
   StateValue as LedgerStateValue,
@@ -62,7 +62,6 @@ import * as Contract from './Contract.js';
 import * as ContractConfigurationError from './ContractConfigurationError.js';
 import * as ContractRuntimeError from './ContractRuntimeError.js';
 import * as CompactContextInternal from './internal/compactContext.js';
-import { toLedgerSigningKey } from './internal/ledger-signing-key.js';
 import { ZKConfiguration } from './ZKConfiguration.js';
 import { type ZKConfigurationReadError } from './ZKConfigurationReadError.js';
 
@@ -556,21 +555,11 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     const signingKey = currentSigningKey.value;
     const update = createUpdateFn();
     if (Either.isLeft(update)) return Either.left(update.left);
-    const maintenanceUpdate = new MaintenanceUpdate(
-      address,
-      update.right,
-      contractState.maintenanceAuthority.counter
-    );
-    // `toLedgerSigningKey`/`signData` throw on a malformed or too-short key; funnel that through the
-    // typed error channel this method advertises rather than letting it surface as an unhandled defect.
+    const maintenanceUpdate = new MaintenanceUpdate(address, update.right, contractState.maintenanceAuthority.counter);
     return Either.try({
       try: () =>
-        maintenanceUpdate.addSignature(
-          DEFAULT_SIGNATURE_INDEX,
-          signData(toLedgerSigningKey(signingKey), maintenanceUpdate.dataToSign)
-        ),
-      catch: (err) =>
-        ContractConfigurationError.make('Failed to sign contract maintenance update', contractState, err)
+        maintenanceUpdate.addSignature(DEFAULT_SIGNATURE_INDEX, signData(signingKey, maintenanceUpdate.dataToSign)),
+      catch: (err) => ContractConfigurationError.make('Failed to sign contract maintenance update', contractState, err)
     }).pipe(
       Either.map((signedMaintenanceUpdate) => ({
         public: { maintenanceUpdate: signedMaintenanceUpdate },
@@ -591,13 +580,12 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     // correspond to the returned signing key, so signatures made with it would never verify.
     const platformSigningKey = Option.match(key, {
       onSome: identity,
-      onNone: () => sampleSigningKey().value as SigningKey.SigningKey
+      onNone: () => sampleSigningKey() as SigningKey.SigningKey
     });
     try {
-      const ledgerSigningKey = toLedgerSigningKey(platformSigningKey);
       return Either.right([
         new ContractMaintenanceAuthority(
-          [signatureVerifyingKey(ledgerSigningKey)],
+          [signatureVerifyingKey(platformSigningKey)],
           DEFAULT_CMA_THRESHOLD,
           contractState ? contractState.maintenanceAuthority.counter + 1n : 0n
         ),
