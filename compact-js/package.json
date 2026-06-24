@@ -45,7 +45,7 @@
     "@midnight-ntwrk/midnight-js-compact": "3.2.0",
     "@tsconfig/node22": "^22.0.5",
     "@types/node": "^25.5.0",
-    "@vitest/coverage-v8": "^4.1.0",
+    "@vitest/coverage-v8": "^4.1.9",
     "@vitest/ui": "^4.1.0",
     "conventional-changelog-cli": "^4.1.0",
     "eslint": "^10.0.3",
