@@ -60,6 +60,7 @@ import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 import { type CompiledContract } from './CompiledContract.js';
 import * as Contract from './Contract.js';
 import * as ContractConfigurationError from './ContractConfigurationError.js';
+import { validateEvents } from './ContractEventValidator.js';
 import * as ContractRuntimeError from './ContractRuntimeError.js';
 import * as CompactContextInternal from './internal/compactContext.js';
 import { ZKConfiguration } from './ZKConfiguration.js';
@@ -427,6 +428,10 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                 proofData.publicTranscript,
                 circuitContext.ledgerParameters
               );
+              // Validate the log events emitted by the VM before surfacing them: they are untrusted
+              // VM output and are serialized verbatim for external (indexer/DApp) consumption. A
+              // structural failure is funnelled through the `ContractRuntimeError` mapping below.
+              yield* validateEvents(context.events);
               return {
                 public: {
                   contractState: context.currentQueryContext.state.state,
