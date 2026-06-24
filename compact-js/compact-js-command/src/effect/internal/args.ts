@@ -25,19 +25,19 @@ export const contractArgs = Args.text({ name: 'arg' }).pipe(
 
 export const contractAddress = Args.text({ name: 'contract_address' }).pipe(
   Args.withDescription('A contract address, hex-encoded.'),
-  Args.withSchema(Schema.String.pipe(Schema.fromBrand(ContractAddress.ContractAddress)).annotations({ title: 'contract_address' }))
+  Args.withSchema(
+    Schema.String.pipe(Schema.fromBrand(ContractAddress.ContractAddress)).annotations({ title: 'contract_address' })
+  )
 );
 
 export const signingKey = Args.text({ name: 'signing_key' }).pipe(
   Args.withDescription('A signing key, hex-encoded.'),
-  Args.withSchema(Schema.String.pipe(Schema.fromBrand(SigningKey.SigningKey)).annotations({ title: 'signing_key' }))
+  Args.withSchema(Schema.String.pipe(Schema.fromBrand(SigningKey.Value)).annotations({ title: 'signing_key' }))
 );
 
-export const circuitId = Args.text({ name: 'circuit_id'}).pipe(
-  Args.withDescription('A circuit identifier.')
-);
+export const circuitId = Args.text({ name: 'circuit_id' }).pipe(Args.withDescription('A circuit identifier.'));
 
-export const verifierKeyPath = Args.file({ name: 'vk_path'}).pipe(
+export const verifierKeyPath = Args.file({ name: 'vk_path' }).pipe(
   Args.withDescription('A path to a verifier key.'),
   Args.optional
 );

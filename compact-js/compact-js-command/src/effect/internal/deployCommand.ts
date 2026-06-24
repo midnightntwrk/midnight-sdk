@@ -20,7 +20,7 @@ import { encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import {
   ContractDeploy,
   Intent
-} from '@midnight-ntwrk/ledger-v8';
+} from '@midnightntwrk/ledger-v9';
 import { type ConfigError, Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';

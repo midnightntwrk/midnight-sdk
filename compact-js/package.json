@@ -1,9 +1,12 @@
 {
   "name": "@midnight-ntwrk/compact-js-sources",
   "description": "",
-  "version": "2.5.0",
+  "version": "2.5.5-rc.2",
   "private": true,
   "packageManager": "yarn@4.10.3",
+  "resolutions": {
+    "effect": "^3.21.2"
+  },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
     "node": ">=22"
@@ -25,15 +28,15 @@
     "effect": "^3.21.2"
   },
   "devDependencies": {
-    "@commitlint/cli": "^19.0.0",
+    "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^19.0.0",
     "@effect/build-utils": "^0.8.9",
     "@effect/cluster": "^0.57.0",
     "@effect/experimental": "^0.60.0",
-    "@effect/platform-node": "^0.106.0",
+    "@effect/platform-node": "^0.107.0",
     "@effect/platform-node-shared": "^0.59.0",
     "@effect/rpc": "^0.74.0",
-    "@effect/sql": "^0.50.0",
+    "@effect/sql": "^0.51.1",
     "@effect/vitest": "^0.29.0",
     "@effect/workflow": "^0.17.0",
     "@eslint/js": "^10.0.1",
@@ -41,7 +44,7 @@
     "@midnight-ntwrk/midnight-js-compact": "3.2.0",
     "@tsconfig/node22": "^22.0.5",
     "@types/node": "^25.5.0",
-    "@vitest/coverage-v8": "^4.1.0",
+    "@vitest/coverage-v8": "^4.1.9",
     "@vitest/ui": "^4.1.0",
     "conventional-changelog-cli": "^4.1.0",
     "eslint": "^10.0.3",
@@ -54,9 +57,9 @@
     "husky": "^9.0.0",
     "shx": "^0.4.0",
     "tstyche": "^6.2.0",
-    "turbo": "^2.8.20",
+    "turbo": "^2.9.18",
     "typescript": "^6.0.2",
     "typescript-eslint": "^8.60.1",
-    "vitest": "^4.1.0"
+    "vitest": "^4.1.9"
   }
 }
