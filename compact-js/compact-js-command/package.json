@@ -28,7 +28,7 @@
     "@midnight-ntwrk/compact-runtime": "file:/Users/josephdenman/IdeaProjects/compact/runtime",
     "@midnight-ntwrk/platform-js": "^2.2.4",
     "@midnight-ntwrk/wallet-sdk-address-format": "3.1.0",
-    "@midnightntwrk/ledger-v9": "1.0.0-rc.2",
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.3",
     "effect": "^3.20.0",
     "json5": "^2.2.3",
     "ts-node": "^10.9.2",

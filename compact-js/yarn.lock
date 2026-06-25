@@ -687,7 +687,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "file:/Users/josephdenman/IdeaProjects/compact/runtime"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0"
-    "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.2"
+    "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.3"
     effect: "npm:^3.20.0"
     json5: "npm:^2.2.3"
     ts-node: "npm:^10.9.2"
@@ -762,7 +762,7 @@ __metadata:
     "@effect/platform": "npm:^0.95.0"
     "@midnight-ntwrk/compact-runtime": "file:/Users/josephdenman/IdeaProjects/compact/runtime"
     "@midnight-ntwrk/platform-js": "npm:^2.2.4"
-    "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.2"
+    "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.3"
     "@noble/hashes": "npm:^2.2.0"
     effect: "npm:^3.20.0"
     tslib: "npm:^2.8.1"
@@ -770,26 +770,26 @@ __metadata:
   linkType: soft
 
 "@midnight-ntwrk/compact-runtime@file:/Users/josephdenman/IdeaProjects/compact/runtime::locator=%40midnight-ntwrk%2Fcompact-js%40workspace%3Acompact-js":
-  version: 0.16.101
-  resolution: "@midnight-ntwrk/compact-runtime@file:/Users/josephdenman/IdeaProjects/compact/runtime#/Users/josephdenman/IdeaProjects/compact/runtime::hash=2e135f&locator=%40midnight-ntwrk%2Fcompact-js%40workspace%3Acompact-js"
+  version: 0.18.0
+  resolution: "@midnight-ntwrk/compact-runtime@file:/Users/josephdenman/IdeaProjects/compact/runtime#/Users/josephdenman/IdeaProjects/compact/runtime::hash=749fa4&locator=%40midnight-ntwrk%2Fcompact-js%40workspace%3Acompact-js"
   dependencies:
-    "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0-rc.2"
+    "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.3"
     "@noble/hashes": "npm:^2.0.1"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/849140815df11abae39e03847421e58b08f780f19e292c575b358478cfaac17f2fece8d609ca63b5afd13b44310d472431432946823daf787bd6f50dcb07a91e
+  checksum: 10/de22cfda7ec3b5a9bb91eab6bd02b6653f2fea718073b62f752d982ede5c3edee47aa7a38e2b36e75f7539d2f47a579a18c9bcba993e0a3311ad7edbca77461e
   languageName: node
   linkType: hard
 
 "@midnight-ntwrk/compact-runtime@file:/Users/josephdenman/IdeaProjects/compact/runtime::locator=%40midnight-ntwrk%2Fcompact-js-command%40workspace%3Acompact-js-command":
-  version: 0.16.101
-  resolution: "@midnight-ntwrk/compact-runtime@file:/Users/josephdenman/IdeaProjects/compact/runtime#/Users/josephdenman/IdeaProjects/compact/runtime::hash=2e135f&locator=%40midnight-ntwrk%2Fcompact-js-command%40workspace%3Acompact-js-command"
+  version: 0.18.0
+  resolution: "@midnight-ntwrk/compact-runtime@file:/Users/josephdenman/IdeaProjects/compact/runtime#/Users/josephdenman/IdeaProjects/compact/runtime::hash=749fa4&locator=%40midnight-ntwrk%2Fcompact-js-command%40workspace%3Acompact-js-command"
   dependencies:
-    "@midnightntwrk/onchain-runtime-v4": "npm:4.0.0-rc.2"
+    "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.3"
     "@noble/hashes": "npm:^2.0.1"
     "@types/object-inspect": "npm:^1.8.1"
     object-inspect: "npm:^1.12.3"
-  checksum: 10/849140815df11abae39e03847421e58b08f780f19e292c575b358478cfaac17f2fece8d609ca63b5afd13b44310d472431432946823daf787bd6f50dcb07a91e
+  checksum: 10/de22cfda7ec3b5a9bb91eab6bd02b6653f2fea718073b62f752d982ede5c3edee47aa7a38e2b36e75f7539d2f47a579a18c9bcba993e0a3311ad7edbca77461e
   languageName: node
   linkType: hard
 
@@ -832,17 +832,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnightntwrk/ledger-v9@npm:1.0.0-rc.2":
-  version: 1.0.0-rc.2
-  resolution: "@midnightntwrk/ledger-v9@npm:1.0.0-rc.2"
-  checksum: 10/84dc2c7774c23a8122f5f7ccb535ab4a725afd7a02e6c7cdd685e248cbbd151ce5f803056b16061462e6be36d99f8a5162d6db4de8b41a38bd1d5474fde7805c
+"@midnightntwrk/ledger-v9@npm:1.0.0-rc.3":
+  version: 1.0.0-rc.3
+  resolution: "@midnightntwrk/ledger-v9@npm:1.0.0-rc.3"
+  checksum: 10/5d2c2ff808b6dcc8f8ba2b75f81467c9bc4904e625e246bea1f8c77be7eb6d06cac28b189d1f6b708a85559ddf133efe93147da12169db48f927c72f414d0fa7
   languageName: node
   linkType: hard
 
-"@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.2":
-  version: 4.0.0-rc.2
-  resolution: "@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.2"
-  checksum: 10/c2176e55591586a6871ec1fa6449c9f6236f230890be1ae08cb90294bb244f2d9f5390b4892d6aa87236b95d967f27f37a595d5ffbbe74c5eab80fdb66750173
+"@midnightntwrk/onchain-runtime-v4@npm:^4.0.0-rc.3":
+  version: 4.0.0-rc.3
+  resolution: "@midnightntwrk/onchain-runtime-v4@npm:4.0.0-rc.3"
+  checksum: 10/394a4ff27b575b0e30bcb5ca05c2f89dc3bc7915103aa592c1d89bb32ff8589ac732d4d0bdafb4a99a9757e1a41ce21955f68148f783edb83b21988b24154078
   languageName: node
   linkType: hard
 
