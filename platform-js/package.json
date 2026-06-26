@@ -3,7 +3,7 @@
   "description": "",
   "version": "2.2.0",
   "private": true,
-  "packageManager": "yarn@4.10.3",
+  "packageManager": "yarn@4.17.0",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
     "node": ">=22"
@@ -33,20 +33,20 @@
     "@effect/vitest": "^0.29.0",
     "@eslint/js": "^10.0.1",
     "@tsconfig/node22": "^22.0.5",
-    "@types/node": "^25.5.0",
+    "@types/node": "^25.9.1",
     "@vitest/coverage-v8": "^4.1.9",
     "@vitest/ui": "^4.1.8",
     "eslint": "^10.1.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
-    "eslint-plugin-import-x": "^4.16.2",
+    "eslint-plugin-import-x": "^4.17.0",
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-simple-import-sort": "^13.0.0",
     "eslint-plugin-unused-imports": "^4.4.1",
     "shx": "^0.4.0",
     "turbo": "^2.9.18",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.57.1",
+    "typescript-eslint": "^8.60.0",
     "vitest": "^4.1.8"
   }
 }
