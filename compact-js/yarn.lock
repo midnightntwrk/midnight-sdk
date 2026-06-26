@@ -436,15 +436,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/rpc@npm:^0.74.0":
-  version: 0.74.0
-  resolution: "@effect/rpc@npm:0.74.0"
+"@effect/rpc@npm:^0.75.1":
+  version: 0.75.1
+  resolution: "@effect/rpc@npm:0.75.1"
   dependencies:
-    msgpackr: "npm:^1.11.4"
+    msgpackr: "npm:^1.11.10"
   peerDependencies:
-    "@effect/platform": ^0.95.0
-    effect: ^3.20.0
-  checksum: 10/8223e20a0630c35a4ddb486334594b0aefd7df44fb5e30ea296af85c9963af1bd3951d2fe9af182c0663ad10801cc600479fd22fa224cbebffdf66e0099f10ad
+    "@effect/platform": ^0.96.1
+    effect: ^3.21.2
+  checksum: 10/a690ba56479ca3e3720aa9a2da36cab585e497e84c5d2b334e7db0e095fe5beb862b0d418e72483e901f72cb21d13cf64f55fde56f9dc7fcaa5dc74814efa64c
   languageName: node
   linkType: hard
 
@@ -717,7 +717,7 @@ __metadata:
     "@effect/platform-node-shared": "npm:^0.59.0"
     "@effect/printer": "npm:^0.49.0"
     "@effect/printer-ansi": "npm:^0.49.0"
-    "@effect/rpc": "npm:^0.74.0"
+    "@effect/rpc": "npm:^0.75.1"
     "@effect/sql": "npm:^0.51.1"
     "@effect/typeclass": "npm:^0.40.0"
     "@effect/workflow": "npm:^0.17.0"
@@ -742,7 +742,7 @@ __metadata:
     "@effect/experimental": "npm:^0.60.0"
     "@effect/platform": "npm:^0.96.1"
     "@effect/platform-node": "npm:^0.107.0"
-    "@effect/rpc": "npm:^0.74.0"
+    "@effect/rpc": "npm:^0.75.1"
     "@effect/sql": "npm:^0.51.1"
     "@effect/workflow": "npm:^0.17.0"
     effect: "npm:^3.21.4"
@@ -764,7 +764,7 @@ __metadata:
     "@effect/platform": "npm:^0.96.1"
     "@effect/platform-node": "npm:^0.107.0"
     "@effect/platform-node-shared": "npm:^0.59.0"
-    "@effect/rpc": "npm:^0.74.0"
+    "@effect/rpc": "npm:^0.75.1"
     "@effect/sql": "npm:^0.51.1"
     "@effect/vitest": "npm:^0.29.0"
     "@effect/workflow": "npm:^0.17.0"
@@ -3872,18 +3872,6 @@ __metadata:
     msgpackr-extract:
       optional: true
   checksum: 10/8077d7ebf661df831ba119a277588b7e00149d25b6f5630e311c2415504553ce695347a351a7198cdf1f596feaaf91121adc3181e483f7d2c9822484b73babf2
-  languageName: node
-  linkType: hard
-
-"msgpackr@npm:^1.11.4":
-  version: 1.11.8
-  resolution: "msgpackr@npm:1.11.8"
-  dependencies:
-    msgpackr-extract: "npm:^3.0.2"
-  dependenciesMeta:
-    msgpackr-extract:
-      optional: true
-  checksum: 10/f37666bddca024958f1dc3fa5f53909f6c0001ef3632e7e86c4e769cf99270c1a35cc6b0818cc5f6c3a493bd4b7920f9e4aff5af2719fea03db9581d43f379b3
   languageName: node
   linkType: hard
 
