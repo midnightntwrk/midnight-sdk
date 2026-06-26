@@ -5,7 +5,7 @@
   "private": true,
   "packageManager": "yarn@4.10.3",
   "resolutions": {
-    "effect": "^3.21.2"
+    "effect": "^3.21.4"
   },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {
@@ -25,7 +25,7 @@
   },
   "dependencies": {
     "@effect/platform": "^0.96.1",
-    "effect": "^3.21.2"
+    "effect": "^3.21.4"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.0.2",
