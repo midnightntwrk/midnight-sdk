@@ -19,7 +19,7 @@
     "@effect/platform-node-shared": "^0.59.0",
     "@effect/printer": "^0.49.0",
     "@effect/printer-ansi": "^0.49.0",
-    "@effect/rpc": "^0.74.0",
+    "@effect/rpc": "^0.75.1",
     "@effect/sql": "^0.51.1",
     "@effect/typeclass": "^0.40.0",
     "@effect/workflow": "^0.17.0",
