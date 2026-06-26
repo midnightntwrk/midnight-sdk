@@ -24,7 +24,17 @@ runs:
         version=$(jq -r '.v_info.version' version.json)
         preRelease=$(jq -r '.v_info.preRelease' version.json)
         tag=$(jq -r '.v_info.tag' version.json)
-        target_version="$version$preRelease.$commit_height"
+        # If preRelease is empty, publish the bare stable version (e.g. 3.0.0).
+        # If preRelease carries an explicit numeric suffix (e.g. -rc.1), publish
+        # that exact version. Otherwise append the commit height for continuous
+        # prereleases (e.g. -alpha.42).
+        if [[ -z "$preRelease" ]]; then
+          target_version="$version"
+        elif [[ "$preRelease" =~ \.[0-9]+$ ]]; then
+          target_version="$version$preRelease"
+        else
+          target_version="$version$preRelease.$commit_height"
+        fi
 
         echo "target_version=${target_version}" >> "$GITHUB_OUTPUT"
         echo "tag=${tag}" >> "$GITHUB_OUTPUT"

@@ -68,6 +68,10 @@ export declare namespace Configuration {
      * new contracts. If `Option.None` is returned, then a new singing key is sampled and used for the CMA
      * instead. Returning the same signing key is useful when that key is to be used to maintain multiple contracts.
      *
+     * The returned key carries its {@link SigningKey.SignatureKind | kind} (the `tag`), taken from the
+     * `keys.signingKind` configuration value. When `signingKind` is not configured it defaults to
+     * {@link SigningKey.DefaultSignatureKind} (`'schnorr'`).
+     *
      * @category keys
      */
     getSigningKey(): Option.Option<SigningKey.SigningKey>;
@@ -82,7 +86,9 @@ const KeysConfig = Config.all([
       Schema.String.pipe(Schema.fromBrand(CoinPublicKey.Bech32m))
     )
   ),
-  Config.option(Schema.Config('signing', Schema.String.pipe(Schema.fromBrand(SigningKey.SigningKey))))
+  Config.option(Schema.Config('signing', Schema.String.pipe(Schema.fromBrand(SigningKey.Value)))),
+  Schema.Config('signingKind', Schema.Literal(...SigningKey.SignatureKinds))
+    .pipe(Config.withDefault(SigningKey.DefaultSignatureKind))
 ]).pipe(Config.nested('keys'));
 
 const NetworkIdConfig = Config.option(Schema.Config(
@@ -92,11 +98,12 @@ const NetworkIdConfig = Config.option(Schema.Config(
 
 const makeKeys: () => Layer.Layer<Keys, ConfigError>
   = () => Layer.effect(Keys, Effect.gen(function* () {
-    const [coinPublic, signing] = yield* KeysConfig;
+    const [coinPublic, signing, signingKind] = yield* KeysConfig;
+    const signingKey = Option.map(signing, (value) => SigningKey.make(value, signingKind));
 
     return Keys.of({
       coinPublicKey: coinPublic,
-      getSigningKey: () => signing
+      getSigningKey: () => signingKey
     });
   }));
 
