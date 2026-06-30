@@ -30,11 +30,11 @@ runs:
         echo "tag=${tag}" >> "$GITHUB_OUTPUT"
         echo "on_release_branch=${on_release_branch}" >> "$GITHUB_OUTPUT"
 
-    - name: Bump versions
-      shell: bash
-      working-directory: ${{ inputs.working-directory }}
-      if: ${{ steps.vars.outputs.on_release_branch == 'true' }}
-      run: yarn workspaces foreach -A version ${{ steps.vars.outputs.target_version }}
+    # - name: Bump versions
+    #   shell: bash
+    #   working-directory: ${{ inputs.working-directory }}
+    #   if: ${{ steps.vars.outputs.on_release_branch == 'true' && false}}
+    #   run: yarn workspaces foreach -A version ${{ steps.vars.outputs.target_version }}
 
     - name: Generate CHANGELOGs from commits
       shell: bash
