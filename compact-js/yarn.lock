@@ -748,7 +748,7 @@ __metadata:
     effect: "npm:^3.21.4"
     tslib: "npm:^2.8.1"
   peerDependencies:
-    "@midnight-ntwrk/compact-js": ">=2.5.0"
+    "@midnight-ntwrk/compact-js": "workspace:^"
   languageName: unknown
   linkType: soft
 
