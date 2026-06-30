@@ -32,10 +32,13 @@ import { Brand } from 'effect';
 export type Witness<PS, U = any> = (context: WitnessContext<U, PS>, ...args: any[]) => [PS, U];
 export type Witnesses<PS> = Record<string, Witness<PS>>;
 
-export type Circuit<PS, U = any> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, U>;
+export type Circuit<PS, U = any> = (context: CircuitContext<PS>, ...args: any[]) => Promise<CircuitResults<PS, U>>;
 export type Circuits<PS> = Record<string, Circuit<PS>>;
 
-export type ProvableCircuit<PS, U = any> = (context: CircuitContext<PS>, ...args: any[]) => CircuitResults<PS, U>;
+export type ProvableCircuit<PS, U = any> = (
+  context: CircuitContext<PS>,
+  ...args: any[]
+) => Promise<CircuitResults<PS, U>>;
 export type ProvableCircuits<PS> = Record<string, ProvableCircuit<PS>>;
 
 export type VerifierKey = Uint8Array & Brand.Brand<'VerifierKey'>;
@@ -57,7 +60,7 @@ export interface Contract<PS, W extends Witnesses<PS> = Witnesses<PS>> {
   circuits: Circuits<PS>;
   provableCircuits: ProvableCircuits<PS>;
 
-  initialState(context: ConstructorContext<PS>, ...args: any[]): ConstructorResult<PS>;
+  initialState(context: ConstructorContext<PS>, ...args: any[]): Promise<ConstructorResult<PS>>;
 }
 
 export declare namespace Contract {
@@ -83,7 +86,7 @@ export declare namespace Contract {
     Parameters<C['provableCircuits'][K]> extends [CircuitContext<any>, ...infer A] ? A : never;
 
   export type CircuitReturnType<C extends Contract<any>, K extends ProvableCircuitId<C>> =
-    ReturnType<C['provableCircuits'][K]> extends CircuitResults<any, infer U> ? U : never;
+    Awaited<ReturnType<C['provableCircuits'][K]>> extends CircuitResults<any, infer U> ? U : never;
 }
 
 export const getProvableCircuitIds: <C extends Contract.Any>(contract: C) => ProvableCircuitId<C>[] = (contract) =>

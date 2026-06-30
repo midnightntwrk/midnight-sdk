@@ -22,6 +22,7 @@ import {
   createConstructorContext,
   decodeZswapLocalState,
   emptyZswapLocalState,
+  type EncodedZswapLocalState,
   encodeZswapLocalState,
   type LogEvent,
   type Op,
@@ -306,9 +307,9 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       contract: this.createContract()
     }).pipe(
       Effect.flatMap(({ zkConfigReader, keyConfig, contract }) =>
-        Effect.try({
-          try: () => {
-            const { currentContractState, currentPrivateState, currentZswapLocalState } = contract.initialState(
+        Effect.tryPromise({
+          try: async () => {
+            const { currentContractState, currentPrivateState, currentZswapLocalState } = await contract.initialState(
               createConstructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
               ...args
             );
@@ -393,8 +394,8 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       contract: this.createContract()
     }).pipe(
       Effect.flatMap(({ keyConfig, contract }) =>
-        Effect.try({
-          try: () => {
+        Effect.tryPromise({
+          try: async () => {
             const circuit = contract.provableCircuits[provableCircuitId] as Contract.ProvableCircuit<
               PS,
               Contract.Contract.CircuitReturnType<C, K>
@@ -405,27 +406,35 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             const zswapLocalState = circuitContext.zswapLocalState
               ? encodeZswapLocalState(circuitContext.zswapLocalState)
               : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey));
+
             const runtimeContext = createCircuitContext(
+              provableCircuitId,
               circuitContext.address,
               zswapLocalState,
               circuitContext.contractState,
               circuitContext.privateState
             );
 
-            const initialTxContext = runtimeContext.currentQueryContext;
-            return {
-              ...circuit(runtimeContext, ...args),
-              initialTxContext
-            };
+            return await circuit(runtimeContext, ...args);
           },
           catch: identity
         }).pipe(
-          Effect.flatMap(({ initialTxContext, result, context, proofData }) =>
+          Effect.flatMap(({ result, context }) =>
             Effect.gen(function* () {
+              // Proof data is recorded per call in `callProofDataTrace`, in depth-first completion
+              // order; the root circuit completes last, so its proof data is the final entry. It
+              // carries the initial/final query contexts and transcript we need to partition.
+              const rootCall = context.callProofDataTrace.at(-1);
+              if (!rootCall) {
+                return yield* ContractRuntimeError.make(
+                  `Circuit '${provableCircuitId}' produced no proof data`,
+                  undefined
+                );
+              }
               const { preTranscript, partitionedTranscript } = yield* partitionTranscript(
-                initialTxContext,
-                context.currentQueryContext,
-                proofData.publicTranscript,
+                rootCall.initialQueryContext,
+                rootCall.finalQueryContext,
+                rootCall.publicTranscript,
                 circuitContext.ledgerParameters
               );
               // Validate the log events emitted by the VM before surfacing them: they are untrusted
@@ -434,19 +443,24 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               yield* validateEvents(context.events);
               return {
                 public: {
-                  contractState: context.currentQueryContext.state.state,
-                  publicTranscript: proofData.publicTranscript,
+                  contractState: rootCall.finalQueryContext.state.state,
+                  publicTranscript: rootCall.publicTranscript,
                   partitionedTranscript,
                   preTranscript,
                   events: context.events
                 },
                 private: {
                   result,
-                  input: proofData.input,
-                  output: proofData.output,
-                  privateTranscriptOutputs: proofData.privateTranscriptOutputs,
-                  privateState: context.currentPrivateState,
-                  zswapLocalState: decodeZswapLocalState(context.currentZswapLocalState)
+                  input: rootCall.input,
+                  output: rootCall.output,
+                  privateTranscriptOutputs: rootCall.privateTranscriptOutputs,
+                  // `callContext` types these as optional for the general (pre-setup) case, but both
+                  // were seeded into `createCircuitContext` above and threaded through execution, so
+                  // they are populated here. `PS` may itself be `undefined`, so we cannot guard it.
+                  privateState: context.callContext.currentPrivateState as PS,
+                  zswapLocalState: decodeZswapLocalState(
+                    context.callContext.currentZswapLocalState as EncodedZswapLocalState
+                  )
                 }
               };
             })
