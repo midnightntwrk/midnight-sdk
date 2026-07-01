@@ -26,6 +26,7 @@ import {
   decodeZswapLocalState,
   emptyZswapLocalState,
   encodeZswapLocalState,
+  type LogEvent,
   type Op,
   type QueryContext,
   sampleSigningKey,
@@ -33,6 +34,10 @@ import {
   type StateValue,
   type ZswapLocalState
 } from '@midnight-ntwrk/compact-runtime';
+import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
+import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import {
   ChargedState as LedgerChargedState,
   ContractMaintenanceAuthority as LedgerContractMaintenanceAuthority,
@@ -52,10 +57,6 @@ import {
   VerifierKeyInsert,
   VerifierKeyRemove
 } from '@midnightntwrk/ledger-v9';
-import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
-import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { Effect, Either, type Layer, Option } from 'effect';
 import { dual, identity } from 'effect/Function';
 import { type Pipeable, pipeArguments } from 'effect/Pipeable';
@@ -63,6 +64,7 @@ import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 import { type CompiledContract } from './CompiledContract.js';
 import * as Contract from './Contract.js';
 import * as ContractConfigurationError from './ContractConfigurationError.js';
+import { validateEvents } from './ContractEventValidator.js';
 import * as ContractRuntimeError from './ContractRuntimeError.js';
 import * as CompactContextInternal from './internal/compactContext.js';
 import { ZKConfiguration } from './ZKConfiguration.js';
@@ -225,11 +227,17 @@ export declare namespace ContractExecutable {
    * `result`, `privateState`, and `zswapLocalState` belong to the root contract and are
    * statically typed for it; sub-calls expose only proof data (other contracts' types are not
    * known here, and only the root holds private/zswap state).
+   *
+   * `events` is the single execution-wide log-event list across the whole call tree, in emission
+   * order; each event is tagged with its emitting contract's address, so a per-contract view is a
+   * filter over that tag. Events are NOT consensus state and are handled by the indexer; size and
+   * well-formedness are enforced on-chain by the ledger/VM (degraded, not failed) per MIP-0002.
    */
   export type CallResult<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
     readonly result: Contract.Contract.CircuitReturnType<C, K>;
     readonly privateState: PS | undefined;
     readonly zswapLocalState: ZswapLocalState;
+    readonly events: LogEvent[];
     readonly calls: readonly ContractCall[];
   };
 
@@ -449,6 +457,12 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               if (zswapLocalState === undefined) {
                 throw new Error(`Circuit '${provableCircuitId}' returned no zswap local state`);
               }
+              // Validate the log events emitted by the VM before surfacing them: they are untrusted
+              // VM output and are serialized verbatim for external (indexer/DApp) consumption. A
+              // structural failure is funnelled through the `ContractRuntimeError` mapping below.
+              // Events are a single execution-wide list, each tagged with the emitting contract's
+              // address; a per-call view is a filter over that address (see compact-runtime).
+              yield* validateEvents(context.events);
               // Partition all calls' transcripts together (the partitioner needs the whole batch
               // to reconstruct the caller/callee graph).
               const partitioned = yield* partitionAllTranscripts(trace, circuitContext.ledgerParameters);
@@ -475,11 +489,13 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                   communicationCommitment: Option.fromNullable(entry.commCommData)
                 };
               });
-              // `result`, `privateState`, and `zswapLocalState` belong to the root contract.
+              // `result`, `privateState`, and `zswapLocalState` belong to the root contract;
+              // `events` is the whole execution's log-event list (each tagged with its emitter).
               return {
                 result,
                 privateState: context.callContext.currentPrivateState,
                 zswapLocalState: decodeZswapLocalState(zswapLocalState),
+                events: context.events,
                 calls
               };
             })

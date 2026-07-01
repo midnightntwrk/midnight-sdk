@@ -64,16 +64,10 @@ export interface Contract<PS, W extends Witnesses<PS> = Witnesses<PS>> {
 export declare namespace Contract {
   export type Any = Contract<any>;
 
-  export type PrivateState<C> = C extends Contract<infer PS>
-    ? PS
-    : never;
+  export type PrivateState<C> = C extends Contract<infer PS> ? PS : never;
 
   // eslint-disable-next-line @typescript-eslint/no-shadow
-  export type Witnesses<C> = C extends Contract<any, infer W>
-    ? keyof W extends never
-    ? never
-    : W
-    : never;
+  export type Witnesses<C> = C extends Contract<any, infer W> ? (keyof W extends never ? never : W) : never;
 
   export type InitializeParameters<C extends Contract<any>> =
     Parameters<C['initialState']> extends [ConstructorContext<any>, ...infer A] ? A : never;

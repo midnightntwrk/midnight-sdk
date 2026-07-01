@@ -1,8 +1,8 @@
 {
   "v_info": {
-    "version": "2.2.0",
-    "preRelease": "-alpha",
-    "tag": "alpha",
+    "version": "3.0.0",
+    "preRelease": "",
+    "tag": "latest",
     "releaseBranches": [
       "main",
       "release/platform-js/.*"

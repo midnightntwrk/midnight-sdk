@@ -15,7 +15,10 @@
 
 import { ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
-import { type ContractOperation as LedgerContractOperation, ContractState as LedgerContractState } from '@midnightntwrk/ledger-v9';
+import {
+  type ContractOperation as LedgerContractOperation,
+  ContractState as LedgerContractState
+} from '@midnightntwrk/ledger-v9';
 import { Effect } from 'effect';
 
 /** @internal */

@@ -13,14 +13,9 @@
  * limitations under the License.
  */
 
-import {
-  CompiledContract,
-  Contract,
-  ContractExecutable,
-  ZKConfiguration
-} from '@midnight-ntwrk/compact-js/effect';
+import { CompiledContract, Contract, ContractExecutable, ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import { Context,Effect, Layer } from 'effect';
+import { Context, Effect, Layer } from 'effect';
 import { describe, expect, it } from 'tstyche';
 
 import { Contract as Contract_ } from '../../contract/managed/counter/contract';
@@ -57,10 +52,7 @@ describe('ContractExecutable', () => {
           ZKConfiguration.ZKConfiguration,
           Effect.sync(() => ({})) as Effect.Effect<ZKConfiguration.ZKConfiguration.Service>
         ),
-        Layer.effect(
-          Configuration.Keys,
-          Effect.sync(() => ({})) as Effect.Effect<Configuration.Configuration.Keys>
-        )
+        Layer.effect(Configuration.Keys, Effect.sync(() => ({})) as Effect.Effect<Configuration.Configuration.Keys>)
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
 
@@ -82,10 +74,7 @@ describe('ContractExecutable', () => {
           ZKConfiguration.ZKConfiguration,
           Effect.sync(() => ({})) as unknown as Effect.Effect<ZKConfiguration.ZKConfiguration.Service, never, StringDep>
         ),
-        Layer.effect(
-          Configuration.Keys,
-          Effect.sync(() => ({})) as Effect.Effect<Configuration.Configuration.Keys>
-        )
+        Layer.effect(Configuration.Keys, Effect.sync(() => ({})) as Effect.Effect<Configuration.Configuration.Keys>)
       );
       const executable = contractExecutable.pipe(ContractExecutable.provide(layer));
 

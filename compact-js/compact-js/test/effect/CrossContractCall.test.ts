@@ -20,9 +20,9 @@ import { beforeEach, describe, expect, it } from '@effect/vitest';
 import { CompiledContract, Contract, ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ChargedState, ContractState, type ContractStateProvider } from '@midnight-ntwrk/compact-runtime';
-import { ContractDeploy, ContractState as LedgerContractState, partitionTranscripts } from '@midnightntwrk/ledger-v9';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
+import { ContractDeploy, ContractState as LedgerContractState, partitionTranscripts } from '@midnightntwrk/ledger-v9';
 import { Cause, ConfigProvider, Effect, Exit, Layer, Option } from 'effect';
 import { vi } from 'vitest';
 
@@ -406,7 +406,7 @@ describe('cross-contract calls', () => {
     })
   );
 
-  it.effect('handles a self-call where a circuit calls another circuit on its own address', () =>
+  it.effect('rejects a self-call where a circuit calls another circuit on its own address (re-entrancy is not supported)', () =>
     Effect.gen(function* () {
       const self = selfExecutable.pipe(ContractExecutable.provide(testLayer(CCC_SELF_ASSETS_PATH)));
       // The deploy address is not known until after construction, so deploy with a zero address...
@@ -434,25 +434,24 @@ describe('cross-contract calls', () => {
       expect(Buffer.from(cccSelfLedger(setSelfResult.calls[0].public.contractState).self.bytes).toString('hex')).toBe(selfAddress);
 
       const chain = new Map([[selfAddress, selfState]]);
-      const result = yield* self.circuit(
-        Contract.ProvableCircuitId<CCCSelfContract>('callSelfGet'),
-        {
-          address: ContractAddress.ContractAddress(selfAddress),
-          contractState: selfState,
-          privateState: undefined,
-          parentBlockHash: ZERO_BLOCK_HASH,
-          stateProvider: { getContractState: async (_blockHash, address) => chain.get(address) }
-        }
+      // `callSelfGet` calls `getV()` on its own address, re-entering the contract while it is still
+      // executing on the call stack. Re-entrant cross-contract calls are not supported: the runtime's
+      // re-entrancy guard rejects the call, surfaced here as a ContractRuntimeError.
+      const error = yield* Effect.flip(
+        self.circuit(
+          Contract.ProvableCircuitId<CCCSelfContract>('callSelfGet'),
+          {
+            address: ContractAddress.ContractAddress(selfAddress),
+            contractState: selfState,
+            privateState: undefined,
+            parentBlockHash: ZERO_BLOCK_HASH,
+            stateProvider: { getContractState: async (_blockHash, address) => chain.get(address) }
+          }
+        )
       );
 
-      // callSelfGet calls getV() on its own address: one sub-call then the root.
-      expect(result.calls.map((call) => call.circuitId)).toEqual(['getV', 'callSelfGet']);
-      // The sub-call (callee) and the root execute against the same (self) address.
-      expect(result.calls[0].contractAddress).toBe(selfAddress);
-      expect(result.calls[1].contractAddress).toBe(selfAddress);
-      expect(Option.isSome(result.calls[0].communicationCommitment)).toBe(true);
-      expect(Option.isNone(result.calls[1].communicationCommitment)).toBe(true);
-      expect(result.result).toBe(4n);
+      expect(ContractRuntimeError.isRuntimeError(error)).toBe(true);
+      expect(String((error as ContractRuntimeError.ContractRuntimeError).cause)).toContain('re-entrancy');
     })
   );
 

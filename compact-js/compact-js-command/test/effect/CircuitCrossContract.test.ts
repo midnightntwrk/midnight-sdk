@@ -25,6 +25,7 @@ import { CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js
 import { circuitCommand, ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState as RuntimeContractState } from '@midnight-ntwrk/compact-runtime';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import {
   type ContractCall,
   ContractDeploy,
@@ -34,7 +35,6 @@ import {
   type PreProof,
   type SignatureEnabled
 } from '@midnightntwrk/ledger-v9';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ConfigProvider, Console, Effect, Layer } from 'effect';
 import { afterAll, beforeAll } from 'vitest';
 

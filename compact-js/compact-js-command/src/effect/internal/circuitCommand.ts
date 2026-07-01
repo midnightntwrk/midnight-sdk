@@ -37,6 +37,7 @@ import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
 import * as ContractState from './contractState.js';
 import { decodeZswapLocalStateObject, encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
+import { stringifyCircuitOutput } from './json.js';
 import * as LedgerParameters from './ledgerParameters.js';
 import * as InternalOptions from './options.js';
 
@@ -73,7 +74,8 @@ export const Options = {
   outputPublicFilePath: InternalOptions.outputPublicFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,
   outputZswapLocalStateFilePath: InternalOptions.outputZswapLocalStateFilePath,
-  outputResultFilePath: InternalOptions.outputResultFilePath
+  outputResultFilePath: InternalOptions.outputResultFilePath,
+  outputEventsFilePath: InternalOptions.outputEventsFilePath
 }
 
 /** @internal */
@@ -98,7 +100,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       outputPublicFilePath,
       outputPrivateStateFilePath,
       outputZswapLocalStateFilePath,
-      outputResultFilePath
+      outputResultFilePath,
+      outputEventsFilePath
     },
     moduleSpec
   ) => Effect.gen(function* () {
@@ -258,6 +261,14 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.zswapLocalState))
       )
     );
+    // Contract log events (MIP-0002) are non-consensus output; only write them when a destination
+    // is requested.
+    if (Option.isSome(outputEventsFilePath)) {
+      yield* fs.writeFileString(
+        Option.getOrThrow(outputEventsFilePath),
+        stringifyCircuitOutput(result.events)
+      );
+    }
   }).pipe(
     Effect.mapError(
       (err) => ContractRuntimeError.make('Failed to invoke circuit', err)
