@@ -59,11 +59,17 @@ export interface ZKManifest {
   readonly files: ReadonlyMap<string, ZKManifestFile>;
 }
 
+/** A non-negative byte count. */
+const SizeSchema = Schema.Int.pipe(Schema.nonNegative());
+
+/** A lower-case hex-encoded SHA-256 digest (32 bytes → 64 hex chars). */
+const HashSchema = Schema.String.pipe(Schema.pattern(/^[0-9a-f]{64}$/));
+
 /** Leaf node: `{ "type": "file", "size": n, "hash": "…" }`. */
 const ManifestFileSchema = Schema.Struct({
   type: Schema.Literal('file'),
-  size: Schema.Number,
-  hash: Schema.String
+  size: SizeSchema,
+  hash: HashSchema
 });
 type ManifestFileNode = Schema.Schema.Type<typeof ManifestFileSchema>;
 
@@ -71,6 +77,10 @@ type ManifestFileNode = Schema.Schema.Type<typeof ManifestFileSchema>;
  * Directory node: a `"type": "directory"` marker (a bare string) alongside file leaves. Modelling
  * every value as a union of the marker or a file leaf sidesteps the awkward typing of a struct
  * whose known key (`type`) differs from its index signature.
+ *
+ * Note: this intentionally supports only a single level of directory nesting (matching the layout
+ * `compactc` emits). A nested sub-directory object matches neither the `'directory'` marker nor a
+ * file leaf, so it is rejected by decode rather than silently ignored.
  */
 const ManifestDirectorySchema = Schema.Record({
   key: Schema.String,
