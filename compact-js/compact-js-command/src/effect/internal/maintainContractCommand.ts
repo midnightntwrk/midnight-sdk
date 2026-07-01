@@ -16,6 +16,7 @@
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { Intent } from '@midnightntwrk/ledger-v9';
 import { type ConfigError, Duration, Effect, Option } from 'effect';
 
@@ -59,7 +60,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       Effect.flatMap(ContractState.asLedgerContractStateFromBytes)
     );
     const result = yield* contractModule.contractExecutable.replaceContractMaintenanceAuthority(
-      Option.some(newSigningKey),
+      Option.some(SigningKey.make(newSigningKey)),
       {
         address,
         contractState: yield* ContractState.asContractState(ledgerContractState),

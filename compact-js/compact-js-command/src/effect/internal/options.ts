@@ -41,7 +41,7 @@ export const coinPublicKey = Options.text('coin-public').pipe(
 export const signingKey = Options.text('signing').pipe(
   Options.withAlias('s'),
   Options.withDescription('A public BIP-340 signing key, hex encoded.'),
-  Options.withSchema(Schema.String.pipe(Schema.fromBrand(SigningKey.SigningKey)).annotations({ title: 'signing' })),
+  Options.withSchema(Schema.String.pipe(Schema.fromBrand(SigningKey.Value)).annotations({ title: 'signing' })),
   Options.optional
 );
 

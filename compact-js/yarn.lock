@@ -401,19 +401,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform@npm:^0.95.0":
-  version: 0.95.0
-  resolution: "@effect/platform@npm:0.95.0"
-  dependencies:
-    find-my-way-ts: "npm:^0.1.6"
-    msgpackr: "npm:^1.11.4"
-    multipasta: "npm:^0.2.7"
-  peerDependencies:
-    effect: ^3.20.0
-  checksum: 10/ae3f3bd441f77bb0f3bb71f954d3a06be2565e4d924eba8c7d5c898da32d893f42c4af0e5c6fee5a1ba087ab7d2d1dae8734a4b1e830baeb654fcccd63c996bb
-  languageName: node
-  linkType: hard
-
 "@effect/platform@npm:^0.96.1":
   version: 0.96.1
   resolution: "@effect/platform@npm:0.96.1"
@@ -747,10 +734,10 @@ __metadata:
     "@midnight-ntwrk/compact-js": "npm:^2.5.0"
     "@midnight-ntwrk/compact-js-node": "npm:^2.5.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.0"
-    "@midnight-ntwrk/platform-js": "npm:^2.2.4"
+    "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0"
     "@midnightntwrk/ledger-v9": "npm:^1.0.0-rc.2"
-    effect: "npm:^3.20.0"
+    effect: "npm:^3.21.2"
     json5: "npm:^2.2.3"
     ts-node: "npm:^10.9.2"
     tslib: "npm:^2.8.1"
@@ -768,7 +755,7 @@ __metadata:
     "@effect/rpc": "npm:^0.74.0"
     "@effect/sql": "npm:^0.51.1"
     "@effect/workflow": "npm:^0.17.0"
-    effect: "npm:^3.20.0"
+    effect: "npm:^3.21.2"
     tslib: "npm:^2.8.1"
   peerDependencies:
     "@midnight-ntwrk/compact-js": ">=2.5.0"
@@ -799,7 +786,7 @@ __metadata:
     "@vitest/coverage-v8": "npm:^4.1.0"
     "@vitest/ui": "npm:^4.1.0"
     conventional-changelog-cli: "npm:^4.1.0"
-    effect: "npm:^3.20.0"
+    effect: "npm:^3.21.2"
     eslint: "npm:^10.0.3"
     eslint-config-prettier: "npm:^10.1.8"
     eslint-import-resolver-typescript: "npm:^4.4.4"
@@ -823,10 +810,10 @@ __metadata:
   dependencies:
     "@effect/platform": "npm:^0.96.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.0"
-    "@midnight-ntwrk/platform-js": "npm:^2.2.4"
+    "@midnight-ntwrk/platform-js": "npm:3.0.0"
     "@midnightntwrk/ledger-v9": "npm:^1.0.0-rc.2"
     "@noble/hashes": "npm:^2.2.0"
-    effect: "npm:^3.20.0"
+    effect: "npm:^3.21.2"
     tslib: "npm:^2.8.1"
   languageName: unknown
   linkType: soft
@@ -861,14 +848,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnight-ntwrk/platform-js@npm:^2.2.4":
-  version: 2.2.4
-  resolution: "@midnight-ntwrk/platform-js@npm:2.2.4::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fplatform-js%2F2.2.4%2F9c824ff5cefcfc08ce563c9f0d62eadc4090d76f"
+"@midnight-ntwrk/platform-js@npm:3.0.0":
+  version: 3.0.0
+  resolution: "@midnight-ntwrk/platform-js@npm:3.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fplatform-js%2F3.0.0%2Fb18da0d7b112c09f071e2569392aaf7b8f97eb8d"
   dependencies:
-    "@effect/platform": "npm:^0.95.0"
-    effect: "npm:^3.20.0"
+    "@effect/platform": "npm:^0.96.1"
+    effect: "npm:^3.21.0"
     tslib: "npm:^2.8.1"
-  checksum: 10/1650bb7e54a64740aaaf27f7e84b7bffdb08611c994bbf54208db43a0a11d10ea8994f05d82e848d60d6fcee8a9b3a5db770d306262b99547e71185d52614825
+  checksum: 10/1ca2b3bab95c909837de33d9f871c502e38091a40d14bb240a43e304abaae009172a414e4a9cdf49b5655e7c42b20fa62b17a6d8489e5942f4d8a19ba04de940
   languageName: node
   linkType: hard
 
@@ -2493,13 +2480,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"effect@npm:^3.20.0":
-  version: 3.20.0
-  resolution: "effect@npm:3.20.0"
+"effect@npm:^3.21.0, effect@npm:^3.21.2":
+  version: 3.21.4
+  resolution: "effect@npm:3.21.4"
   dependencies:
     "@standard-schema/spec": "npm:^1.0.0"
     fast-check: "npm:^3.23.1"
-  checksum: 10/62c1e43f86db04551aaf494a3d2fe296ce3a7d5e25c79c0b41b88e82152af6bb429ce040c7b51fd1b98d3fe93bef768737967f182b4b88ed488689860b55fc26
+  checksum: 10/c95506043e070662af85963af779b3d4e9ec501e03069532888831cc268e0fd9f448dcd2a4c89809e05471e64dcd270313b196056f878d1c028037870694af11
   languageName: node
   linkType: hard
 

@@ -269,7 +269,7 @@ const DEFAULT_SIGNATURE_INDEX = 0n;
 // serves both `signData` (ledger) and `signatureVerifyingKey` (compact-runtime).
 const asTaggedSigningKey = (signingKey: SigningKey.SigningKey): LedgerSigningKey => ({
   tag: 'schnorr',
-  value: signingKey
+  value: signingKey.value
 });
 
 const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
@@ -613,7 +613,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
   ): Either.Either<[ContractMaintenanceAuthority, SigningKey.SigningKey], ContractConfigurationError.ContractConfigurationError> {
     const signingKey = Option.match(key, {
       onSome: identity,
-      onNone: () => SigningKey.SigningKey(sampleSigningKey('schnorr').value)
+      onNone: () => SigningKey.make(sampleSigningKey('schnorr').value)
     });
     try {
       return Either.right([
