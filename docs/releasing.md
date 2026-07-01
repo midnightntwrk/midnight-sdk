@@ -1,46 +1,121 @@
 # Releasing
 
-Packages are published from the **CD** workflow (`.github/workflows/cd.yaml`),
-which is **manual only** (`workflow_dispatch`). Merging to `main` does **not**
-publish — that only runs CI (build/test).
+Releases are driven by [Changesets](https://github.com/changesets/changesets).
+There is **no** hand-editing of version files — versions and `CHANGELOG.md`s are
+derived from changeset files merged via PRs.
 
-## How to cut a release
+## TL;DR for contributors
 
-1. Merge your change to `main`.
-2. Actions → **CD** → **Run workflow** → set *Use workflow from* = `main`,
-   choose the workspace (`platform-js` or `compact-js`).
+Every PR that changes a publishable package must include a changeset:
 
-The job only publishes when run from a branch listed in that workspace's
-`version.json` → `releaseBranches` (`main` or `release/<pkg>/.*`). Run from any
-other branch and the publish steps are skipped.
+```sh
+yarn changeset        # pick the packages + bump type (patch/minor/major), write a summary
+git add .changeset && git commit
+```
 
-## Versioning — `<workspace>/version.json`
+CI (`check-changeset`) fails a PR that changes a package without one. When a change
+should **not** trigger a release — infra/docs/tooling, or a package edit with no
+user-facing effect (tests, comments, internal refactors) — add an **empty** changeset
+to satisfy the check without publishing:
 
-`version.json` is the **single source of truth** for the published version:
+```sh
+yarn changeset add --empty
+git add .changeset && git commit
+```
 
-| field             | meaning                                              |
-| ----------------- | ---------------------------------------------------- |
-| `version`         | base semver, e.g. `3.0.0`                            |
-| `preRelease`      | suffix (see below)                                   |
-| `tag`             | npm dist-tag used in `npm publish --tag <tag>`       |
-| `releaseBranches` | regexes of branches allowed to publish               |
+New to the repo? See [`DEV_GUIDE.md`](../DEV_GUIDE.md) for environment setup, install,
+and everyday commands.
 
-The published version is derived from `version` + `preRelease`:
+## The monorepo
 
-| `preRelease` | publishes              | use for                 |
-| ------------ | ---------------------- | ----------------------- |
-| `""` (empty) | `3.0.0`                | a stable release        |
-| `-rc.1`      | `3.0.0-rc.1` (exact)   | a specific pre-release  |
-| `-alpha`     | `3.0.0-alpha.<height>` | continuous pre-releases |
+A single Yarn workspace + Turborepo. All publishable packages live under
+`packages/*`:
 
-`<height>` = number of commits since `version.json` last changed.
+| package | scope |
+| --- | --- |
+| `packages/platform-js` | `@midnightntwrk/platform-js` |
+| `packages/compact-js` | `@midnightntwrk/compact-js` |
+| `packages/compact-js-node` | `@midnightntwrk/compact-js-node` |
+| `packages/compact-js-command` | `@midnightntwrk/compact-js-command` |
 
-**You only edit `version.json`.** The CD job bumps every workspace `package.json`
-to the computed version **on the runner only** (so the packed tarball is correct)
-— this commit is **not** pushed back to `main`, so branch protection is unaffected.
+Versioning is **independent** (`linked: []`); internal dependents bump together
+(`updateInternalDependencies: patch`). `compact-js` resolves `platform-js`
+through the workspace (`workspace:^`), so local changes are picked up without
+publishing.
 
-## Git tags
+## Registry & scopes
 
-- **compact-js** pushes a `compact-js-v<version>` git tag after a successful
-  publish.
-- **platform-js** does **not** tag — it only publishes to the registry.
+Packages publish to **npmjs** via **OIDC Trusted Publishing + provenance** (no
+long-lived tokens). Each is published under **two** scopes during the migration:
+
+- `@midnightntwrk/*` — canonical (the name in `package.json`).
+- `@midnight-ntwrk/*` — transitional alias, generated at publish time by
+  `scripts/publish.mjs`, so existing dashed-scope consumers keep resolving.
+
+Upstream dashed deps (`@midnight-ntwrk/compact-runtime`, …) stay on GitHub
+Packages; install-time auth for them uses the CI read token.
+
+## Dist-tags
+
+| tag | what | how |
+| --- | --- | --- |
+| `latest` | stable | merge the "Version Packages" PR |
+| `rc` (or `beta`) | pre-release | Changesets **pre-mode** (clean `-rc.N`) |
+| `canary` | continuous snapshot | automatic, every push to `main` with pending changesets |
+
+## CD flow (`.github/workflows/cd.yml`)
+
+On every push to `main`, the `version` job runs `changesets/action` to create or
+update the **"Version Packages" PR** (aggregated changelogs + version bumps) and
+resolves a single `mode`:
+
+- `release` — the release PR was merged (no changesets left). Runs the gated
+  `publish-release` job: builds, publishes both scopes (OIDC + provenance), pushes
+  signed git tags, and creates a **GitHub Release** per stable version (notes from
+  `CHANGELOG.md`). The dist-tag is `latest`, or the pre-mode tag (e.g. `rc`).
+- `canary` — pending package-bumping changesets and **not** in pre-mode. Publishes
+  a `…-canary.<timestamp>-<sha>` snapshot of every package under `canary`.
+- `none` — docs/CI-only changeset, or in pre-mode with pending changesets.
+
+`publish-release` is gated by the **`npm-publish-release`** GitHub Environment
+(required reviewers). `canary` uses **`npm-publish-canary`** (no reviewers).
+
+## Cutting a stable release
+
+1. Land PRs (each with a changeset) on `main`.
+2. The bot opens/updates the **"Version Packages" PR**. Review it.
+3. Merge it → `publish-release` runs, waits for environment approval, then
+   publishes `@latest`, tags, and creates GitHub Releases.
+
+## Cutting a pre-release (rc)
+
+RC uses Changesets **pre-mode**, which is **repo-wide**: while active, every
+package that has a changeset is versioned `-rc.N`.
+
+> **Flush before you flip.** Publish any open "Version Packages" PR *before*
+> entering pre-mode, otherwise its pending stable bumps are rewritten to `rc`.
+
+1. Enter pre-mode locally (only after flushing — see the note above) and open a PR:
+   ```sh
+   yarn changeset pre enter rc      # writes .changeset/pre.json
+   git add .changeset/pre.json && git commit -m "chore: enter rc pre-release mode"
+   ```
+2. Merge that PR (it adds `.changeset/pre.json`).
+3. From then on, the "Version Packages" PR produces `-rc.N` versions; merging it
+   publishes under `@rc`.
+4. To return to stable, run `yarn changeset pre exit` in a PR and merge it. The
+   accumulated changesets then roll up into final stable versions.
+
+## Canary
+
+Automatic. Any push to `main` with pending package-bumping changesets (outside
+pre-mode) publishes a coherent all-package snapshot under `@canary`. Nothing to
+do.
+
+## Prerequisites (infra)
+
+Publishing requires: the `@midnightntwrk` npm org,
+a one-time Trusted-Publishing **bootstrap** for each new package name, npm
+**Trusted Publishers** registered per package, the `npm-publish-release` /
+`npm-publish-canary` **Environments**, and the `MIDNIGHTCI_GPG_PRIVATE_KEY` /
+`MIDNIGHTCI_PACKAGES_WRITE` secrets.

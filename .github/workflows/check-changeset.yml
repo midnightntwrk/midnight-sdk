@@ -1,0 +1,48 @@
+name: Check for Changeset
+
+env:
+  MIDNIGHTCI_PACKAGES_READ: ${{ secrets.MIDNIGHTCI_PACKAGES_READ }}
+
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}
+  cancel-in-progress: true
+
+permissions: {}
+
+jobs:
+  check-changeset:
+    # Skip the changesets bot's own release branch — it removes changesets.
+    if: ${{ !startsWith(github.head_ref, 'changeset-release/') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v4
+        with:
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: .nvmrc
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_READ }}
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Configure yarn (install-time auth for GH Packages)
+        run: |
+          yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$MIDNIGHTCI_PACKAGES_READ"
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Verify that a changeset exists
+        run: yarn changeset status --since=origin/${{ github.base_ref }} --verbose

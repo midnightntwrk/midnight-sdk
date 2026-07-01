@@ -6,7 +6,6 @@ build/
 .direnv/
 .idea/
 .env
-.yarn
 *.log
 coverage/
 reports/

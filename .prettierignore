@@ -1,0 +1,8 @@
+dist/
+coverage/
+reports/
+.yarnrc.yml
+.changeset/
+.turbo/
+.yarn/
+.claude/

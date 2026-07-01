@@ -1,0 +1,863 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Overview
+
+The Midnight SDK is a single Yarn workspace + Turborepo monorepo. All publishable
+packages live under `packages/*` and are published under the `@midnightntwrk` scope:
+
+- **`@midnightntwrk/platform-js`** — the **core layer**: abstractions, utilities, and
+  types for building services and libraries that work with the Midnight blockchain.
+  Everything else builds on it.
+- **`@midnightntwrk/compact-js`** — TypeScript execution environment that runs
+  contracts compiled by `compactc`. Consumes `platform-js` via `workspace:^`.
+- **`@midnightntwrk/compact-js-node`** — Node.js platform implementations of
+  Compact.js service types (e.g. `ZKFileConfiguration` for file-system ZK assets).
+  Has `compact-js` as a peer.
+- **`@midnightntwrk/compact-js-command`** — CLI utilities for executing compiled
+  contracts; depends on the other three.
+
+Internal packages reference each other with the `workspace:^` protocol, so local
+changes are picked up without publishing (no version pinning — yarn resolves the
+range at pack/publish time; see [Versioning](#versioning-changesets)). The codebase
+heavily uses the [Effect](https://effect.website) library for dependency injection,
+error handling, and concurrency.
+
+## Build Commands
+
+All commands run from the **repository root** — Turbo orchestrates per-package tasks
+in dependency order (`^dist`). Shared devDependencies (vitest, typescript, eslint,
+etc.) are hoisted to the root `node_modules`. Use `--filter` to target one package.
+
+```bash
+# Setup (Node from .nvmrc via nvm; Yarn 4.10.3 via corepack)
+nvm use && corepack enable
+
+# Install the whole workspace
+yarn install
+
+# Build all packages (turbo run dist, in dependency order)
+yarn dist
+
+# Build a specific package
+yarn dist --filter=@midnightntwrk/platform-js
+
+# Run all tests
+yarn test
+
+# Run tests for a specific package
+yarn test --filter=@midnightntwrk/compact-js
+
+# Typecheck (no emit) across the monorepo
+yarn typecheck
+
+# Lint across the monorepo (and autofix)
+yarn lint
+yarn lint --fix
+
+# Format (per package) and check formatting
+yarn format
+yarn format:check
+
+# Remove build artifacts
+yarn clean
+```
+
+### Environment
+
+- **Node version**: `.nvmrc` pins the dev version (currently `24.11.0`; run `nvm use`).
+  The published packages' `engines.node` floor is `>= 22` — the two serve different
+  audiences (contributors vs consumers), so they intentionally differ.
+- **Package manager**: Yarn 4.10.3 (via corepack / the committed `.yarn/releases` binary)
+- **Build orchestration**: Turbo (manages the task graph and caching)
+- **Direnv**: `.envrc` (via `dotenv`) loads the compact toolchain env locally. Without
+  direnv you must export the vars from `packages/compact-js/compact.env` yourself
+  before a `compact-js` build (CI loads them explicitly).
+- **Compact toolchain**: `COMPACTC_VERSION` (and friends) are provided by
+  `packages/compact-js/compact.env`. The `compact-js` build fetches `compactc` and
+  generates `test/contract/managed/**` on demand.
+
+### Repository layout
+
+- `packages/*` — the four publishable packages, each with `src/`, colocated
+  `*.test.ts`, its own `vitest.config.ts` and `tsconfig*.json`, and exports a main
+  entry (`.`) plus an `/effect` subpath for Effect-integrated APIs.
+- Root config shared by all packages: `turbo.json` (task graph + caching),
+  `tsconfig.base.json`, `eslint.config.mjs`, `.prettierrc.json`, `.changeset/`.
+- `scripts/` — release tooling (`publish.mjs`, `write-canary-changeset.mjs`,
+  `github-releases.mjs`); not linted.
+
+## Architecture
+
+`platform-js` is the foundation; `compact-js` builds on it; `compact-js-node` and
+`compact-js-command` build on `compact-js`. (See [Overview](#overview) for each
+package's role.) Build order and "what depends on what" are enforced by Turbo's
+`^dist` task graph and the `workspace:^` dependencies.
+
+### Effect library usage
+
+The codebase leverages Effect for typed error handling, dependency injection
+(`Context`), async operations (the `Effect` monad), and resource management. Internal
+code is composed with Effect; the `/effect` subpath exposes the Effect-integrated
+surface, while the main entry (`.`) keeps a non-Effect-aware public surface.
+
+### Compact.js contract configuration
+
+Compact.js commands operate on contracts compiled by `compactc`. The workflow:
+
+1. A `.compact` source file is compiled to a JavaScript runtime + TypeScript
+   declarations + ZK assets.
+2. A TypeScript config file (`contract.config.ts`) imports the compiled executable,
+   defines private state types/initial values, implements required Witnesses, and
+   optionally provides default command configuration.
+
+Key concepts: **Witnesses** (contract implementations of required private
+functionality), **ZK Assets** (prover and verifier keys from compilation), **Private
+State** (user-defined state separate from on-chain state), and **Runtime** (the JS
+executable generated by `compactc`, distinct from `@midnight-ntwrk/compact-runtime`).
+
+## Key Dependencies
+
+- **Effect** (`effect`) — functional programming primitives, DI, error handling,
+  concurrency.
+  - Use namespace imports for Effect modules that shadow globals:
+    `import { Array as EArray, Record as ERecord } from 'effect';`
+  - Typed error handling via `Either` and `Effect.fail` (`Either` in
+    pure/synchronous context; `Effect.fail` and friends in side-effectful contexts).
+- **`@effect/platform`** / **`@effect/platform-node`** — platform abstractions used by
+  the Effect-integrated APIs (`@effect/cli` is used by `compact-js-command`).
+- **`@midnight-ntwrk/compact-runtime`** — the Compact runtime used by compiled contracts.
+- **`@midnightntwrk/ledger-v9`** — ledger types.
+- **`@midnightntwrk/platform-js`** — the core layer consumed by the compact packages
+  via the workspace.
+
+## Code Quality (ESLint & Prettier)
+
+Linting and formatting are **separate** concerns here — ESLint does not run Prettier.
+
+### ESLint (`eslint.config.mjs`, flat config)
+
+- `@eslint/js` recommended + `typescript-eslint` **recommended** and **stylistic**.
+- `simple-import-sort` — sorts imports and exports (`error`).
+- `unused-imports` — removes unused imports and flags unused vars (names prefixed with
+  `_` are ignored). The base `@typescript-eslint/no-unused-vars` is turned off in
+  favour of this.
+- `import-x` — TypeScript-aware import resolver.
+- `eslint-config-prettier` is applied to **disable formatting-related lint rules** so
+  ESLint and Prettier don't fight. It does **not** enforce Prettier formatting —
+  formatting is checked separately via `yarn format:check`.
+- `yarn lint` runs `eslint` (use `yarn lint --fix` to autofix).
+
+### Prettier
+
+- Config in `.prettierrc.json` (semicolons, single quotes, no trailing comma,
+  `tabWidth: 2`, `printWidth: 120`).
+- Per-package `yarn format` / `format:check`; repo-root files use `format:root` /
+  `format:check:root` (which honor `.prettierignore.root`). Each package has its own
+  `.prettierignore` so built output isn't reformatted.
+
+### Ignored patterns (lint + format)
+
+Build output (`dist/`, `build/`, `*.d.ts`), generated code (`gen/`, `generated/`,
+`managed/`), dependencies (`node_modules/`, `.yarn/`), and `coverage/` / `reports/`
+are excluded.
+
+## Testing
+
+- **Framework**: Vitest (globals enabled), `*.test.ts` colocated with source.
+- Coverage (v8) is enabled by default, written to `coverage/` (`html`/`lcov`/`json`/`text`);
+  test reports go to `reports/`; Node environment.
+- The root `vitest.config.ts` aggregates the packages via `projects` and sets a
+  180s `testTimeout` (headroom for the Docker/Testcontainers tests below).
+- `compact-js` also runs `tstyche` type tests (`*.tst.ts`).
+- Some tests use Testcontainers (Docker) and require the generated `managed/`
+  contracts (produced by the build via `compactc`). These won't run without Docker
+  and a completed build.
+
+### Test-Driven Development (MANDATORY)
+
+**THIS IS A HARD REQUIREMENT: Follow TDD strictly. Tests define the contract and cannot be weakened.**
+
+**The TDD cycle:**
+
+1. **Design the test thoroughly** before writing it:
+   - Understand the exact behavior being tested
+   - Consider what mocking infrastructure is needed
+   - Ensure assertions are precise and verifiable
+   - Design tests that can be implemented without modification
+   - Avoid usage of mocks in the sense of `vi.fn` or `vi.mock`; if possible implement
+     a stub object/function providing expected data instead and/or use fakes (good
+     related articles: https://blog.ploeh.dk/2022/10/17/stubs-and-mocks-break-encapsulation/
+     and https://martinfowler.com/articles/mocksArentStubs.html#DrivingTdd)
+
+2. **Write the test** with precise assertions
+
+3. **Verify the test fails** for the expected reason (red)
+
+4. **User reviews and commits tests** before implementation begins
+
+5. **Implement code** to make the test pass (green)
+
+**CRITICAL: Once a test is written and confirmed failing, it MUST NOT be changed to accommodate:**
+
+- Implementation difficulties
+- Mocking infrastructure limitations
+- API design issues
+- Any other "practical" reasons
+
+**If implementation cannot pass the test as written:**
+
+1. Do NOT weaken the test assertions
+2. Do NOT add comments like "mock can't do X, so we check Y instead"
+3. Do NOT change precise assertions to loose ones (e.g., `toBe(5)` → `toBeGreaterThan(0)`)
+4. Instead, gather ALL such failing cases
+5. Present them to the user with:
+   - What the test expects
+   - What the implementation/mock currently provides
+   - Why the gap exists
+   - Proposed solutions (fix mock, change API design, etc.)
+6. Wait for user decision before proceeding
+
+**The test is the specification.** If the test seems wrong after implementation begins, that indicates a design problem
+that should have been caught in step 1. Go back to the user rather than silently weakening tests.
+
+### Testing Effect Code
+
+Use `Effect.runPromise` or `Effect.runSync` to unwrap Effects in tests:
+
+```typescript
+it('should fetch user', async () => {
+  const result = await Effect.runPromise(fetchUser('123'));
+  expect(result.name).toBe('Alice');
+});
+```
+
+For testing failures, use `Exit`:
+
+```typescript
+import { Exit } from 'effect';
+
+it('should fail for invalid id', async () => {
+  const exit = await Effect.runPromiseExit(fetchUser('invalid'));
+  expect(Exit.isFailure(exit)).toBe(true);
+});
+```
+
+Mock services using `Layer`:
+
+```typescript
+const MockUserService = Layer.succeed(UserService, {
+  fetch: () => Effect.succeed(mockUser),
+});
+
+it('should use mock', async () => {
+  const result = await pipe(fetchUser('123'), Effect.provide(MockUserService), Effect.runPromise);
+  expect(result).toEqual(mockUser);
+});
+```
+
+## Versioning (Changesets)
+
+Releases are driven by [Changesets](https://github.com/changesets/changesets) — **not**
+by hand-editing versions. **Every PR that changes a package under `packages/*` must
+include a changeset.**
+
+```bash
+# Add a changeset for releasable changes
+yarn changeset
+
+# Add an empty changeset for non-release changes (docs, tooling)
+yarn changeset add --empty
+
+# Check for missing changesets
+yarn changeset:status
+
+# Version packages from accumulated changesets
+yarn changeset:version
+```
+
+Internal dependencies use the bare `workspace:^` protocol. Changesets bumps dependent
+packages automatically (per `updateInternalDependencies`) and keeps the `workspace:^`
+string as-is — do **not** pin explicit versions there. `scripts/publish.mjs` resolves
+`workspace:^` to a concrete caret range in the `dist/` package.json at publish time
+(npm cannot understand the `workspace:` protocol).
+
+Publishing goes to npmjs via OIDC Trusted Publishing + provenance (canonical
+`@midnightntwrk/*` plus a transitional `@midnight-ntwrk/*` alias), with dist-tags
+`latest` / `rc` / `canary`. Full details in
+[`docs/releasing.md`](docs/releasing.md).
+
+## Functional Programming Principles
+
+This codebase follows functional programming principles rigorously. These patterns are **mandatory** - not preferences.
+
+### Functional Core, Imperative Shell (Impureim Sandwich)
+
+Structure code in three layers:
+
+1. **Impure (input)**: Read data from external sources (file system, network, user input)
+2. **Pure (transform)**: Process data with pure functions - all business logic lives here
+3. **Impure (output)**: Write results to external targets (write files, emit events, submit requests)
+
+The "sandwich" keeps all business logic pure and testable, with side effects only at the edges.
+
+### Parse, Don't Validate
+
+Instead of `validate(input): boolean`, use `parse(input): ValidType | Error`.
+
+The parsed type makes invalid states **unrepresentable** through the type system.
+
+```typescript
+// WRONG: validate returns boolean, caller can ignore result or use raw input
+const isValid = validateInput(input);
+if (isValid) {
+  /* input is still untyped string */
+}
+
+// RIGHT: parse returns typed value - invalid inputs cannot proceed
+const parsed: ParsedValue = parseValue(input);
+// parsed is now a validated value, not a string
+```
+
+**Use branded types** to prevent mixing similar primitives:
+
+```typescript
+type ProtocolVersion = Brand.Branded<bigint, 'ProtocolVersion'>;
+const ProtocolVersion = Brand.nominal<ProtocolVersion>();
+```
+
+### Make Illegal States Unrepresentable
+
+Design types so invalid states **cannot be constructed**:
+
+**Use branded types** to distinguish semantically different values:
+
+```typescript
+// WRONG: Both are just strings, easily confused
+function link(from: string, to: string): void;
+
+// RIGHT: Types prevent confusion at compile time
+type SourceId = Brand.Branded<string, 'SourceId'>;
+type TargetId = Brand.Branded<string, 'TargetId'>;
+function link(from: SourceId, to: TargetId): void;
+```
+
+**Use tagged unions** to model mutually exclusive states:
+
+```typescript
+// WRONG: Both fields optional, unclear valid combinations
+type Result = { data?: Data; error?: Error };
+
+// RIGHT: Exactly one state is valid
+type Result = { _tag: 'Success'; data: Data } | { _tag: 'Failure'; error: Error };
+```
+
+### Total Functions
+
+Functions should be **total** - defined for all inputs of their declared type:
+
+```typescript
+// PARTIAL (avoid): Throws for empty array - undefined behavior
+const head = <T>(arr: T[]): T => arr[0]; // undefined if empty!
+
+// TOTAL (prefer): Returns Option - handles all inputs
+const head = <T>(arr: T[]): Option<T> => (arr.length > 0 ? Option.some(arr[0]) : Option.none());
+
+// TOTAL (alternative): Restrict input type
+const head = <T>(arr: NonEmptyReadonlyArray<T>): T => arr[0];
+```
+
+**Rules:**
+
+- Never throw for expected error conditions
+- Use `Option` for values that may not exist
+- Use `Either`/`Effect` for operations that may fail
+- Restrict input types when possible (`NonEmptyArray`, branded types)
+
+### Immutability and Pure Functions (MANDATORY)
+
+**THIS IS A HARD REQUIREMENT: Write purely functional, side-effect-free code.**
+
+All code MUST be purely functional unless there is absolutely no alternative. This is not a
+preference - it is the default and expected style.
+
+**NEVER use:**
+
+- `let` declarations - use `const` only
+- `for`/`while` loops - use `map`/`filter`/`reduce`/`flatMap`
+- `array.push()`, `array.pop()`, `array.splice()` - these mutate
+- `object[key] = value` mutations - build new objects instead
+- `result` variables that get mutated in loops
+
+**ALWAYS use:**
+
+- `const` for all declarations
+- `array.map()` to transform elements
+- `array.filter()` to select elements
+- `array.reduce()` to accumulate/aggregate values
+- `array.flatMap()` to map and flatten
+- `array.some()` / `array.every()` for boolean checks
+- Spread syntax `{ ...obj, key: value }` to create modified copies
+- `Array.from()` to convert iterables
+
+**Examples of WRONG code (do not write this):**
+
+```typescript
+// WRONG: mutation with let and push
+let total = 0n;
+const result: string[] = [];
+for (const item of items) {
+  total += item.value;
+  if (item.active) {
+    result.push(item.name);
+  }
+}
+
+// WRONG: object mutation
+const obj: Record<string, bigint> = {};
+for (const item of items) {
+  obj[item.key] = (obj[item.key] ?? 0n) + item.value;
+}
+```
+
+**Examples of CORRECT code:**
+
+```typescript
+// CORRECT: pure functional
+const total = items.reduce((sum, item) => sum + item.value, 0n);
+const result = items.filter((item) => item.active).map((item) => item.name);
+
+// CORRECT: reduce to build object
+const obj = items.reduce(
+  (acc, item) => ({ ...acc, [item.key]: (acc[item.key] ?? 0n) + item.value }),
+  {} as Record<string, bigint>,
+);
+
+// CORRECT: conditional object properties
+return {
+  ...(a !== undefined ? { a } : {}),
+  ...(b !== undefined ? { b } : {}),
+};
+```
+
+**The only exceptions** where mutation may be acceptable:
+
+- Performance-critical inner loops with measured bottlenecks (rare)
+- Interacting with inherently mutable external APIs
+- Test setup/teardown code
+
+Even in these cases, isolate mutations and document why they are necessary.
+
+### Type Casts
+
+**Avoid type casts (`as Type`) whenever possible.** Type casts bypass TypeScript's type checking and can hide bugs.
+
+Before using a type cast, exhaust all other options:
+
+1. Fix the underlying type definitions
+2. Use type guards or narrowing
+3. Use generics properly
+4. Refactor code to improve type inference
+
+If a type cast is absolutely necessary after exhausting other options, it **must** include a justification comment
+explaining why:
+
+```typescript
+// Type cast required because: <specific reason why no alternative exists>
+const value = someValue as SomeType;
+```
+
+### Separation of Effect and Either
+
+**Critical distinction - these are NOT interchangeable:**
+
+- **Either** = pure synchronous computation, no side effects, for validation and state transformations
+- **Effect** = description of side-effecting computation (async, resources, errors, DI)
+
+**When to use which:**
+
+| Use Case             | Type     | Example                                            |
+| -------------------- | -------- | -------------------------------------------------- |
+| Pure validation      | `Either` | `parseValue(input): Either<Value, ParseError>`     |
+| State transformation | `Either` | `applyUpdate(state, update): Either<State, Error>` |
+| Business logic       | `Either` | `compute(state, input): Either<Result, Error>`     |
+| I/O operations       | `Effect` | `fetch(url): Effect<Data, NetworkError>`           |
+| Resource management  | `Effect` | `withConnection(f): Effect<R, Error>`              |
+| Async operations     | `Effect` | `run(task): Effect<Output, RunError>`              |
+| Dependency injection | `Effect` | Using `Context.Tag` for services                   |
+
+**Never mix them carelessly:**
+
+```typescript
+// WRONG: Either inside Effect for pure logic
+Effect.gen(function* () {
+  const result = yield* Effect.succeed(Either.right(compute(x))); // Unnecessary wrapping
+});
+
+// RIGHT: Either for pure, Effect only at boundary
+const pureResult = computePurely(input); // Returns Either
+return EitherOps.toEffect(pureResult); // Convert at boundary only
+```
+
+### Generator vs Pipe Style
+
+Both `Effect.gen` and `pipe` are valid but serve different purposes:
+
+**Use `Effect.gen`** (do-notation style) when:
+
+- Multiple sequential operations need intermediate values
+- Complex control flow with conditions
+- Readability benefits from imperative-looking code
+
+```typescript
+Effect.gen(function* () {
+  const user = yield* fetchUser(id);
+  const profile = yield* fetchProfile(user.profileId);
+  if (profile.isAdmin) {
+    yield* logAdminAccess(user);
+  }
+  return { user, profile };
+});
+```
+
+**Use `pipe`** when:
+
+- Simple linear transformations
+- Single operation chains
+- Parallel operations (`Effect.all`, `apS` pattern)
+
+```typescript
+pipe(
+  fetchUser(id),
+  Effect.flatMap((user) => fetchProfile(user.profileId)),
+  Effect.map((profile) => ({ profile })),
+);
+```
+
+**Avoid mixing** both styles in the same function - pick one for consistency, but prefer pipes if custom operators need
+to be used. Never use the `.gen` variant for a single operation. The above also is valid for usage with other Effect
+types, like `Either`.
+
+### State Management with Refs
+
+State lives in **refs**, pure functions **transform** it, services **orchestrate** updates.
+
+**SubscriptionRef** - immutable state with observable changes:
+
+```typescript
+// State container
+#state: SubscriptionRef.SubscriptionRef<MyState>;
+
+// Initialize
+this.#state = SubscriptionRef.make<MyState>(initialState).pipe(Effect.runSync);
+
+// Update with a pure function
+SubscriptionRef.update(this.#state, (state) => applyUpdate(state, update));
+
+// Observable stream of changes
+state(): Stream.Stream<MyState> {
+  return Stream.concat(
+    Stream.fromEffect(SubscriptionRef.get(this.#state)),
+    this.#state.changes
+  );
+}
+```
+
+**Pattern:** Pure functions return new state, services update refs:
+
+```typescript
+// Pure function (no ref access)
+const newState = applyUpdate(oldState, update);
+
+// Service updates ref
+yield * SubscriptionRef.update(this.#state, () => newState);
+```
+
+Do not ever mix `Ref.get` or `SubscriptionRef.get` (or similar) with methods changing the state. Always use
+`Ref.update`, `Ref.modify`, or similar to change the state, and always use the only state reference — the one provided in
+the callback. Otherwise it is easy to cause the concurrency issues that `Ref` and its variants are meant to prevent.
+
+### Resource Management
+
+Use Effect's resource management for anything that needs cleanup:
+
+**Scoped resources** with automatic cleanup:
+
+```typescript
+const withConnection = Effect.scoped(
+  Effect.acquireRelease(
+    openConnection(), // acquire
+    (conn) => closeConnection(conn), // release (always runs)
+  ),
+);
+```
+
+**In services** - use `Scope` for lifecycle management:
+
+```typescript
+Effect.gen(function* () {
+  const scope = yield* Effect.scope;
+  yield* Scope.addFinalizer(scope, () => cleanup());
+  // Resource is cleaned up when scope closes
+});
+```
+
+### Concurrency Patterns
+
+**Sequential** (default with flatMap/gen):
+
+```typescript
+Effect.gen(function* () {
+  const a = yield* fetchA(); // waits
+  const b = yield* fetchB(); // waits for a to complete
+  return [a, b];
+});
+```
+
+**Parallel** - use when operations are independent:
+
+```typescript
+// Both run concurrently
+Effect.all([fetchA(), fetchB()], { concurrency: 'unbounded' });
+
+// Or with Do notation for named results
+pipe(
+  Effect.Do,
+  Effect.bind('a', () => fetchA()), // starts immediately
+  Effect.bind('b', () => fetchB()), // starts immediately (parallel)
+);
+```
+
+**Rule**: Use parallel execution when operations don't depend on each other's results.
+
+### Typeclass-like Patterns
+
+TypeScript lacks typeclasses, but the codebase simulates them via explicit dictionary passing.
+
+**Trait Pattern** - Define operations over a generic type, pass the instance explicitly:
+
+```typescript
+export type Trait<T> = {
+  serialize: (value: T) => Uint8Array;
+  deserialize: (serialized: Uint8Array) => T;
+  equals: (a: T, b: T) => boolean;
+};
+
+// Functions take the trait as an explicit parameter (dictionary passing)
+export const has = <T>(
+  items: readonly T[],
+  item: T,
+  trait: Trait<T>, // <-- typeclass instance
+): boolean => items.some((candidate) => trait.equals(candidate, item));
+```
+
+This pattern allows generic functions to work with any type that has a matching trait implementation.
+
+**Monoid Pattern** - Algebraic typeclass for composable operations:
+
+```typescript
+type Monoid<T> = { empty: T; combine: (a: T, b: T) => T };
+
+const bigintAdditionMonoid: Monoid<bigint> = {
+  empty: 0n,
+  combine: (a, b) => a + b,
+};
+
+const total = generalSum(
+  items.map((i) => i.value),
+  bigintAdditionMonoid,
+);
+```
+
+**Dual Functions** - Support both curried and uncurried calling:
+
+```typescript
+export const fold: {
+  <T>(folder: (acc: T, item: T) => T): (arr: NonEmptyReadonlyArray<T>) => T;
+  <T>(arr: NonEmptyReadonlyArray<T>, folder: (acc: T, item: T) => T): T;
+} = dual(2, (arr, folder) => arr.reduce(folder));
+
+// Both work:
+fold(arr, (a, b) => a + b); // Direct call
+arr.pipe(fold((a, b) => a + b)); // Piped
+```
+
+### Algebraic Data Types (ADTs)
+
+**Tagged Enums** - Sealed hierarchies like Scala sealed traits / F# discriminated unions:
+
+```typescript
+type StateChange<TState> = Data.TaggedEnum<{
+  State: { readonly state: TState };
+  ProgressUpdate: { readonly sourceGap: bigint; readonly applyGap: bigint };
+}>;
+
+const { $match: match, $is: is, State, ProgressUpdate } = Data.taggedEnum<StateChange<S>>();
+
+// Exhaustive pattern matching
+match(change, {
+  State: (s) => /* ... */,
+  ProgressUpdate: (p) => /* ... */,
+});
+
+// Type predicates
+if (is('State')(change)) { /* change.state is available */ }
+```
+
+**Tagged Errors** - Typed errors like Scala case classes:
+
+```typescript
+export class SubmissionError extends Data.TaggedError('SubmissionError')<{
+  message: string;
+  cause?: unknown;
+}> {}
+
+// Union of error types for exhaustive handling
+type ProcessError = SubmissionError | ParseError | NetworkError;
+```
+
+### Error Modeling
+
+**Create specific error types** for each failure mode:
+
+```typescript
+class UserNotFoundError extends Data.TaggedError('UserNotFound')<{
+  userId: string;
+}> {}
+
+class NetworkError extends Data.TaggedError('NetworkError')<{
+  url: string;
+  cause: unknown;
+}> {}
+
+// Union type enables exhaustive handling
+type FetchError = UserNotFoundError | NetworkError;
+
+// Pattern match on errors
+Effect.catchAll(effect, (error) =>
+  match(error, {
+    UserNotFound: (e) => handleNotFound(e.userId),
+    NetworkError: (e) => handleNetwork(e.url),
+  }),
+);
+```
+
+**Error channel composition** - errors accumulate through the type system:
+
+```typescript
+declare const fetchUser: Effect.Effect<User, NetworkError>;
+declare const validateUser: (u: User) => Either<ValidUser, ValidationError>;
+
+// Result type: Effect<ValidUser, NetworkError | ValidationError>
+const result = pipe(
+  fetchUser,
+  Effect.flatMap((user) => EitherOps.toEffect(validateUser(user))),
+);
+```
+
+### Scala/F# Idiom Translation
+
+| Scala/F# Idiom    | TypeScript Equivalent                           |
+| ----------------- | ----------------------------------------------- |
+| for-comprehension | `Effect.gen(function* () { ... })`              |
+| case class        | `Data.TaggedError`, `Data.Class`                |
+| sealed trait / DU | `Data.taggedEnum`                               |
+| implicit / given  | `Context.Tag` + service resolution              |
+| `\|>` pipe        | `pipe()` from effect                            |
+| Railway-oriented  | `Either.map`, `Either.flatMap` chains           |
+| Pattern matching  | `match({ onLeft, onRight })`, `$match`          |
+| typeclass         | Trait interface + explicit passing, `Monoid<T>` |
+
+### Anti-Patterns (NEVER DO)
+
+| Anti-Pattern                                | Correct Alternative              |
+| ------------------------------------------- | -------------------------------- |
+| `Promise` directly in internal code         | Wrap in `Effect.tryPromise`      |
+| Throw exceptions for expected errors        | Return `Either` or `Effect.fail` |
+| Use `null`/`undefined` for optional values  | Use `Option`                     |
+| Classes with mutable internal state         | Refs + pure functions            |
+| Mix Effect and raw async/await              | Keep Effect composition pure     |
+| Validate and return boolean                 | Parse and return typed value     |
+| `let` + mutation in loops                   | `reduce`, `map`, `filter`        |
+
+### Effect Usage Boundaries
+
+- **Internal code**: Use Effect for composition, error handling, resources.
+- **Public APIs**: where a non-Effect surface is exposed (e.g. plain Promises), do NOT
+  require Effect knowledge from users — translate at the boundary.
+
+**Effect is a rich library** - many problems are already solved. Before writing custom utilities, check if Effect
+provides a solution:
+
+| Module                             | Provides                                   |
+| ---------------------------------- | ------------------------------------------ |
+| `effect/Array`                     | `NonEmptyReadonlyArray`, `reduce`, `match` |
+| `effect/Function`                  | `dual`, `pipe`, `identity`, `constVoid`    |
+| `effect/Brand`                     | Branded types for type safety              |
+| `effect/Data`                      | `TaggedEnum`, `TaggedError`, `Class`       |
+| `effect/Match`                     | Pattern matching combinators               |
+| `effect/HashMap`, `effect/HashSet` | Immutable collections                      |
+| `effect/Option`, `effect/Either`   | Sum types                                  |
+| `effect/Schema`                    | Validation and parsing                     |
+
+**Remember: patterns are transferable, APIs are not.** Follow the same functional principles even where the public
+surface does not expose Effect directly.
+
+## Documentation Standards
+
+Public APIs should include JSDoc comments with:
+
+````typescript
+/**
+ * Parses a raw string into a validated Value.
+ *
+ * @param input - The raw input string
+ * @param fieldName - Field name for error messages
+ * @returns A validated Value
+ * @throws ParseError if the input is invalid
+ *
+ * @example
+ * ```typescript
+ * const value = parseValue("some-input", "field");
+ * ```
+ */
+export const parseValue = (...) => { ... };
+````
+
+**Required for public APIs:**
+
+- Clear description of purpose
+- `@param` for each parameter
+- `@returns` describing the return value
+- `@throws` for functions that can throw
+- `@example` with a working code snippet
+
+## Repository Conventions
+
+- **Every PR touching `packages/*` needs a changeset** (see [Versioning](#versioning-changesets)).
+- **Generated `managed/` contracts are checked-in build outputs**, produced by the
+  build via `compactc`. Don't hand-edit them.
+- **Test files are excluded from build-cache inputs**, and coverage excludes test
+  helper files — keep test code out of build outputs.
+- **New packages must follow the same structure**: `src/` with colocated `*.test.ts`,
+  a main (`.`) export plus an `/effect` subpath, its own `vitest.config.ts` /
+  `tsconfig*.json`, and `workspace:^` for internal dependencies.
+
+## Common Gotchas
+
+- **ESM + project references mean a build is required across packages.** Each
+  package's `tsconfig.build.json` points imports at sibling packages' `dist/`
+  directories. If you change a package's source, downstream packages won't see the
+  updated types or code until `yarn dist` runs. Forgetting this leads to confusing
+  "module not found" or stale-type errors.
+- **Turbo handles ordering for most tasks.** Tasks declare `dependsOn: ["^dist"]` in
+  `turbo.json`, so running `yarn test` (or `yarn test --filter=...`) automatically
+  builds upstream dependencies first. You usually do NOT need to manually run
+  `yarn dist` before `yarn test`.
+- **But Turbo caching can bite you.** If Turbo thinks nothing changed (cache hit), it
+  won't rebuild. After switching branches, rebasing, or making changes Turbo doesn't
+  track, use `--force` to bypass the cache: `yarn dist --force`, `yarn test --force`.
+- **Generated `managed/` contracts are build outputs.** Some `compact-js` tests need
+  them (plus Docker); they're produced by the build via `compactc`, so run a build
+  before those tests.

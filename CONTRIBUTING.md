@@ -35,6 +35,28 @@ Ensure the title is a clear summary of the requirement and provides enough conte
 * **Code Review:** All pull requests undergo code review by project maintainers.
   Be prepared to address feedback from reviewers.
 
+## Changesets (required for publishable changes)
+
+This is a [Changesets](https://github.com/changesets/changesets)-managed
+monorepo. **Any PR that changes a package under `packages/*` must include a
+changeset** declaring the semver impact:
+
+```sh
+yarn changeset        # choose the affected package(s), the bump (patch/minor/major), and a summary
+git add .changeset && git commit
+```
+
+The `check-changeset` CI job fails a PR that touches a package without one — this
+is how breaking changes are guaranteed a major bump. For infrastructure- or
+docs-only PRs that must not trigger a release, add an empty changeset:
+
+```sh
+yarn changeset add --empty
+```
+
+Versions, `CHANGELOG.md`s, and publishing are then handled automatically — see
+[`docs/releasing.md`](docs/releasing.md). Do not hand-edit package versions.
+
 ## Requirements for Acceptable Contributions:
 
 * **Coding Standards:** Code must adhere to the coding style guides defined in our documentation

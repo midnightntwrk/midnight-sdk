@@ -1,0 +1,102 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "envMode": "loose",
+  "tasks": {
+    "dist": {
+      "dependsOn": [
+        "^dist"
+      ],
+      "outputLogs": "new-only",
+      "inputs": [
+        "src/**/*.ts",
+        "!src/**/*.test.ts",
+        "src/**/*.compact",
+        "tsconfig*.json",
+        "$TURBO_ROOT$/tsconfig.base.json"
+      ],
+      "outputs": [
+        "dist/**",
+        "build/**",
+        "src/**/managed/**",
+        "test/**/managed/**"
+      ]
+    },
+    "test": {
+      "dependsOn": [
+        "^dist"
+      ],
+      "outputLogs": "new-only",
+      "inputs": [
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "compose.yml",
+        "vitest.config.ts",
+        "$TURBO_ROOT$/tsconfig.base.json"
+      ],
+      "outputs": [
+        "reports/**",
+        "coverage/**",
+        "logs/**"
+      ]
+    },
+    "typecheck": {
+      "dependsOn": [
+        "^dist"
+      ],
+      "outputLogs": "new-only",
+      "inputs": [
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "tsconfig*.json",
+        "$TURBO_ROOT$/tsconfig.base.json"
+      ]
+    },
+    "//#format:root": {
+      "cache": false,
+      "inputs": [
+        "**/*.{ts,js,json,yaml,yml,md}",
+        ".prettierrc.json",
+        ".prettierignore.root"
+      ],
+      "outputs": [],
+      "outputLogs": "new-only"
+    },
+    "//#format:check:root": {
+      "cache": false,
+      "inputs": [
+        "**/*.{ts,js,json,yaml,yml,md}",
+        ".prettierrc.json",
+        ".prettierignore.root"
+      ],
+      "outputs": [],
+      "outputLogs": "new-only"
+    },
+    "format": {
+      "dependsOn": [
+        "//#format:root"
+      ],
+      "inputs": [
+        "**/*.{ts,tsx,js,json,yaml,yml,md}",
+        ".prettierrc.json",
+        "**/.prettierignore"
+      ],
+      "outputs": [],
+      "outputLogs": "new-only"
+    },
+    "format:check": {
+      "dependsOn": [
+        "//#format:check:root"
+      ],
+      "inputs": [
+        "**/*.{ts,tsx,js,json,yaml,yml,md}",
+        ".prettierrc.json",
+        "**/.prettierignore"
+      ],
+      "outputs": [],
+      "outputLogs": "new-only"
+    },
+    "clean": {
+      "cache": false
+    }
+  }
+}

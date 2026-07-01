@@ -94,21 +94,26 @@ The repo is organized into two workspaces — `compact-js/` and `platform-js/` �
 
 ## Development
 
-Prerequisites: Node.js >= 22, Yarn 4.
+This is a single Yarn workspace + Turborepo — all commands run from the repo root.
+
+Prerequisites: Node.js (see [`.nvmrc`](./.nvmrc)), Corepack/Yarn 4, and
+[direnv](https://direnv.net) (recommended — it loads `COMPACTC_VERSION` and the Git
+signing config). Some `compact-js` tests need Docker.
 
 ```bash
-# compact-js workspace
-cd compact-js
-yarn install
-yarn build
-yarn test
+corepack enable
+yarn install        # installs the whole workspace
+yarn dist          # build all packages (Turbo, in dependency order)
+yarn test           # test all packages
+yarn lint           # lint the monorepo
 
-# platform-js workspace
-cd platform-js
-yarn install
-yarn build
-yarn test
+# target a single package
+yarn dist --filter=@midnightntwrk/platform-js
 ```
+
+See **[DEV_GUIDE.md](./DEV_GUIDE.md)** for full setup (environment variables, the
+Compact toolchain, Changesets) and [docs/releasing.md](./docs/releasing.md) for the
+release process.
 
 ## Contributing
 

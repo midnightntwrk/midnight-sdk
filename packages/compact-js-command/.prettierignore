@@ -1,0 +1,6 @@
+dist/
+build/
+coverage/
+reports/
+logs/
+**/managed/

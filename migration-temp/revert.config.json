@@ -1,0 +1,6 @@
+{
+  "baselineHash": "",
+  "baseBranch": "main",
+  "capturedAt": "",
+  "note": "Baseline commit to restore `main` to after changesets testing. Set it with: node migration-temp/revert-to-baseline.mjs --set-baseline (captures current origin/main), or --set-baseline --hash <sha>. See ../MIGRATION_TEMP.md."
+}

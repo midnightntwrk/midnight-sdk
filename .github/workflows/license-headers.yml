@@ -1,0 +1,52 @@
+name: License Header Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  license-header:
+    name: Check License Headers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v5
+
+      - name: Check License Headers
+        uses: apache/skywalking-eyes/header@8e837beb243c264ffcd5ea3abd3d5d8975cd0077 # ratchet:apache/skywalking-eyes/header@main
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  license-header-fix:
+    name: Fix License Headers (Create PR)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Fix License Headers
+        uses: apache/skywalking-eyes/header@8e837beb243c264ffcd5ea3abd3d5d8975cd0077 # ratchet:apache/skywalking-eyes/header@main
+        with:
+          mode: fix
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create Pull Request
+        uses: peter-evans/create-pull-request@67ccf781d68cd99b580ae25a5c18a1cc84ffff1f # ratchet:peter-evans/create-pull-request@v7.0.7
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: add missing license headers'
+          title: 'chore: add missing license headers'
+          body: 'Automated license-header fixes from skywalking-eyes.'
+          branch: chore/license-headers

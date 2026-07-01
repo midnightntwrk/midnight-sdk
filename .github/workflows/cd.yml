@@ -1,0 +1,283 @@
+name: CD
+
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+  MIDNIGHTCI_GPG_PRIVATE_KEY: ${{ secrets.MIDNIGHTCI_GPG_PRIVATE_KEY }}
+
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  # Manages the changesets "Version Packages" PR. Ungated, so the release PR is
+  # created/updated automatically on every push — the human gate lives on the
+  # downstream publish-release job (and on merging the release PR itself).
+  version:
+    name: Version (release PR)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      # Single publish-mode signal the downstream jobs gate on, so at most one
+      # can ever fire:
+      #   'release' → release PR merged (no changesets left): publish a
+      #               human-reviewed release. The dist-tag is `latest` normally,
+      #               or the pre.json tag (e.g. `rc`) when in pre-release mode.
+      #   'canary'  → pending package-bumping changeset(s) and NOT in pre-mode:
+      #               publish a snapshot under the `canary` dist-tag.
+      #   'none'    → docs/CI-only changeset, or in pre-mode with pending
+      #               changesets (rc supersedes canary in that window).
+      mode: ${{ steps.mode.outputs.mode }}
+    concurrency:
+      group: version-${{ github.ref_name }}
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v5
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Configure yarn (install-time auth for GH Packages)
+        run: |
+          yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$MIDNIGHTCI_PACKAGES_WRITE"
+
+      - name: Import GPG key
+        id: gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # ratchet:crazy-max/ghaction-import-gpg@v7.0.0
+        with:
+          gpg_private_key: ${{ env.MIDNIGHTCI_GPG_PRIVATE_KEY }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Configure GIT signing
+        run: |
+          git config user.name  "MidnightCI"
+          git config user.email "midnight-automation+midnightci@iohk.io"
+          git config user.signingkey "${{ steps.gpg.outputs.fingerprint }}"
+          git config commit.gpgsign true
+          git config tag.gpgSign true
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      # Must run BEFORE the changesets action consumes the changesets. `releases`
+      # in the status JSON lists only packages that would actually be bumped, so
+      # its length is the precise "is there a real change to snapshot" signal.
+      - name: Detect package-bumping changesets
+        id: releases
+        run: |
+          set -uo pipefail
+          rm -f changeset-status.json
+          yarn changeset status --output=changeset-status.json || true
+          if [ -f changeset-status.json ]; then
+            COUNT=$(node -p "require('./changeset-status.json').releases.length" 2>/dev/null || echo 0)
+          else
+            COUNT=0
+          fi
+          rm -f changeset-status.json
+          if [ "${COUNT:-0}" -gt 0 ]; then
+            echo "hasReleases=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "hasReleases=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Detect pre-release (rc) mode
+        id: pre
+        run: |
+          if [ -f .changeset/pre.json ] && [ "$(jq -r '.mode // empty' .changeset/pre.json)" = "pre" ]; then
+            echo "isPre=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "isPre=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create / update Release Pull Request
+        id: changesets
+        uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # ratchet:changesets/action@v1.9.0
+        with:
+          title: 'chore: release'
+          version: yarn changeset:version
+          # No `publish` here — publishing is the gated publish-release job.
+          setupGitUser: false
+        env:
+          GITHUB_TOKEN: ${{ env.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      # Collapse the signals into one mutually-exclusive mode. hasChangesets ==
+      # 'false' wins as 'release': when the release PR merges no changesets
+      # remain. While in pre-mode with pending changesets we publish nothing
+      # (canary is suppressed; rc ships when the release PR merges).
+      - name: Resolve publish mode
+        id: mode
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.changesets.outputs.hasChangesets }}" = "false" ]; then
+            MODE=release
+          elif [ "${{ steps.pre.outputs.isPre }}" = "true" ]; then
+            MODE=none
+          elif [ "${{ steps.releases.outputs.hasReleases }}" = "true" ]; then
+            MODE=canary
+          else
+            MODE=none
+          fi
+          echo "Resolved publish mode: ${MODE}"
+          echo "mode=${MODE}" >> "$GITHUB_OUTPUT"
+
+  # Publishes a human-reviewed release (stable on `latest`, or rc under the
+  # pre.json dist-tag), both scopes via OIDC + provenance. Gated by the
+  # npm-publish-release environment (required reviewers).
+  publish-release:
+    name: Publish (release)
+    needs: [version]
+    if: needs.version.outputs.mode == 'release'
+    runs-on: ubuntu-latest
+    environment: npm-publish-release
+    permissions:
+      contents: write # push git tags + create GitHub Releases
+      id-token: write # npm Trusted Publishing (OIDC) + provenance
+    concurrency:
+      group: publish-release-${{ github.ref_name }}
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v5
+        with:
+          token: ${{ env.MIDNIGHTCI_PACKAGES_WRITE }} # so the release-tag push is authenticated
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+          registry-url: 'https://registry.npmjs.org'
+          scope: '@midnightntwrk'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Configure yarn (install-time auth for GH Packages)
+        run: |
+          yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$MIDNIGHTCI_PACKAGES_WRITE"
+
+      - name: Import GPG key
+        id: gpg
+        uses: crazy-max/ghaction-import-gpg@2dc316deee8e90f13e1a351ab510b4d5bc0c82cd # ratchet:crazy-max/ghaction-import-gpg@v7.0.0
+        with:
+          gpg_private_key: ${{ env.MIDNIGHTCI_GPG_PRIVATE_KEY }}
+          git_user_signingkey: true
+          git_commit_gpgsign: true
+
+      - name: Configure GIT signing
+        run: |
+          git config user.name  "MidnightCI"
+          git config user.email "midnight-automation+midnightci@iohk.io"
+          git config user.signingkey "${{ steps.gpg.outputs.fingerprint }}"
+          git config commit.gpgsign true
+          git config tag.gpgSign true
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Build, publish (both scopes), tag
+        env:
+          GITHUB_TOKEN: ${{ env.MIDNIGHTCI_PACKAGES_WRITE }}
+        run: |
+          set -euo pipefail
+          yarn dist
+          # publish.mjs resolves the dist-tag itself: changesets pre mode
+          # (.changeset/pre.json → e.g. rc) when in pre mode, otherwise `latest`.
+          node scripts/publish.mjs
+          yarn changeset tag
+          git push origin --tags
+
+      - name: Create GitHub Releases (stable only)
+        env:
+          GH_TOKEN: ${{ env.MIDNIGHTCI_PACKAGES_WRITE }}
+        run: |
+          set -euo pipefail
+          # Prereleases (changesets pre mode) don't get a GitHub Release — only stable.
+          if [ -f .changeset/pre.json ] && [ "$(jq -r '.mode // empty' .changeset/pre.json)" = "pre" ]; then
+            echo "In pre-release mode — skipping GitHub Releases."
+          else
+            node scripts/github-releases.mjs
+          fi
+
+  canary:
+    name: Canary (snapshot publish)
+    needs: [version]
+    if: needs.version.outputs.mode == 'canary'
+    runs-on: ubuntu-latest
+    environment: npm-publish-canary
+    permissions:
+      contents: read
+      id-token: write # npm Trusted Publishing (OIDC) + provenance
+    concurrency:
+      group: canary-${{ github.ref_name }}
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v5
+
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+          registry-url: 'https://registry.npmjs.org'
+          scope: '@midnightntwrk'
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Configure yarn (install-time auth for GH Packages)
+        run: |
+          yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$MIDNIGHTCI_PACKAGES_WRITE"
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Snapshot version + publish canary
+        env:
+          GITHUB_TOKEN: ${{ env.MIDNIGHTCI_PACKAGES_WRITE }}
+        run: |
+          set -euo pipefail
+
+          SHORT_SHA=$(git rev-parse --short=7 HEAD)
+          TIMESTAMP=$(date +%Y%m%d%H%M%S)
+
+          # Force changeset to pin internal dependents' ranges to the snapshot
+          # version. Internal sibling deps use caret ranges; a "-canary"
+          # prerelease does not satisfy a caret range, so without this siblings
+          # resolve from the published registry instead of this snapshot.
+          node -e '
+            const fs = require("fs");
+            const path = ".changeset/config.json";
+            const config = JSON.parse(fs.readFileSync(path, "utf8"));
+            config.___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH = {
+              ...config.___experimentalUnsafeOptions_WILL_CHANGE_IN_PATCH,
+              updateInternalDependents: "always",
+            };
+            fs.writeFileSync(path, JSON.stringify(config, null, 2) + "\n");
+          '
+
+          # Snapshot the ENTIRE SDK as one coherent set from this commit.
+          node scripts/write-canary-changeset.mjs
+          yarn changeset version --snapshot canary.${TIMESTAMP}-${SHORT_SHA}
+          yarn install --mode=update-lockfile
+          yarn dist
+          node scripts/publish.mjs --tag canary
+
+      - name: Cleanup (always)
+        if: always()
+        run: |
+          git reset --hard
+          git clean -fd

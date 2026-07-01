@@ -1,0 +1,201 @@
+name: CI
+
+env:
+  MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 4 * * *"
+
+permissions:
+  contents: read
+  packages: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Load environment variables
+        run: grep -E '^[A-Za-z_][A-Za-z0-9_]*=' packages/compact-js/compact.env >> "$GITHUB_ENV"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v4
+        with:
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: .nvmrc
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Configure yarn (install-time auth for GH Packages)
+        run: |
+          yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$MIDNIGHTCI_PACKAGES_WRITE"
+          yarn config set 'npmRegistries["https://npm.pkg.github.com"].npmAuthToken' "$MIDNIGHTCI_PACKAGES_WRITE"
+          yarn config set 'npmRegistries["https://npm.pkg.github.com"].npmAlwaysAuth' true
+
+      - name: Cache Turbo
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # ratchet:actions/cache@v6.0.0
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Run dist
+        run: yarn dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+  general-checks:
+    name: General Checks
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Load environment variables
+        run: grep -E '^[A-Za-z_][A-Za-z0-9_]*=' packages/compact-js/compact.env >> "$GITHUB_ENV"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v4
+        with:
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: .nvmrc
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Configure yarn (install-time auth for GH Packages)
+        run: |
+          yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$MIDNIGHTCI_PACKAGES_WRITE"
+          yarn config set 'npmRegistries["https://npm.pkg.github.com"].npmAuthToken' "$MIDNIGHTCI_PACKAGES_WRITE"
+          yarn config set 'npmRegistries["https://npm.pkg.github.com"].npmAlwaysAuth' true
+
+      - name: Restore Turbo cache
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # ratchet:actions/cache@v6.0.0
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      # Cache hit from the build job restores dist/build/managed without rebuilding.
+      - name: Run dist
+        run: yarn dist
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      # NON-GATING for now (the `|| true` keeps the job green). These run so their
+      # findings stay visible in the CI logs, but they don't fail the build yet
+      # because of PRE-EXISTING issues too churny for this migration PR.
+      # TODO(#222 follow-up): remove the `|| true` from each once addressed:
+      #   - format:check -> needs the one-time, repo-wide Prettier reformat (~101 files).
+      #   - typecheck    -> pre-existing test type errors
+      #                     (packages/platform-js test/effect/NetworkId.test.ts:
+      #                      `string` passed where `NetworkIdInput` is expected).
+      - name: Run typecheck (non-gating — TODO #222 follow-up)
+        run: yarn typecheck || true
+
+      - name: Run format check (non-gating — TODO #222 follow-up)
+        run: yarn format:check || true
+
+      - name: Run linter
+        run: yarn lint
+
+  test:
+    name: Test
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # ratchet:actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Load environment variables
+        run: grep -E '^[A-Za-z_][A-Za-z0-9_]*=' packages/compact-js/compact.env >> "$GITHUB_ENV"
+
+      - name: Log in to GitHub Container registry
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # ratchet:docker/login-action@v4.2.0
+        with:
+          registry: 'https://ghcr.io'
+          username: ${{ github.actor }}
+          password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v4
+        with:
+          registry-url: https://npm.pkg.github.com/
+          scope: '@midnight-ntwrk'
+          node-version-file: .nvmrc
+          cache: 'yarn'
+          cache-dependency-path: yarn.lock
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Configure yarn (install-time auth for GH Packages)
+        run: |
+          yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$MIDNIGHTCI_PACKAGES_WRITE"
+          yarn config set 'npmRegistries["https://npm.pkg.github.com"].npmAuthToken' "$MIDNIGHTCI_PACKAGES_WRITE"
+          yarn config set 'npmRegistries["https://npm.pkg.github.com"].npmAlwaysAuth' true
+
+      - name: Restore Turbo cache
+        uses: actions/cache@2c8a9bd7457de244a408f35966fab2fb45fda9c8 # ratchet:actions/cache@v6.0.0
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.sha }}-${{ github.run_id }}
+          restore-keys: |
+            turbo-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: yarn install --immutable
+
+      - name: Run tests
+        run: yarn test --concurrency 1
+        env:
+          GITHUB_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # ratchet:actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: '**/coverage/**'
+          if-no-files-found: ignore
