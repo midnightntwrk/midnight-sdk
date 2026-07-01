@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/compact-js",
-  "version": "2.5.5-rc.4",
+  "version": "2.5.5-rc.5",
   "description": "Typescript-based execution environment for smart contracts compiled with the Compact language",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -17,6 +17,7 @@
     "@midnight-ntwrk/compact-runtime": "0.18.0-rc.0",
     "@midnight-ntwrk/platform-js": "^3.0.0",
     "@midnightntwrk/ledger-v9": "^1.0.0-rc.2",
+    "@noble/hashes": "^2.2.0",
     "effect": "^3.21.4",
     "tslib": "^2.8.1"
   },
@@ -35,9 +36,13 @@
     "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage .tsbuildinfo",
     "test": "yarn build-compact && vitest run && tstyche",
     "package": "shx rm -rf ./dist/src && node ../scripts/resolve-workspace-protocol.mjs ./dist/package.json && (cd ./dist; npm pack)",
-    "compact": "fetch-compactc && yarn compact-counter && yarn compact-unshielded",
+    "compact": "fetch-compactc && yarn compact-counter && yarn compact-unshielded && yarn compact-ccc-inner && yarn compact-ccc-middle && yarn compact-ccc-outer && yarn compact-ccc-self",
     "compact-counter": "run-compactc ./test/contract/counter.compact ./test/contract/managed/counter",
-    "compact-unshielded": "run-compactc ./test/contract/unshielded.compact ./test/contract/managed/unshielded"
+    "compact-unshielded": "run-compactc ./test/contract/unshielded.compact ./test/contract/managed/unshielded",
+    "compact-ccc-inner": "run-compactc ./test/contract/cccInner.compact ./test/contract/managed/cccInner",
+    "compact-ccc-middle": "run-compactc ./test/contract/cccMiddle.compact ./test/contract/managed/cccMiddle",
+    "compact-ccc-outer": "run-compactc ./test/contract/cccOuter.compact ./test/contract/managed/cccOuter",
+    "compact-ccc-self": "run-compactc ./test/contract/cccSelf.compact ./test/contract/managed/cccSelf"
   },
   "files": [
     "dist/"
