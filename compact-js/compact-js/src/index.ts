@@ -15,5 +15,5 @@
 
 export * as CompiledContract from './effect/CompiledContract.js';
 export * from './effect/Contract.js';
-export * as ContractExecutable  from './effect/ContractExecutable.js';
-
+export * as ContractExecutable from './effect/ContractExecutable.js';
+export * from './effect/ContractKeyLocation.js';
