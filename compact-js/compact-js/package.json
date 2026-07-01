@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/compact-js",
-  "version": "2.5.5-rc.3",
+  "version": "2.5.5-rc.4",
   "description": "Typescript-based execution environment for smart contracts compiled with the Compact language",
   "type": "module",
   "main": "./dist/cjs/index.js",
@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@effect/platform": "^0.96.1",
-    "@midnight-ntwrk/compact-runtime": "0.16.103-dev.3a289c2e7811d2868e7810bd5a5f1f0b7055995f",
+    "@midnight-ntwrk/compact-runtime": "0.18.0-rc.0",
     "@midnight-ntwrk/platform-js": "^3.0.0",
     "@midnightntwrk/ledger-v9": "^1.0.0-rc.2",
     "effect": "^3.21.4",
