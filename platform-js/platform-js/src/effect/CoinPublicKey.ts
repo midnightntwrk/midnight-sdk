@@ -17,6 +17,7 @@ import { Brand } from 'effect';
 import * as Either from 'effect/Either';
 
 import * as Hex_ from './Hex.js';
+import * as ParseError from './ParseError.js';
 
 /**
  * A user public key capable of receiving Zswap coins.
@@ -77,7 +78,7 @@ export const Bech32m = Brand.nominal<CoinPublicKey.Bech32m>();
 export const asHex: (self: CoinPublicKey | string) => CoinPublicKey.Hex = (self) => {
   if (Hex.is(self)) return self;
   if (Bech32m.is(self)) {
-    return /* TODO: convert */ Hex(self);
+    throw ParseError.make('Conversion from Bech32m to Hex is not yet supported', self);
   }
   return Hex(self);
 };
@@ -94,7 +95,7 @@ export const asHex: (self: CoinPublicKey | string) => CoinPublicKey.Hex = (self)
 export const asBech32m: (self: CoinPublicKey | string) => CoinPublicKey.Bech32m = (self) => {
   if (Bech32m.is(self)) return self;
   if (Hex.is(self)) {
-    return /* TODO: convert */ Bech32m(self);
+    throw ParseError.make('Conversion from Hex to Bech32m is not yet supported', self);
   }
   return Bech32m(self);
 };
