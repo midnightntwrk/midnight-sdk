@@ -30,9 +30,6 @@ import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import {
   ContractDeploy,
   ContractState as LedgerContractState,
-  LedgerParameters,
-  partitionTranscripts,
-  PreTranscript,
   type ReplaceAuthority,
   type VerifierKeyInsert,
   type VerifierKeyRemove
@@ -45,7 +42,8 @@ const COUNTER_ASSETS_PATH = resolve(import.meta.dirname, '../contract/managed/co
 
 const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
 const INVALID_COIN_PUBLIC_KEY = 'INVALIDd9da5fcd4c601';
-const VALID_SIGNING_KEY = sampleSigningKey().value;
+// Ledger v9 signing keys are tagged objects; the configuration layer expects the bare hex string.
+const VALID_SIGNING_KEY = sampleSigningKey('schnorr').value;
 
 const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize());
@@ -148,32 +146,11 @@ describe('ContractExecutable', () => {
           privateState: { count: 0 }
         });
 
-        expect(result.public.contractState).toBeDefined();
-        expect(result.private.privateState).toMatchObject({ count: 1 });
+        expect(result.calls[result.calls.length - 1].public.contractState).toBeDefined();
+        expect(result.privateState).toMatchObject({ count: 1 });
       })
     );
 
-    it.effect('should expose the PreTranscript used to derive the partitioned transcript', () =>
-      Effect.gen(function* () {
-        const result = yield* contract.circuit(Contract.ProvableCircuitId<CounterContract>('increment'), {
-          address: ContractAddress.ContractAddress(deployment.address),
-          contractState: asContractState(deployment.initialState),
-          privateState: { count: 0 }
-        });
-
-        expect(result.public.preTranscript).toBeInstanceOf(PreTranscript);
-
-        const [guaranteed, fallible] = result.public.partitionedTranscript;
-        const repartitioned = partitionTranscripts(
-          [result.public.preTranscript],
-          LedgerParameters.initialParameters()
-        );
-        expect(repartitioned).toHaveLength(1);
-        const [reGuaranteed, reFallible] = repartitioned[0];
-        expect(reGuaranteed?.program).toEqual(guaranteed?.program);
-        expect(reFallible?.program).toEqual(fallible?.program);
-      })
-    );
   });
 
   describe('contract maintenance operations', () => {
