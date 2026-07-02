@@ -59,16 +59,16 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform@npm:^0.96.1":
-  version: 0.96.1
-  resolution: "@effect/platform@npm:0.96.1"
+"@effect/platform@npm:^0.96.2":
+  version: 0.96.2
+  resolution: "@effect/platform@npm:0.96.2"
   dependencies:
     find-my-way-ts: "npm:^0.1.6"
     msgpackr: "npm:^1.11.10"
     multipasta: "npm:^0.2.7"
   peerDependencies:
-    effect: ^3.21.2
-  checksum: 10/36d8b1d43d636be02f9119e0e6d981565a88801ec097bda1cae0ed65bea9fb1963226140b3f6b714f4ea9091a248bc20bf2cc0d775b238a9ef4010ddea48fa65
+    effect: ^3.21.4
+  checksum: 10/d10d0265f9b8392e9013af6db4e4ccce42523962360e8b99f8bdfb660aa32d5c0b661a0fe45b1f705bc2fc43cf5545da6cf6b530e3c02c25ac95a7f849b30db9
   languageName: node
   linkType: hard
 
@@ -265,7 +265,7 @@ __metadata:
   resolution: "@midnight-ntwrk/platform-js-sources@workspace:."
   dependencies:
     "@effect/build-utils": "npm:^0.8.9"
-    "@effect/platform": "npm:^0.96.1"
+    "@effect/platform": "npm:^0.96.2"
     "@effect/vitest": "npm:^0.29.0"
     "@eslint/js": "npm:^10.0.1"
     "@tsconfig/node22": "npm:^22.0.5"
@@ -292,7 +292,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/platform-js@workspace:platform-js"
   dependencies:
-    "@effect/platform": "npm:^0.96.1"
+    "@effect/platform": "npm:^0.96.2"
     effect: "npm:^3.21.4"
     tslib: "npm:^2.8.1"
   languageName: unknown
