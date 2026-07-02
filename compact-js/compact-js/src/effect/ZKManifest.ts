@@ -118,14 +118,15 @@ export const parse = (rawJson: string): Effect.Effect<ZKManifest, ZKManifestErro
       ZKManifestError.make(`Invalid ZK artifact manifest: ${TreeFormatter.formatErrorSync(parseError)}`, parseError)
     ),
     Effect.flatMap((document) => {
-      const metadata = new Map<string, string>();
-      const files = new Map<string, ZKManifestFile>();
+      // Reserved metadata keys hold string values; every other top-level key is a directory node.
+      const readMetadata = (key: string): string | undefined => {
+        const value = document[key];
+        return typeof value === 'string' ? value : undefined;
+      };
 
+      const files = new Map<string, ZKManifestFile>();
       for (const [key, value] of Object.entries(document)) {
-        if (typeof value === 'string') {
-          metadata.set(key, value);
-          continue;
-        }
+        if (typeof value === 'string') continue;
         // A directory node: collect its file leaves, skipping the `type: 'directory'` marker.
         for (const [fileName, fileNode] of Object.entries(value)) {
           if (isFileNode(fileNode)) {
@@ -134,7 +135,7 @@ export const parse = (rawJson: string): Effect.Effect<ZKManifest, ZKManifestErro
         }
       }
 
-      const manifestVersion = metadata.get(MANIFEST_VERSION_KEY);
+      const manifestVersion = readMetadata(MANIFEST_VERSION_KEY);
       if (manifestVersion === undefined) {
         return Effect.fail(ZKManifestError.make(`ZK artifact manifest is missing '${MANIFEST_VERSION_KEY}'.`));
       }
@@ -148,9 +149,9 @@ export const parse = (rawJson: string): Effect.Effect<ZKManifest, ZKManifestErro
 
       return Effect.succeed({
         manifestVersion,
-        compilerVersion: metadata.get(COMPILER_VERSION_KEY),
-        languageVersion: metadata.get(LANGUAGE_VERSION_KEY),
-        runtimeVersion: metadata.get(RUNTIME_VERSION_KEY),
+        compilerVersion: readMetadata(COMPILER_VERSION_KEY),
+        languageVersion: readMetadata(LANGUAGE_VERSION_KEY),
+        runtimeVersion: readMetadata(RUNTIME_VERSION_KEY),
         files
       } satisfies ZKManifest);
     })

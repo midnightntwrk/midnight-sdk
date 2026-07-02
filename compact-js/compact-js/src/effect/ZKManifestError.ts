@@ -35,11 +35,11 @@ export class ZKManifestError extends Error.TypeIdError(TypeId, 'ZKManifestError'
  * Determines if a value is a ZK manifest error.
  *
  * @param u The value to check.
- * @returns `true` if `u` is a {@link ZKManifestError}; `false` otherwise.
+ * @returns `true` if `msg` is a {@link ZKManifestError}; `false` otherwise.
  *
  * @category guards
  */
-export const isManifestError = (u: unknown): u is ZKManifestError => hasProperty(u, TypeId);
+export const isManifestError = (msg: unknown): msg is ZKManifestError => hasProperty(msg, TypeId);
 
 /**
  * Creates a new {@link ZKManifestError}.
