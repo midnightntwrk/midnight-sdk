@@ -163,6 +163,67 @@ describe('ZKManifest.parse', () => {
     })
   );
 
+  it.effect('rejects a `__proto__` key rather than silently dropping its directory', () =>
+    // A decoded record swallows a `__proto__` data property, so its directory — and every asset
+    // under it — would vanish from `files` while the parse still "passes". It must be rejected.
+    Effect.gen(function* () {
+      const error = yield* parseJson({
+        'manifest-version': '1',
+        ['__proto__']: { type: 'directory', 'x.verifier': { type: 'file', size: 1, hash: HASH } }
+      }).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('__proto__');
+    })
+  );
+
+  it.effect('rejects a `__proto__` key nested inside a directory', () =>
+    Effect.gen(function* () {
+      const error = yield* parseJson({
+        'manifest-version': '1',
+        keys: { type: 'directory', ['__proto__']: { type: 'file', size: 1, hash: HASH } }
+      }).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('__proto__');
+    })
+  );
+
+  it.effect('fails on a flattened-path collision instead of overwriting an integrity record', () =>
+    // `"a/b" + "c"` and `"a" + "b/c"` both flatten to `a/b/c`; the second must not silently
+    // overwrite the first's size/hash.
+    Effect.gen(function* () {
+      const error = yield* parseJson({
+        'manifest-version': '1',
+        'a/b': { type: 'directory', c: { type: 'file', size: 1, hash: HASH } },
+        a: { type: 'directory', 'b/c': { type: 'file', size: 2, hash: HASH } }
+      }).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('a/b/c');
+    })
+  );
+
+  it.effect('rejects a file leaf carrying an unknown property', () =>
+    Effect.gen(function* () {
+      const error = yield* parseJson({
+        'manifest-version': '1',
+        keys: { type: 'directory', 'clear.verifier': { type: 'file', size: 1, hash: HASH, evil: true } }
+      }).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+    })
+  );
+
+  it.effect('fails with a typed error (not a defect) on pathologically deep nesting', () =>
+    // The pre-decode forbidden-key scan must traverse iteratively: a recursive scan blows the call
+    // stack on deep input, and a thrown `RangeError` would escape as an untyped defect rather than
+    // the `ZKManifestError` this boundary promises. `Effect.flip` only yields a value for a typed
+    // failure, so this would crash rather than pass if the scan died.
+    Effect.gen(function* () {
+      const depth = 100_000;
+      const deeplyNested = `{${'"a":{'.repeat(depth)}${'}'.repeat(depth)}}`;
+      const error = yield* ZKManifest.parse(deeplyNested).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+    })
+  );
+
   it.effect('rejects a directory nested more than one level deep', () =>
     Effect.gen(function* () {
       const error = yield* parseJson({

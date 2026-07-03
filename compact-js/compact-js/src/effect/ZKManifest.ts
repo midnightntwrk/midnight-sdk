@@ -111,9 +111,48 @@ const RESERVED_KEYS: ReadonlySet<string> = new Set([
   RUNTIME_VERSION_KEY
 ]);
 
-const decodeManifestDocument = Schema.decodeUnknown(Schema.parseJson(ManifestDocumentSchema), { errors: 'all' });
+/**
+ * Keys that JavaScript treats specially: a `__proto__` data property is silently swallowed when a
+ * decoded object is rebuilt by assignment (its directory — and every asset under it — would vanish
+ * from {@link ZKManifest.files} while the parse still "passes"), and `constructor`/`prototype` are
+ * prototype-pollution vectors. `compactc` never emits these, so any manifest containing one is
+ * rejected outright.
+ */
+const FORBIDDEN_KEYS: ReadonlySet<string> = new Set(['__proto__', 'constructor', 'prototype']);
+
+// `onExcessProperty: 'error'` rejects unknown keys on the file-leaf struct, in keeping with the
+// "reject what we cannot interpret" posture. (Records match every key via their index signature, so
+// this only tightens `ManifestFileSchema`.)
+const decodeManifestDocument = Schema.decodeUnknown(ManifestDocumentSchema, {
+  errors: 'all',
+  onExcessProperty: 'error'
+});
 
 const isFileNode = (value: string | ManifestFileNode): value is ManifestFileNode => typeof value !== 'string';
+
+/**
+ * Finds the first {@link FORBIDDEN_KEYS} entry in a freshly `JSON.parse`d value, before it is decoded
+ * (decode drops a `__proto__` key rather than surfacing it). Returns `undefined` when the value is
+ * clean.
+ *
+ * The traversal is iterative rather than recursive so that a pathologically deep manifest cannot
+ * blow the call stack — a thrown `RangeError` here would escape as an untyped defect rather than the
+ * {@link ZKManifestError.ZKManifestError} this boundary promises.
+ */
+const findForbiddenKey = (root: unknown): string | undefined => {
+  const stack: unknown[] = [root];
+  while (stack.length > 0) {
+    const value = stack.pop();
+    if (typeof value !== 'object' || value === null) continue;
+    for (const key of Reflect.ownKeys(value)) {
+      if (typeof key === 'string' && FORBIDDEN_KEYS.has(key)) return key;
+    }
+    for (const child of Object.values(value)) {
+      stack.push(child);
+    }
+  }
+  return undefined;
+};
 
 /**
  * Parses and validates the raw JSON contents of a ZK artifact manifest, flattening its
@@ -131,10 +170,22 @@ const isFileNode = (value: string | ManifestFileNode): value is ManifestFileNode
  * @category constructors
  */
 export const parse = (rawJson: string): Effect.Effect<ZKManifest, ZKManifestError.ZKManifestError> =>
-  decodeManifestDocument(rawJson).pipe(
-    Effect.mapError((parseError) =>
-      ZKManifestError.make(`Invalid ZK artifact manifest: ${TreeFormatter.formatErrorSync(parseError)}`, parseError)
-    ),
+  Effect.try({
+    try: () => JSON.parse(rawJson) as unknown,
+    catch: (cause) => ZKManifestError.make(`Invalid ZK artifact manifest: ${String(cause)}`, cause)
+  }).pipe(
+    Effect.flatMap((raw) => {
+      // Reject prototype-polluting keys on the raw value, before decode silently discards them.
+      const forbidden = findForbiddenKey(raw);
+      if (forbidden !== undefined) {
+        return Effect.fail(ZKManifestError.make(`ZK artifact manifest contains a forbidden key '${forbidden}'.`));
+      }
+      return decodeManifestDocument(raw).pipe(
+        Effect.mapError((parseError) =>
+          ZKManifestError.make(`Invalid ZK artifact manifest: ${TreeFormatter.formatErrorSync(parseError)}`, parseError)
+        )
+      );
+    }),
     Effect.flatMap((document) => {
       // Reserved keys must hold strings. Reject a present-but-malformed value (e.g. an object that
       // matched the directory arm of the union) rather than silently coercing it to "absent", which
@@ -179,7 +230,16 @@ export const parse = (rawJson: string): Effect.Effect<ZKManifest, ZKManifestErro
         // A directory node: collect its file leaves, skipping the `type: 'directory'` marker.
         for (const [fileName, fileNode] of Object.entries(value)) {
           if (isFileNode(fileNode)) {
-            files.set(`${key}/${fileName}`, { size: fileNode.size, hash: fileNode.hash });
+            const path = `${key}/${fileName}`;
+            // The `<dir>/<file>` join is ambiguous if a key contains `/` (e.g. `"a/b"+"c"` and
+            // `"a"+"b/c"` both yield `a/b/c`). Fail on collision rather than let one integrity
+            // record silently overwrite another.
+            if (files.has(path)) {
+              return Effect.fail(
+                ZKManifestError.make(`ZK artifact manifest has duplicate entries for path '${path}'.`)
+              );
+            }
+            files.set(path, { size: fileNode.size, hash: fileNode.hash });
           }
         }
       }
