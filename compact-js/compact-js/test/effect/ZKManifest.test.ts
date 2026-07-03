@@ -124,6 +124,45 @@ describe('ZKManifest.parse', () => {
     })
   );
 
+  it.effect('rejects a non-reserved top-level key whose value is a bare string', () =>
+    // A directory truncated to just its marker (`"keys": "directory"`) must not silently pass with
+    // zero files — that would leave an entire directory's assets unverified.
+    Effect.gen(function* () {
+      const error = yield* parseJson({ 'manifest-version': '1', keys: 'directory' }).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('keys');
+      expect(error.message).toContain('directory');
+    })
+  );
+
+  it.effect('reports a present-but-malformed manifest-version distinctly from a missing one', () =>
+    // An object-valued `manifest-version` matches the directory arm of the union; it must be
+    // reported as malformed, not coerced to "absent" and misreported as missing.
+    Effect.gen(function* () {
+      const error = yield* parseJson({
+        'manifest-version': { type: 'directory' },
+        keys: { type: 'directory' }
+      }).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('manifest-version');
+      expect(error.message).toContain('must be a string');
+      expect(error.message).not.toContain('missing');
+    })
+  );
+
+  it.effect('rejects an object-valued optional metadata key instead of silently dropping it', () =>
+    Effect.gen(function* () {
+      const error = yield* parseJson({
+        'manifest-version': '1',
+        'compiler-version': { type: 'directory' },
+        keys: { type: 'directory' }
+      }).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('compiler-version');
+      expect(error.message).toContain('must be a string');
+    })
+  );
+
   it.effect('rejects a directory nested more than one level deep', () =>
     Effect.gen(function* () {
       const error = yield* parseJson({

@@ -47,8 +47,8 @@ export interface ZKManifestFile {
  * @category models
  */
 export interface ZKManifest {
-  /** The manifest format version (always {@link SUPPORTED_MANIFEST_VERSION} for a successful parse). */
-  readonly manifestVersion: string;
+  /** The manifest format version — always {@link SUPPORTED_MANIFEST_VERSION} for a successful parse. */
+  readonly manifestVersion: typeof SUPPORTED_MANIFEST_VERSION;
   /** The version of `compactc` that produced the assets, if recorded. */
   readonly compilerVersion?: string;
   /** The Compact language version the source targeted, if recorded. */
@@ -87,11 +87,29 @@ const ManifestDirectorySchema = Schema.Record({
   value: Schema.Union(Schema.Literal('directory'), ManifestFileSchema)
 });
 
-/** Whole document: metadata strings (e.g. `manifest-version`) alongside directory nodes. */
+/**
+ * Whole document: reserved metadata keys carry strings (e.g. `manifest-version`); every other
+ * top-level key is a directory node.
+ *
+ * This stays an open `string | directory` record because the distinction between reserved metadata
+ * keys and directory keys is carried by the *key*, which a value schema cannot see — and a
+ * `Struct` index signature in {@link Schema} is applied to the declared fields too, so it cannot
+ * model "these keys are strings, all others are objects". The key-dependent invariants (metadata
+ * must be strings; every other key must be a directory, not a bare string) are therefore enforced
+ * as typed post-decode checks in {@link parse}.
+ */
 const ManifestDocumentSchema = Schema.Record({
   key: Schema.String,
   value: Schema.Union(Schema.String, ManifestDirectorySchema)
 });
+
+/** Top-level keys carrying metadata strings; every other top-level key is a directory node. */
+const RESERVED_KEYS: ReadonlySet<string> = new Set([
+  MANIFEST_VERSION_KEY,
+  COMPILER_VERSION_KEY,
+  LANGUAGE_VERSION_KEY,
+  RUNTIME_VERSION_KEY
+]);
 
 const decodeManifestDocument = Schema.decodeUnknown(Schema.parseJson(ManifestDocumentSchema), { errors: 'all' });
 
@@ -118,23 +136,23 @@ export const parse = (rawJson: string): Effect.Effect<ZKManifest, ZKManifestErro
       ZKManifestError.make(`Invalid ZK artifact manifest: ${TreeFormatter.formatErrorSync(parseError)}`, parseError)
     ),
     Effect.flatMap((document) => {
-      // Reserved metadata keys hold string values; every other top-level key is a directory node.
+      // Reserved keys must hold strings. Reject a present-but-malformed value (e.g. an object that
+      // matched the directory arm of the union) rather than silently coercing it to "absent", which
+      // would misreport a malformed `manifest-version` as missing.
+      for (const key of RESERVED_KEYS) {
+        const value = document[key];
+        if (value !== undefined && typeof value !== 'string') {
+          return Effect.fail(ZKManifestError.make(`ZK artifact manifest metadata '${key}' must be a string.`));
+        }
+      }
+      // Safe now that the loop above has rejected any non-string reserved value.
       const readMetadata = (key: string): string | undefined => {
         const value = document[key];
         return typeof value === 'string' ? value : undefined;
       };
 
-      const files = new Map<string, ZKManifestFile>();
-      for (const [key, value] of Object.entries(document)) {
-        if (typeof value === 'string') continue;
-        // A directory node: collect its file leaves, skipping the `type: 'directory'` marker.
-        for (const [fileName, fileNode] of Object.entries(value)) {
-          if (isFileNode(fileNode)) {
-            files.set(`${key}/${fileName}`, { size: fileNode.size, hash: fileNode.hash });
-          }
-        }
-      }
-
+      // Guard the version up front, before any flattening work: a missing or unsupported version
+      // means a manifest we cannot interpret, which must not be treated as a passing integrity check.
       const manifestVersion = readMetadata(MANIFEST_VERSION_KEY);
       if (manifestVersion === undefined) {
         return Effect.fail(ZKManifestError.make(`ZK artifact manifest is missing '${MANIFEST_VERSION_KEY}'.`));
@@ -147,8 +165,27 @@ export const parse = (rawJson: string): Effect.Effect<ZKManifest, ZKManifestErro
         );
       }
 
+      const files = new Map<string, ZKManifestFile>();
+      for (const [key, value] of Object.entries(document)) {
+        if (RESERVED_KEYS.has(key)) continue;
+        // Every non-reserved key must be a directory node. A bare string here (e.g. a directory
+        // truncated to just its `'directory'` marker) would otherwise contribute no files and let
+        // an entire directory's assets pass unverified.
+        if (typeof value === 'string') {
+          return Effect.fail(
+            ZKManifestError.make(`ZK artifact manifest entry '${key}' must be a directory, not the string '${value}'.`)
+          );
+        }
+        // A directory node: collect its file leaves, skipping the `type: 'directory'` marker.
+        for (const [fileName, fileNode] of Object.entries(value)) {
+          if (isFileNode(fileNode)) {
+            files.set(`${key}/${fileName}`, { size: fileNode.size, hash: fileNode.hash });
+          }
+        }
+      }
+
       return Effect.succeed({
-        manifestVersion,
+        manifestVersion: SUPPORTED_MANIFEST_VERSION,
         compilerVersion: readMetadata(COMPILER_VERSION_KEY),
         languageVersion: readMetadata(LANGUAGE_VERSION_KEY),
         runtimeVersion: readMetadata(RUNTIME_VERSION_KEY),

@@ -34,7 +34,7 @@ export class ZKManifestError extends Error.TypeIdError(TypeId, 'ZKManifestError'
 /**
  * Determines if a value is a ZK manifest error.
  *
- * @param u The value to check.
+ * @param msg The value to check.
  * @returns `true` if `msg` is a {@link ZKManifestError}; `false` otherwise.
  *
  * @category guards
