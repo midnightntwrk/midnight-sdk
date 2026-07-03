@@ -29,7 +29,7 @@ import {
   Intent,
   StateValue as LedgerStateValue,
 } from '@midnightntwrk/ledger-v9';
-import { type ConfigError, Console,Duration, Effect, Option } from 'effect';
+import { Array, type ConfigError, Console, Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
@@ -220,7 +220,15 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
           return { intent: nextIntent, finalCalleeStates: nextFinalCalleeStates };
         })
     );
-    const rootCall = result.calls[result.calls.length - 1];
+    // The root call is always the last entry in the trace (callees first, root last); an empty
+    // trace would leave it absent, which is an invariant breach rather than a user error.
+    const maybeRootCall = Array.last(result.calls);
+    if (Option.isNone(maybeRootCall)) {
+      return yield* ContractRuntimeError.make(
+        'Circuit execution produced no calls; the root call is missing.'
+      );
+    }
+    const rootCall = maybeRootCall.value;
 
     // If the output public file path is provided, write the on-chain (public state) data to the specified file.
     if (Option.isSome(outputPublicFilePath)) {
