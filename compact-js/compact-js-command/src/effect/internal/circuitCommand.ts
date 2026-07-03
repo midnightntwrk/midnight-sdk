@@ -137,10 +137,10 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       contractState: yield* ContractState.asContractState(ledgerContractState),
       privateState: privateState ?? contractModule.createInitialPrivateState(),
       zswapLocalState: Option.isSome(encodedZswapLocalState)
-        ? decodeZswapLocalState((yield* Option.getOrThrow(encodedZswapLocalState)) as EncodedZswapLocalState)
+        ? decodeZswapLocalState((yield* encodedZswapLocalState.value) as EncodedZswapLocalState)
         : undefined,
       ledgerParameters: Option.isSome(decodedLedgerParameters)
-        ? yield* Option.getOrThrow(decodedLedgerParameters)
+        ? yield* decodedLedgerParameters.value
         : undefined
     };
 
@@ -169,7 +169,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       if (call.contractAddress === address) {
         callLedgerState = ledgerContractState;
       } else if (Option.isSome(inputContractStatesDirPath)) {
-        const bytes = yield* fs.readFile(join(Option.getOrThrow(inputContractStatesDirPath), call.contractAddress));
+        const bytes = yield* fs.readFile(join(inputContractStatesDirPath.value, call.contractAddress));
         callLedgerState = yield* ContractState.asLedgerContractStateFromBytes(bytes);
       } else {
         // A sub-call can only occur when a state provider (i.e. a contract-states directory) was
@@ -214,7 +214,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       ledgerContractState.data = new LedgerChargedState(
         LedgerStateValue.decode(rootCall.public.contractState.encode())
       );
-      yield* fs.writeFile(Option.getOrThrow(outputPublicFilePath), ledgerContractState.serialize());
+      yield* fs.writeFile(outputPublicFilePath.value, ledgerContractState.serialize());
     }
 
     // If an output contract-states directory is provided, write the updated ledger state of each
@@ -222,7 +222,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     // root, this lets callers thread state across cross-contract calls without applying the
     // transaction: feed this directory back as `--contract-states-dir` (and the root via `--input`).
     if (Option.isSome(outputContractStatesDirPath)) {
-      const dir = Option.getOrThrow(outputContractStatesDirPath);
+      const dir = outputContractStatesDirPath.value;
       yield* fs.makeDirectory(dir, { recursive: true });
       for (const [contractAddress, { ledgerState, data }] of finalCalleeStates) {
         ledgerState.data = new LedgerChargedState(LedgerStateValue.decode(data.encode()));
@@ -242,7 +242,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     // is requested.
     if (Option.isSome(outputEventsFilePath)) {
       yield* fs.writeFileString(
-        Option.getOrThrow(outputEventsFilePath),
+        outputEventsFilePath.value,
         stringifyCircuitOutput(result.events)
       );
     }

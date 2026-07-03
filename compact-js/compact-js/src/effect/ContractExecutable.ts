@@ -607,22 +607,23 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         contractState
       ));
     }
+    const signingKey = currentSigningKey.value;
     const update = createUpdateFn();
     if (Either.isLeft(update)) return Either.left(update.left);
     const maintenanceUpdate = new MaintenanceUpdate(
       address,
-      Either.getOrThrow(update),
+      update.right,
       contractState.maintenanceAuthority.counter
     );
     return Either.right({
       public: {
         maintenanceUpdate: maintenanceUpdate.addSignature(
           DEFAULT_SIGNATURE_INDEX,
-          signData(asTaggedSigningKey(Option.getOrThrow(currentSigningKey)), maintenanceUpdate.dataToSign)
+          signData(asTaggedSigningKey(signingKey), maintenanceUpdate.dataToSign)
         )
       },
       private: {
-        signingKey: Option.getOrThrow(currentSigningKey)
+        signingKey
       }
     });
   }
