@@ -14,7 +14,7 @@
  */
 
 import { Effect } from 'effect';
-import { TreeFormatter } from 'effect/ParseResult';
+import { type ParseError, TreeFormatter } from 'effect/ParseResult';
 import * as Schema from 'effect/Schema';
 
 import * as ZKManifestError from './ZKManifestError.js';
@@ -131,6 +131,20 @@ const decodeManifestDocument = Schema.decodeUnknown(ManifestDocumentSchema, {
 const isFileNode = (value: string | ManifestFileNode): value is ManifestFileNode => typeof value !== 'string';
 
 /**
+ * Renders a decode failure for display. {@link TreeFormatter.formatErrorSync} walks the parse-error
+ * tree recursively, so a pathologically deep manifest can overflow the call stack here — a thrown
+ * `RangeError` would escape as an untyped defect rather than the {@link ZKManifestError.ZKManifestError}
+ * this boundary promises. Catching it degrades to a generic message while keeping the failure typed.
+ */
+const formatParseError = (parseError: ParseError): string => {
+  try {
+    return TreeFormatter.formatErrorSync(parseError);
+  } catch {
+    return 'the manifest structure is invalid';
+  }
+};
+
+/**
  * Finds the first {@link FORBIDDEN_KEYS} entry in a freshly `JSON.parse`d value, before it is decoded
  * (decode drops a `__proto__` key rather than surfacing it). Returns `undefined` when the value is
  * clean.
@@ -182,7 +196,7 @@ export const parse = (rawJson: string): Effect.Effect<ZKManifest, ZKManifestErro
       }
       return decodeManifestDocument(raw).pipe(
         Effect.mapError((parseError) =>
-          ZKManifestError.make(`Invalid ZK artifact manifest: ${TreeFormatter.formatErrorSync(parseError)}`, parseError)
+          ZKManifestError.make(`Invalid ZK artifact manifest: ${formatParseError(parseError)}`, parseError)
         )
       );
     }),
