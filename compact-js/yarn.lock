@@ -480,15 +480,15 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/workflow@npm:^0.17.0":
-  version: 0.17.0
-  resolution: "@effect/workflow@npm:0.17.0"
+"@effect/workflow@npm:^0.18.2":
+  version: 0.18.2
+  resolution: "@effect/workflow@npm:0.18.2"
   peerDependencies:
-    "@effect/experimental": ^0.59.0
-    "@effect/platform": ^0.95.0
-    "@effect/rpc": ^0.74.0
-    effect: ^3.20.0
-  checksum: 10/397db52d4886aac3bcdf3320e88720cdf6f571e87e29e2451579371649ed005076f10a0af4c272716e94062fe8ba1ea9c1af9969bc4a049ca8fe2c7bebdbf5b2
+    "@effect/experimental": ^0.60.0
+    "@effect/platform": ^0.96.1
+    "@effect/rpc": ^0.75.1
+    effect: ^3.21.2
+  checksum: 10/06c549fd7f915d83212942ad795c12219763c649824c95ca3919bc4e9ca6e9dd8d89b6a5907ea45abc8111d60cefebd3159692555c7d4ce5ae7088c78e119ff7
   languageName: node
   linkType: hard
 
@@ -720,7 +720,7 @@ __metadata:
     "@effect/rpc": "npm:^0.75.1"
     "@effect/sql": "npm:^0.51.1"
     "@effect/typeclass": "npm:^0.40.0"
-    "@effect/workflow": "npm:^0.17.0"
+    "@effect/workflow": "npm:^0.18.2"
     "@midnight-ntwrk/compact-js": "workspace:^"
     "@midnight-ntwrk/compact-js-node": "workspace:^"
     "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.0"
@@ -744,7 +744,7 @@ __metadata:
     "@effect/platform-node": "npm:^0.107.0"
     "@effect/rpc": "npm:^0.75.1"
     "@effect/sql": "npm:^0.51.1"
-    "@effect/workflow": "npm:^0.17.0"
+    "@effect/workflow": "npm:^0.18.2"
     effect: "npm:^3.21.4"
     tslib: "npm:^2.8.1"
   peerDependencies:
@@ -767,7 +767,7 @@ __metadata:
     "@effect/rpc": "npm:^0.75.1"
     "@effect/sql": "npm:^0.51.1"
     "@effect/vitest": "npm:^0.29.0"
-    "@effect/workflow": "npm:^0.17.0"
+    "@effect/workflow": "npm:^0.18.2"
     "@eslint/js": "npm:^10.0.1"
     "@midnight-ntwrk/compact-js-node": "workspace:*"
     "@midnight-ntwrk/midnight-js-compact": "npm:4.1.2-0-pre.428bc31c"
