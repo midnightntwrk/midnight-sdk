@@ -163,27 +163,28 @@ describe('ZKManifest.parse', () => {
     })
   );
 
-  it.effect('rejects a `__proto__` key rather than silently dropping its directory', () =>
-    // A decoded record swallows a `__proto__` data property, so its directory — and every asset
-    // under it — would vanish from `files` while the parse still "passes". It must be rejected.
+  it.effect('safely drops a top-level `__proto__` key without polluting the prototype', () =>
+    // `Schema.parseJson` never assigns a `__proto__` data property back onto the decoded object, so it
+    // cannot rewrite the prototype. The bogus directory simply contributes no files — and since
+    // `compactc` only ever emits real directories (`keys`, `zkir`, …), a dropped `__proto__` entry
+    // can never hide a genuine asset from verification.
     Effect.gen(function* () {
-      const error = yield* parseJson({
+      const manifest = yield* parseJson({
         'manifest-version': '1',
         ['__proto__']: { type: 'directory', 'x.verifier': { type: 'file', size: 1, hash: HASH } }
-      }).pipe(Effect.flip);
-      expect(ZKManifestError.isManifestError(error)).toBe(true);
-      expect(error.message).toContain('__proto__');
+      });
+      expect(manifest.files.size).toBe(0);
+      expect(({} as Record<string, unknown>)['x.verifier']).toBeUndefined();
     })
   );
 
-  it.effect('rejects a `__proto__` key nested inside a directory', () =>
+  it.effect('safely drops a `__proto__` key nested inside a directory', () =>
     Effect.gen(function* () {
-      const error = yield* parseJson({
+      const manifest = yield* parseJson({
         'manifest-version': '1',
         keys: { type: 'directory', ['__proto__']: { type: 'file', size: 1, hash: HASH } }
-      }).pipe(Effect.flip);
-      expect(ZKManifestError.isManifestError(error)).toBe(true);
-      expect(error.message).toContain('__proto__');
+      });
+      expect([...manifest.files.keys()]).not.toContain('keys/__proto__');
     })
   );
 
@@ -212,10 +213,11 @@ describe('ZKManifest.parse', () => {
   );
 
   it.effect('fails with a typed error (not a defect) on pathologically deep nesting', () =>
-    // The pre-decode forbidden-key scan must traverse iteratively: a recursive scan blows the call
-    // stack on deep input, and a thrown `RangeError` would escape as an untyped defect rather than
-    // the `ZKManifestError` this boundary promises. `Effect.flip` only yields a value for a typed
-    // failure, so this would crash rather than pass if the scan died.
+    // Formatting a decode failure with `TreeFormatter.formatErrorSync` walks the parse-error tree
+    // recursively, so a pathologically deep manifest can overflow the call stack there; a thrown
+    // `RangeError` would escape as an untyped defect rather than the `ZKManifestError` this boundary
+    // promises. `Effect.flip` only yields a value for a typed failure, so this would crash rather
+    // than pass if the formatting guard were removed.
     Effect.gen(function* () {
       const depth = 100_000;
       const deeplyNested = `{${'"a":{'.repeat(depth)}${'}'.repeat(depth)}}`;
