@@ -455,7 +455,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               const trace = context.callProofDataTrace;
               const zswapLocalState = context.callContext.currentZswapLocalState;
               if (zswapLocalState === undefined) {
-                throw new Error(`Circuit '${provableCircuitId}' returned no zswap local state`);
+                return yield* ContractRuntimeError.make(`Circuit '${provableCircuitId}' returned no zswap local state`);
               }
               // Validate the log events emitted by the VM before surfacing them: they are untrusted
               // VM output and are serialized verbatim for external (indexer/DApp) consumption. A
@@ -466,29 +466,33 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               // Partition all calls' transcripts together (the partitioner needs the whole batch
               // to reconstruct the caller/callee graph).
               const partitioned = yield* partitionAllTranscripts(trace, circuitContext.ledgerParameters);
-              const calls: ContractExecutable.ContractCall[] = trace.map((entry, i) => {
-                const partitionedTranscript = partitioned[i];
-                if (partitionedTranscript === undefined) {
-                  // Unreachable: `partitionAllTranscripts` guarantees one partition pair per
-                  // trace entry. Guarded so the mapping is sound under `noUncheckedIndexedAccess`.
-                  throw new Error(`Missing partitioned transcript for call ${i} ('${entry.circuitId}')`);
-                }
-                return {
-                  contractAddress: ContractAddress.ContractAddress(entry.contractAddress),
-                  circuitId: entry.circuitId,
-                  public: {
-                    contractState: entry.finalQueryContext.state.state,
-                    publicTranscript: entry.publicTranscript,
-                    partitionedTranscript
-                  },
-                  private: {
-                    input: entry.input,
-                    output: entry.output,
-                    privateTranscriptOutputs: entry.privateTranscriptOutputs
-                  },
-                  communicationCommitment: Option.fromNullable(entry.commCommData)
-                };
-              });
+              const calls: ContractExecutable.ContractCall[] = yield* Effect.forEach(trace, (entry, i) =>
+                Effect.gen(function* () {
+                  const partitionedTranscript = partitioned[i];
+                  if (partitionedTranscript === undefined) {
+                    // Unreachable: `partitionAllTranscripts` guarantees one partition pair per
+                    // trace entry. Guarded so the mapping is sound under `noUncheckedIndexedAccess`.
+                    return yield* ContractRuntimeError.make(
+                      `Missing partitioned transcript for call ${i} ('${entry.circuitId}')`
+                    );
+                  }
+                  return {
+                    contractAddress: ContractAddress.ContractAddress(entry.contractAddress),
+                    circuitId: entry.circuitId,
+                    public: {
+                      contractState: entry.finalQueryContext.state.state,
+                      publicTranscript: entry.publicTranscript,
+                      partitionedTranscript
+                    },
+                    private: {
+                      input: entry.input,
+                      output: entry.output,
+                      privateTranscriptOutputs: entry.privateTranscriptOutputs
+                    },
+                    communicationCommitment: Option.fromNullable(entry.commCommData)
+                  };
+                })
+              );
               // `result`, `privateState`, and `zswapLocalState` belong to the root contract;
               // `events` is the whole execution's log-event list (each tagged with its emitter).
               return {
