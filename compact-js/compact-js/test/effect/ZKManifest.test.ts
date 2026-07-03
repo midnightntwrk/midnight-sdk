@@ -188,17 +188,42 @@ describe('ZKManifest.parse', () => {
     })
   );
 
-  it.effect('fails on a flattened-path collision instead of overwriting an integrity record', () =>
-    // `"a/b" + "c"` and `"a" + "b/c"` both flatten to `a/b/c`; the second must not silently
-    // overwrite the first's size/hash.
+  it.effect('rejects a directory name that is not a safe path segment', () =>
+    // A directory name becomes the first segment of every flattened path; a traversal component must
+    // not be allowed to escape the assets directory once a consumer resolves these keys.
     Effect.gen(function* () {
       const error = yield* parseJson({
         'manifest-version': '1',
-        'a/b': { type: 'directory', c: { type: 'file', size: 1, hash: HASH } },
-        a: { type: 'directory', 'b/c': { type: 'file', size: 2, hash: HASH } }
+        '../evil': { type: 'directory', 'x.verifier': { type: 'file', size: 1, hash: HASH } }
       }).pipe(Effect.flip);
       expect(ZKManifestError.isManifestError(error)).toBe(true);
-      expect(error.message).toContain('a/b/c');
+      expect(error.message).toContain('../evil');
+      expect(error.message).toContain('path segment');
+    })
+  );
+
+  it.effect('rejects a file name that is not a safe path segment', () =>
+    Effect.gen(function* () {
+      const error = yield* parseJson({
+        'manifest-version': '1',
+        keys: { type: 'directory', '../../secret': { type: 'file', size: 1, hash: HASH } }
+      }).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('path segment');
+    })
+  );
+
+  it.effect('rejects a bare-string file leaf that is not the directory marker', () =>
+    // A file entry truncated to just the `'directory'` marker (`"clear.prover": "directory"`) must not
+    // be silently skipped — that would drop one asset's integrity record while the parse still passes.
+    Effect.gen(function* () {
+      const error = yield* parseJson({
+        'manifest-version': '1',
+        keys: { type: 'directory', 'clear.prover': 'directory' }
+      }).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('keys/clear.prover');
+      expect(error.message).toContain('must be a file');
     })
   );
 

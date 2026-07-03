@@ -125,6 +125,21 @@ const decodeManifestDocument = Schema.decodeUnknown(Schema.parseJson(ManifestDoc
 const isFileNode = (value: string | ManifestFileNode): value is ManifestFileNode => typeof value !== 'string';
 
 /**
+ * Whether a directory or file name is a single path segment safe to join into a relative asset path:
+ * non-empty, not a `.`/`..` traversal component, and free of path separators or NUL. `compactc` only
+ * ever emits plain names, so anything else is a malformed (or malicious) manifest. Enforcing this
+ * keeps every flattened {@link ZKManifest.files} key a simple `"<dir>/<file>"` relative path that a
+ * consumer cannot be tricked into resolving outside the assets directory.
+ */
+const isSafeSegment = (segment: string): boolean =>
+  segment.length > 0 &&
+  segment !== '.' &&
+  segment !== '..' &&
+  !segment.includes('/') &&
+  !segment.includes('\\') &&
+  !segment.includes('\0');
+
+/**
  * Renders a decode failure for display. {@link TreeFormatter.formatErrorSync} walks the parse-error
  * tree recursively, so a pathologically deep manifest can overflow the call stack here — a thrown
  * `RangeError` would escape as an untyped defect rather than the {@link ZKManifestError.ZKManifestError}
@@ -199,20 +214,37 @@ export const parse = (rawJson: string): Effect.Effect<ZKManifest, ZKManifestErro
             ZKManifestError.make(`ZK artifact manifest entry '${key}' must be a directory, not the string '${value}'.`)
           );
         }
+        // The directory name is the first segment of every flattened path; reject anything that could
+        // escape the assets directory (`..`, path separators) before it is joined.
+        if (!isSafeSegment(key)) {
+          return Effect.fail(
+            ZKManifestError.make(`ZK artifact manifest directory name '${key}' is not a valid path segment.`)
+          );
+        }
         // A directory node: collect its file leaves, skipping the `type: 'directory'` marker.
         for (const [fileName, fileNode] of Object.entries(value)) {
-          if (isFileNode(fileNode)) {
-            const path = `${key}/${fileName}`;
-            // The `<dir>/<file>` join is ambiguous if a key contains `/` (e.g. `"a/b"+"c"` and
-            // `"a"+"b/c"` both yield `a/b/c`). Fail on collision rather than let one integrity
-            // record silently overwrite another.
-            if (files.has(path)) {
-              return Effect.fail(
-                ZKManifestError.make(`ZK artifact manifest has duplicate entries for path '${path}'.`)
-              );
-            }
-            files.set(path, { size: fileNode.size, hash: fileNode.hash });
+          if (!isFileNode(fileNode)) {
+            // The only non-file the schema admits is the bare `'directory'` marker, and it is
+            // legitimate only as `type: 'directory'`. Any other bare-string leaf (e.g.
+            // `"clear.prover": "directory"`) would be silently skipped, dropping that asset's
+            // integrity record while the parse still "passes" — the same harm the top-level check above
+            // guards, one level down.
+            if (fileName === 'type') continue;
+            return Effect.fail(
+              ZKManifestError.make(
+                `ZK artifact manifest entry '${key}/${fileName}' must be a file, not the string '${fileNode}'.`
+              )
+            );
           }
+          // The file name is the second segment of the flattened path; same containment check.
+          if (!isSafeSegment(fileName)) {
+            return Effect.fail(
+              ZKManifestError.make(`ZK artifact manifest file name '${key}/${fileName}' is not a valid path segment.`)
+            );
+          }
+          // With both segments validated as separator-free and unique within their JSON object, each
+          // `<dir>/<file>` path is necessarily unique, so no collision check is needed.
+          files.set(`${key}/${fileName}`, { size: fileNode.size, hash: fileNode.hash });
         }
       }
 
