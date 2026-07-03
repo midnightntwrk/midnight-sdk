@@ -154,59 +154,72 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     );
     yield* Console.log(stringifyCircuitOutput(result.result, 2));
     // Build one contract-call prototype per call in the trace (callees first, the root call
-    // last). Each call's `ContractOperation` comes from that contract's on-chain state: the root
-    // call uses the input state; sub-calls are read from the contract-states directory.
-    let intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)));
-    // The updated ledger state of each cross-contract *callee*, keyed by address. The root
-    // contract is deliberately excluded — its updated state is the job of `--output-oc`, mirroring
-    // how the root's input state comes from `--input` rather than `--contract-states-dir`. A callee
-    // may be called more than once; iterating in trace order means the last write for an address
-    // holds its final state. `ledgerState` carries the contract's operations/maintenance authority
-    // (unchanged by execution); `data` is its post-execution state value.
-    const finalCalleeStates = new Map<string, { readonly ledgerState: LedgerContractState; readonly data: StateValue }>();
-    for (const call of result.calls) {
-      let callLedgerState: LedgerContractState;
-      if (call.contractAddress === address) {
-        callLedgerState = ledgerContractState;
-      } else if (Option.isSome(inputContractStatesDirPath)) {
-        const bytes = yield* fs.readFile(join(inputContractStatesDirPath.value, call.contractAddress));
-        callLedgerState = yield* ContractState.asLedgerContractStateFromBytes(bytes);
-      } else {
-        // A sub-call can only occur when a state provider (i.e. a contract-states directory) was
-        // supplied, so this branch is unreachable in practice; fail loudly if it is reached.
-        return yield* ContractRuntimeError.make(
-          `Cannot resolve the operation for cross-contract call to '${call.contractAddress}': ` +
-          `no --contract-states-dir was provided.`
-        );
-      }
-      const callOperation = yield* ContractState.operationForCircuit(callLedgerState, call.circuitId, call.contractAddress);
-      intent = intent.addCall(new ContractCallPrototype(
-        call.contractAddress,
-        call.circuitId,
-        callOperation,
-        call.public.partitionedTranscript[0],
-        call.public.partitionedTranscript[1],
-        call.private.privateTranscriptOutputs,
-        call.private.input,
-        call.private.output,
-        Option.match(call.communicationCommitment, {
-          onSome: (c) => c.commCommRand,
-          onNone: () => communicationCommitmentRandomness()
-        }),
-        // The canonical key location routes the proof for this call to the key material of the
-        // specific deployed circuit (by contract address and verifier-key content), so that
-        // identically named circuits across contracts in one transaction cannot collide.
-        ContractKeyLocation.encodeContractKeyLocation({
-          contractAddress: call.contractAddress,
-          circuitId: call.circuitId,
-          verifierKeyHash: ContractKeyLocation.hashVerifierKey(callOperation.verifierKey)
+    // last), folding them into a single intent. Each call's `ContractOperation` comes from that
+    // contract's on-chain state: the root call uses the input state; sub-calls are read from the
+    // contract-states directory.
+    //
+    // `finalCalleeStates` is the updated ledger state of each cross-contract *callee*, keyed by
+    // address. The root contract is deliberately excluded — its updated state is the job of
+    // `--output-oc`, mirroring how the root's input state comes from `--input` rather than
+    // `--contract-states-dir`. A callee may be called more than once; folding in trace order means
+    // the last write for an address holds its final state. `ledgerState` carries the contract's
+    // operations/maintenance authority (unchanged by execution); `data` is its post-execution
+    // state value.
+    const { intent, finalCalleeStates } = yield* Effect.reduce(
+      result.calls,
+      {
+        intent: Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))),
+        finalCalleeStates: new Map<string, { readonly ledgerState: LedgerContractState; readonly data: StateValue }>()
+      },
+      (acc, call) =>
+        Effect.gen(function* () {
+          let callLedgerState: LedgerContractState;
+          if (call.contractAddress === address) {
+            callLedgerState = ledgerContractState;
+          } else if (Option.isSome(inputContractStatesDirPath)) {
+            const bytes = yield* fs.readFile(join(inputContractStatesDirPath.value, call.contractAddress));
+            callLedgerState = yield* ContractState.asLedgerContractStateFromBytes(bytes);
+          } else {
+            // A sub-call can only occur when a state provider (i.e. a contract-states directory) was
+            // supplied, so this branch is unreachable in practice; fail loudly if it is reached.
+            return yield* ContractRuntimeError.make(
+              `Cannot resolve the operation for cross-contract call to '${call.contractAddress}': ` +
+              `no --contract-states-dir was provided.`
+            );
+          }
+          const callOperation = yield* ContractState.operationForCircuit(callLedgerState, call.circuitId, call.contractAddress);
+          const nextIntent = acc.intent.addCall(new ContractCallPrototype(
+            call.contractAddress,
+            call.circuitId,
+            callOperation,
+            call.public.partitionedTranscript[0],
+            call.public.partitionedTranscript[1],
+            call.private.privateTranscriptOutputs,
+            call.private.input,
+            call.private.output,
+            Option.match(call.communicationCommitment, {
+              onSome: (c) => c.commCommRand,
+              onNone: () => communicationCommitmentRandomness()
+            }),
+            // The canonical key location routes the proof for this call to the key material of the
+            // specific deployed circuit (by contract address and verifier-key content), so that
+            // identically named circuits across contracts in one transaction cannot collide.
+            ContractKeyLocation.encodeContractKeyLocation({
+              contractAddress: call.contractAddress,
+              circuitId: call.circuitId,
+              verifierKeyHash: ContractKeyLocation.hashVerifierKey(callOperation.verifierKey)
+            })
+          ));
+          // Record callee states only; the root's updated state is handled by `--output-oc`.
+          const nextFinalCalleeStates = call.contractAddress === address
+            ? acc.finalCalleeStates
+            : new Map(acc.finalCalleeStates).set(call.contractAddress, {
+                ledgerState: callLedgerState,
+                data: call.public.contractState
+              });
+          return { intent: nextIntent, finalCalleeStates: nextFinalCalleeStates };
         })
-      ));
-      // Record callee states only; the root's updated state is handled by `--output-oc`.
-      if (call.contractAddress !== address) {
-        finalCalleeStates.set(call.contractAddress, { ledgerState: callLedgerState, data: call.public.contractState });
-      }
-    }
+    );
     const rootCall = result.calls[result.calls.length - 1];
 
     // If the output public file path is provided, write the on-chain (public state) data to the specified file.
