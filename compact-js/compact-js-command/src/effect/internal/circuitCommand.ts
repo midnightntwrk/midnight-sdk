@@ -152,20 +152,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       }),
       ...(yield* argsParser.parseCircuitArgs(Contract.ProvableCircuitId(circuitId), args))
     );
-    // Replacer function handles types that don't serialize properly in JSON:
-    // - Uint8Array serializes as {"0": 215, "1": 182, ...} instead of [215, 182, ...]
-    // - bigint cannot be serialized and throws TypeError without conversion
-    yield* Console.log(
-      JSON.stringify(
-        result.result,
-        (_, value) => {
-          if (typeof value === 'bigint') return value.toString();
-          if (value instanceof Uint8Array) return Array.from(value);
-          return value;
-        },
-        2
-      )
-    );
+    yield* Console.log(stringifyCircuitOutput(result.result, 2));
     // Build one contract-call prototype per call in the trace (callees first, the root call
     // last). Each call's `ContractOperation` comes from that contract's on-chain state: the root
     // call uses the input state; sub-calls are read from the contract-states directory.
@@ -242,17 +229,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
         yield* fs.writeFile(join(dir, contractAddress), ledgerState.serialize());
       }
     }
-    yield* fs.writeFileString(
-      outputResultFilePath,
-      JSON.stringify(
-        result.result,
-        (_, value) => {
-          if (typeof value === 'bigint') return value.toString();
-          if (value instanceof Uint8Array) return Array.from(value);
-          return value;
-        }
-      )
-    );
+    yield* fs.writeFileString(outputResultFilePath, stringifyCircuitOutput(result.result));
     yield* fs.writeFile(outputFilePath, intent.serialize());
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.privateState));
     yield* fs.writeFileString(
