@@ -4,6 +4,7 @@ This skill (`SKILL.md` and everything under `references/`) is vendored from the
 **Claude-Matrix** project's `effect-ts` skill:
 
 - Source: https://github.com/ojowwalker77/Claude-Matrix/tree/main/skills/effect-ts
+- Commit: https://github.com/ojowwalker77/Claude-Matrix/commit/7f392adb72c703ce0393f22578fdf6ad341622fa
 - Upstream license: MIT (see below)
 
 ## Local modifications
