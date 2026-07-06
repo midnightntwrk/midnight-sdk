@@ -16,7 +16,7 @@
     "@effect/platform": "^0.96.1",
     "@midnight-ntwrk/compact-runtime": "0.18.0-rc.0",
     "@midnight-ntwrk/platform-js": "^3.0.0",
-    "@midnightntwrk/ledger-v9": "^1.0.0-rc.2",
+    "@midnightntwrk/ledger-v9": "^1.0.0-rc.3",
     "@noble/hashes": "^2.2.0",
     "effect": "^3.21.4",
     "tslib": "^2.8.1"

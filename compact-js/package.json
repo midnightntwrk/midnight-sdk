@@ -38,7 +38,7 @@
     "@effect/rpc": "^0.75.1",
     "@effect/sql": "^0.51.1",
     "@effect/vitest": "^0.29.0",
-    "@effect/workflow": "^0.17.0",
+    "@effect/workflow": "^0.18.2",
     "@eslint/js": "^10.0.1",
     "@midnight-ntwrk/compact-js-node": "workspace:*",
     "@midnight-ntwrk/midnight-js-compact": "4.1.2-0-pre.428bc31c",
@@ -47,10 +47,10 @@
     "@vitest/coverage-v8": "^4.1.9",
     "@vitest/ui": "^4.1.0",
     "conventional-changelog-cli": "^5.0.0",
-    "eslint": "^10.0.3",
+    "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
-    "eslint-plugin-import-x": "^4.16.2",
+    "eslint-plugin-import-x": "^4.17.1",
     "eslint-plugin-prettier": "^5.5.5",
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-unused-imports": "^4.4.1",
@@ -59,7 +59,7 @@
     "tstyche": "^6.2.0",
     "turbo": "^2.9.18",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.60.1",
+    "typescript-eslint": "^8.62.1",
     "vitest": "^4.1.9"
   }
 }
