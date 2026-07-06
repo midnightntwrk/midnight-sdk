@@ -146,7 +146,7 @@ describe('cross-contract calls', () => {
   };
 
   it.effect('stateProvider is called to resolve callee state', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const getContractState = vi.fn<ContractStateProvider['getContractState']>(
         async (_blockHash, address) => chainStates.get(address)
       );
@@ -162,7 +162,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('incrementInner captures every sub-call plus the root, in trace order', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const result = yield* middle.circuit(
         Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
         middleContext(resolveFromChain),
@@ -187,7 +187,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('getInner reads callee state and returns the root result plus one sub-call', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const setVResult = yield* inner.circuit(
         Contract.ProvableCircuitId<CCCInnerContract>('setV'),
         { address: ContractAddress.ContractAddress(innerDeploy.address), contractState: chainStates.get(innerDeploy.address)!, privateState: undefined },
@@ -214,7 +214,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('uses the exact expected contract address for each returned call', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const result = yield* middle.circuit(
         Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
         middleContext(resolveFromChain),
@@ -230,7 +230,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('calls the same callee through different circuits with one address but distinct commitments', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const result = yield* middle.circuit(
         Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
         middleContext(resolveFromChain),
@@ -252,7 +252,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('includes the private input, output, and private transcript outputs for each call', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const result = yield* middle.circuit(
         Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
         middleContext(resolveFromChain),
@@ -268,7 +268,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect("contains the callee's post-execution contract state", () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       // inner.v starts at 0; incrementInner reads it then writes 0 + 3.
       const result = yield* middle.circuit(
         Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
@@ -286,7 +286,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('takes the result, privateState, and zswapLocalState from the root, not the callee', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const result = yield* middle.circuit(
         Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
         middleContext(resolveFromChain),
@@ -302,7 +302,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('partitions each call into guaranteed and fallible programs that match the original batch', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const result = yield* middle.circuit(
         Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
         middleContext(resolveFromChain),
@@ -319,7 +319,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('returns a ContractRuntimeError when the state provider cannot find a callee state', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const error = yield* Effect.flip(
         middle.circuit(
           Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
@@ -333,7 +333,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('fails with a defined error when a cross-contract call is attempted without a stateProvider', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const error = yield* Effect.flip(
         middle.circuit(
           Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
@@ -351,7 +351,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('passes the exact parentBlockHash through to the state provider', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const parentBlockHash = 'ab'.repeat(32);
       const getContractState = vi.fn<ContractStateProvider['getContractState']>(
         async (_blockHash, address) => chainStates.get(address)
@@ -368,7 +368,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('orders nested cross-contract calls from the deepest completed call back to the root', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       // Seed inner.v = 9 so the read flows root (outer) -> middle -> inner.
       const setVResult = yield* inner.circuit(
         Contract.ProvableCircuitId<CCCInnerContract>('setV'),
@@ -407,7 +407,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('rejects a self-call where a circuit calls another circuit on its own address (re-entrancy is not supported)', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const self = selfExecutable.pipe(ContractExecutable.provide(testLayer(CCC_SELF_ASSETS_PATH)));
       // The deploy address is not known until after construction, so deploy with a zero address...
       const zeroAddress = Buffer.alloc(innerDeploy.address.length / 2);
@@ -456,7 +456,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('returns a ContractRuntimeError when transcript partitioning returns the wrong number of items', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       // Force the partitioner to return fewer pairs than there are calls for this run only.
       vi.mocked(partitionTranscripts).mockReturnValueOnce([]);
 
@@ -474,7 +474,7 @@ describe('cross-contract calls', () => {
   );
 
   it.effect('throws the explicit error when the runtime returns no zswap local state', () =>
-    Effect.gen(function* () {
+    Effect.gen(function*() {
       const noZswap = noZswapExecutable.pipe(ContractExecutable.provide(testLayer(CCC_INNER_ASSETS_PATH)));
 
       const exit = yield* Effect.exit(
@@ -486,7 +486,7 @@ describe('cross-contract calls', () => {
 
       expect(Exit.isFailure(exit)).toBe(true);
       if (Exit.isFailure(exit)) {
-        expect(Cause.squash(exit.cause)).toMatchObject({ message: expect.stringContaining('returned no zswap local state') });
+        expect(Cause.squash(exit.cause)).toMatchObject({ cause: { message: expect.stringContaining('returned no zswap local state') } });
       }
     })
   );
