@@ -26,10 +26,11 @@
  * `log`-tagged `GatherResult`, i.e. a **single object**:
  *
  * ```ts
- * type LogEvent = { version: number; eventType: LogEventType; data: EncodedStateValue };
+ * // compact-runtime 0.18.0-rc.0: `address` tags the emitting contract.
+ * type LogEvent = { version: number; eventType: LogEventType; data: EncodedStateValue; address: ContractAddress };
  * ```
  *
- * and `context.events` / `result.public.events` is a `LogEvent[]`. (This resolves the §3 "gap":
+ * and `context.events` / `result.events` is a `LogEvent[]`. (This resolves the §3 "gap":
  * `LogEvent` is NOT an "encoded VersionedLogItem array" — it is one `{version,eventType,data}`
  * record, and the existing `ContractEventValidator` schema already matches it.)
  *
@@ -129,11 +130,18 @@ export const dataCell = (bytes: Uint8Array): LogEventData => ({
   }
 });
 
+/**
+ * A recognisable emitting-contract address. `LogEvent.address` (added in compact-runtime
+ * `0.18.0-rc.0`) is a hex-encoded 32-byte string tagging the contract that emitted the event.
+ */
+export const FIXTURE_ADDRESS = '00'.repeat(32);
+
 /** Construct a Phase-1 (`version: 1`) {@link LogEvent} from an `eventType` and serialized payload. */
-const event = (eventType: LogEvent['eventType'], payload: Uint8Array): LogEvent => ({
+const event = (eventType: LogEvent['eventType'], payload: Uint8Array, address: string = FIXTURE_ADDRESS): LogEvent => ({
   version: 1,
   eventType,
-  data: dataCell(payload)
+  data: dataCell(payload),
+  address
 });
 
 // --- standard-event fixtures (one per declared type) ------------------------------------------
@@ -197,7 +205,12 @@ export const allStandardEvents: readonly LogEvent[] = [
  * A degraded event whose on-chain payload was dropped (oversized/malformed) — surfaced as an
  * empty (`null`) `EncodedStateValue`. A decoder must NOT throw on this; absence is normal.
  */
-export const degradedNullData: LogEvent = { version: 1, eventType: 'shielded-spend', data: { tag: 'null' } };
+export const degradedNullData: LogEvent = {
+  version: 1,
+  eventType: 'shielded-spend',
+  data: { tag: 'null' },
+  address: FIXTURE_ADDRESS
+};
 
 /** A `shielded-spend` whose payload is shorter than the declared 32 bytes (truncated/malformed). */
 export const truncatedPayload: LogEvent = event('shielded-spend', fill(8, 0x00));
@@ -207,4 +220,16 @@ export const truncatedPayload: LogEvent = event('shielded-spend', fill(8, 0x00))
  * malformed input wrapped as `misc`; the SDK should treat it as a degraded/unknown-version event
  * rather than failing.
  */
-export const fallbackVersionZero: LogEvent = { version: 0, eventType: 'misc', data: { tag: 'null' } };
+export const fallbackVersionZero: LogEvent = {
+  version: 0,
+  eventType: 'misc',
+  data: { tag: 'null' },
+  address: FIXTURE_ADDRESS
+};
+
+/**
+ * An otherwise-valid event whose envelope `address` is malformed (not a 32-byte plain-hex string).
+ * The branded `ContractAddress` constructor would throw on this, so the decoder must use the safe
+ * variant and degrade rather than crash.
+ */
+export const malformedAddress: LogEvent = event('shielded-spend', bytes32(0x11), 'deadbeef');

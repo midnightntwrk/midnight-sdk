@@ -232,6 +232,10 @@ export declare namespace ContractExecutable {
    * order; each event is tagged with its emitting contract's address, so a per-contract view is a
    * filter over that tag. Events are NOT consensus state and are handled by the indexer; size and
    * well-formedness are enforced on-chain by the ledger/VM (degraded, not failed) per MIP-0002.
+   *
+   * The events are kept **raw** here to avoid paying decode cost when unused. To obtain typed,
+   * per-event payloads, decode on demand with `ContractLog.decodeAll(result.events)` (which
+   * degrades gracefully and never throws); feed them to a `ContractEventStore` to query/subscribe.
    */
   export type CallResult<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
     readonly result: Contract.Contract.CircuitReturnType<C, K>;
@@ -270,15 +274,33 @@ type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<
 const DEFAULT_CMA_THRESHOLD = 1;
 const DEFAULT_SIGNATURE_INDEX = 0n;
 
-// Ledger v9 tags signing keys with their signature scheme ('schnorr' | 'ecdsa'), while
-// platform-js still models a signing key as a bare hex string. Untagged keys in earlier
-// ledger versions were Schnorr keys, so tagging with 'schnorr' preserves the previous
-// semantics. The onchain-runtime `SigningKey` is structurally identical, so this adapter
-// serves both `signData` (ledger) and `signatureVerifyingKey` (compact-runtime).
-const asTaggedSigningKey = (signingKey: SigningKey.SigningKey): LedgerSigningKey => ({
-  tag: 'schnorr',
-  value: signingKey.value
-});
+// The signature schemes verified to work through the ledger CMA path (`signData` and
+// `signatureVerifyingKey`), so the caller-supplied scheme is threaded through unchanged. Any other
+// scheme is rejected loudly rather than silently coerced.
+//
+// This is deliberately an explicit allowlist, NOT `SigningKey.SignatureKinds`: the constraint is
+// what the ledger primitives support, not what platform-js's type union happens to include. A new
+// scheme must be added here only once it is verified end-to-end against the ledger CMA path.
+const SUPPORTED_CMA_SIGNATURE_KINDS: ReadonlySet<SigningKey.SignatureKind> = new Set(['schnorr', 'ecdsa']);
+
+// Adapts a platform-js `SigningKey` to a ledger `SigningKey`. As of platform-js@3.0.0 both are
+// `{ tag: SignatureKind, value }` and structurally compatible; the onchain-runtime `SigningKey`
+// is identical too, so this serves both `signData` (ledger) and `signatureVerifyingKey`
+// (compact-runtime). The caller-supplied `tag` is preserved so ECDSA-tagged keys are not silently
+// treated as Schnorr; an unsupported scheme fails with a `ContractConfigurationError`.
+const asTaggedSigningKey = (
+  signingKey: SigningKey.SigningKey,
+  contractState?: ContractState
+): Either.Either<LedgerSigningKey, ContractConfigurationError.ContractConfigurationError> =>
+  SUPPORTED_CMA_SIGNATURE_KINDS.has(signingKey.tag)
+    ? Either.right({ tag: signingKey.tag, value: signingKey.value })
+    : Either.left(
+        ContractConfigurationError.make(
+          `Unsupported signature scheme '${signingKey.tag}' for a contract maintenance authority; ` +
+            `supported schemes are: ${[...SUPPORTED_CMA_SIGNATURE_KINDS].join(', ')}`,
+          contractState
+        )
+      );
 
 const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
   const stateValue = LedgerStateValue.decode(queryContext.state.state.encode());
@@ -603,6 +625,9 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         contractState
       ));
     }
+    const signingKey = currentSigningKey.value;
+    const ledgerSigningKey = asTaggedSigningKey(signingKey, contractState);
+    if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);
     const update = createUpdateFn();
     if (Either.isLeft(update)) return Either.left(update.left);
     const maintenanceUpdate = new MaintenanceUpdate(
@@ -610,15 +635,22 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       Either.getOrThrow(update),
       contractState.maintenanceAuthority.counter
     );
+    let signature: ReturnType<typeof signData>;
+    try {
+      signature = signData(ledgerSigningKey.right, maintenanceUpdate.dataToSign);
+    } catch (err: unknown) {
+      return Either.left(ContractConfigurationError.make(
+        `Failed to sign contract maintenance update with a '${signingKey.tag}' signing key`,
+        contractState,
+        err
+      ));
+    }
     return Either.right({
       public: {
-        maintenanceUpdate: maintenanceUpdate.addSignature(
-          DEFAULT_SIGNATURE_INDEX,
-          signData(asTaggedSigningKey(Option.getOrThrow(currentSigningKey)), maintenanceUpdate.dataToSign)
-        )
+        maintenanceUpdate: maintenanceUpdate.addSignature(DEFAULT_SIGNATURE_INDEX, signature)
       },
       private: {
-        signingKey: Option.getOrThrow(currentSigningKey)
+        signingKey
       }
     });
   }
@@ -631,10 +663,12 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       onSome: identity,
       onNone: () => SigningKey.make(sampleSigningKey('schnorr').value)
     });
+    const ledgerSigningKey = asTaggedSigningKey(signingKey, contractState);
+    if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);
     try {
       return Either.right([
         new ContractMaintenanceAuthority(
-          [signatureVerifyingKey(asTaggedSigningKey(signingKey))],
+          [signatureVerifyingKey(ledgerSigningKey.right)],
           DEFAULT_CMA_THRESHOLD,
           contractState ? contractState.maintenanceAuthority.counter + 1n : 0n
         ),

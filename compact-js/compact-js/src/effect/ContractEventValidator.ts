@@ -17,21 +17,7 @@ import { TreeFormatter } from 'effect/ParseResult';
 import * as Schema from 'effect/Schema';
 
 import * as ContractEventValidationError from './ContractEventValidationError.js';
-
-/** The standard `LogEventType` variants emitted by Compact contracts (see contract-runtime). */
-const LogEventTypeSchema = Schema.Literal(
-  'shielded-spend',
-  'shielded-receive',
-  'shielded-mint',
-  'shielded-burn',
-  'unshielded-spend',
-  'unshielded-receive',
-  'unshielded-mint',
-  'unshielded-burn',
-  'paused',
-  'unpaused',
-  'misc'
-);
+import { LogEventTypeSchema } from './ContractLog.js';
 
 /**
  * Structural schema for a single contract log event — the `content` of a `log`-tagged

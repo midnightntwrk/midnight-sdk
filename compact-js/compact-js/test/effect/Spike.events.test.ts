@@ -1,3 +1,18 @@
+/*
+ * This file is part of midnight-sdk.
+ * Copyright (C) 2025 Midnight Foundation
+ * SPDX-License-Identifier: Apache-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -46,7 +61,12 @@ const replacer = (_k: string, v: unknown) =>
         ? { __map: Array.from(v.entries()) }
         : v;
 
-describe('SPIKE events wire shape', () => {
+// SKIPPED: this is a diagnostic capture harness, not an assertion. It cannot capture live events
+// with the bundled toolchain — the managed contracts are compiled with compactc 0.31.0, whose
+// standard token library emits no `log` ops, and the `emit` expression is a post-0.31.0 feature
+// (see EVENTS_INTEGRATION_PLAN.md §11.3). Re-enable once an emit-capable compactc is wired into the
+// test build, to re-confirm the derived intra-`data` field offsets against a live `emit`.
+describe.skip('SPIKE events wire shape', () => {
   it('dump events from each unshielded circuit', async () => {
     const program = Effect.gen(function* () {
       const contract = CompiledContract.make<UnshieldedContract>('UnshieldedContract', UnshieldedContract).pipe(
@@ -72,7 +92,7 @@ describe('SPIKE events wire shape', () => {
         { bytes: ContractAddress.asBytes(Arbitrary.getSampleContractAddress()) },
         1_000n
       );
-      dump.mintUnshieldedToContractTest = mintToContract.public.events;
+      dump.mintUnshieldedToContractTest = mintToContract.events;
 
       const mintToUser = yield* contract.circuit(
         Contract.ProvableCircuitId<UnshieldedContract>('mintUnshieldedToUserTest'),
@@ -81,7 +101,7 @@ describe('SPIKE events wire shape', () => {
         { bytes: CoinPublicKey.asBytes(CoinPublicKey.Hex(VALID_COIN_PUBLIC_KEY)) },
         1_000n
       );
-      dump.mintUnshieldedToUserTest = mintToUser.public.events;
+      dump.mintUnshieldedToUserTest = mintToUser.events;
 
       const mintToSelf = yield* contract.circuit(
         Contract.ProvableCircuitId<UnshieldedContract>('mintUnshieldedToSelfTest'),
@@ -89,7 +109,7 @@ describe('SPIKE events wire shape', () => {
         DomainSeparator.asBytes(domainSep),
         1_000n
       );
-      dump.mintUnshieldedToSelfTest = mintToSelf.public.events;
+      dump.mintUnshieldedToSelfTest = mintToSelf.events;
 
       const color = encodeRawTokenType(
         rawTokenType(DomainSeparator.asBytes(domainSep), Arbitrary.getSampleContractAddress())
@@ -101,7 +121,7 @@ describe('SPIKE events wire shape', () => {
         color,
         1_000n
       );
-      dump.sendUnshieldedToSelfTest = sendToSelf.public.events;
+      dump.sendUnshieldedToSelfTest = sendToSelf.events;
 
       const receive = yield* contract.circuit(
         Contract.ProvableCircuitId<UnshieldedContract>('receiveUnshieldedTest'),
@@ -109,7 +129,7 @@ describe('SPIKE events wire shape', () => {
         color,
         1_000n
       );
-      dump.receiveUnshieldedTest = receive.public.events;
+      dump.receiveUnshieldedTest = receive.events;
 
       return dump;
     });
