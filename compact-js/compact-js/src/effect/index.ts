@@ -21,7 +21,10 @@ export * as ContractEventValidationError from './ContractEventValidationError.js
 export * from './ContractEventValidator.js';
 export * as ContractExecutable from './ContractExecutable.js';
 export * as ContractExecutableRuntime from './ContractExecutableRuntime.js';
+export * as ContractKeyLocation from './ContractKeyLocation.js';
 export * as ContractLog from './ContractLog.js';
 export * as ContractRuntimeError from './ContractRuntimeError.js';
 export * as ZKConfiguration from './ZKConfiguration.js';
 export * as ZKConfigurationReadError from './ZKConfigurationReadError.js';
+export * as ZKManifest from './ZKManifest.js';
+export * as ZKManifestError from './ZKManifestError.js';

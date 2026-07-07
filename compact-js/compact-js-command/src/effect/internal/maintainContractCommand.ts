@@ -60,7 +60,7 @@ export const handler: (
       .readFile(inputFilePath)
       .pipe(Effect.flatMap(ContractState.asLedgerContractStateFromBytes));
     const result = yield* contractModule.contractExecutable.replaceContractMaintenanceAuthority(
-      Option.some(SigningKey.make(newSigningKey as SigningKey.SignatureKind)),
+      Option.some(SigningKey.make(newSigningKey)),
       {
         address,
         contractState: yield* ContractState.asContractState(ledgerContractState)

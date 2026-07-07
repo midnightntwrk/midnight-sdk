@@ -19,8 +19,8 @@
     "lint": "eslint"
   },
   "dependencies": {
-    "@effect/platform": "^0.96.1",
-    "effect": "^3.21.0"
+    "@effect/platform": "^0.96.2",
+    "effect": "^3.21.4"
   },
   "resolutions": {
     "tar": ">=7.5.11",
@@ -33,10 +33,10 @@
     "@effect/vitest": "^0.29.0",
     "@eslint/js": "^10.0.1",
     "@tsconfig/node22": "^22.0.5",
-    "@types/node": "^25.5.0",
-    "@vitest/coverage-v8": "^4.1.1",
-    "@vitest/ui": "^4.1.8",
-    "eslint": "^10.1.0",
+    "@types/node": "^26.1.0",
+    "@vitest/coverage-v8": "^4.1.9",
+    "@vitest/ui": "^4.1.9",
+    "eslint": "^10.6.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-import-resolver-typescript": "^4.4.5",
     "eslint-plugin-import-x": "^4.16.2",
@@ -44,9 +44,9 @@
     "eslint-plugin-simple-import-sort": "^13.0.0",
     "eslint-plugin-unused-imports": "^4.4.1",
     "shx": "^0.4.0",
-    "turbo": "^2.9.18",
+    "turbo": "^2.10.2",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.57.1",
-    "vitest": "^4.1.8"
+    "typescript-eslint": "^8.62.1",
+    "vitest": "^4.1.9"
   }
 }
