@@ -24,8 +24,8 @@ import * as Fixtures from './logEventFixtures.js';
  * events → `ContractLog.decodeAll` → `ContractEventStore.append` → `query` + `subscribe`.
  *
  * @remarks This uses the derived fixtures rather than a live circuit: the bundled compactc 0.31.0
- * emits no `log` ops (see EVENTS_INTEGRATION_PLAN.md §11.3), so a real `contract.circuit(...)` call
- * yields `events: []`. The pipeline over decoded events is identical.
+ * emits no `log` ops (see the provenance note in `logEventFixtures.ts`), so a real
+ * `contract.circuit(...)` call yields `events: []`. The pipeline over decoded events is identical.
  */
 describe('contract events integration', () => {
   it.effect('decodes raw events, accumulates them, and observes them via query and subscribe', () =>

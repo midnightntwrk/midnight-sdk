@@ -17,8 +17,9 @@
  * Stage 0 (MIP-0002 Part 2) — captured/derived contract log-event fixtures.
  *
  * These fixtures pin down the **confirmed wire shape** of a single contract log event so the
- * Stage 1 decoder and schemas can target a real structure rather than an assumed one. See the
- * "Stage 0 — wire-shape findings" section appended to `EVENTS_INTEGRATION_PLAN.md`.
+ * Stage 1 decoder and schemas can target a real structure rather than an assumed one. This module
+ * is the canonical record of those Stage 0 wire-shape findings — the confirmed envelope, the
+ * derived payload byte layout, and their provenance — for the decoder in `src/effect/ContractLog.ts`.
  *
  * ## Envelope (confirmed)
  *

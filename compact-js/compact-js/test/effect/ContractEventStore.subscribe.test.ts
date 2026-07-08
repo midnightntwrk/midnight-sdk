@@ -16,7 +16,7 @@
 import { describe, expect, it } from '@effect/vitest';
 import * as ContractEventStore from '@midnight-ntwrk/compact-js/effect/ContractEventStore';
 import * as ContractLog from '@midnight-ntwrk/compact-js/effect/ContractLog';
-import { Chunk, Effect, Fiber, Stream } from 'effect';
+import { Chunk, Deferred, Effect, Fiber, Stream } from 'effect';
 
 import * as Fixtures from './logEventFixtures.js';
 
@@ -125,6 +125,52 @@ describe('ContractEventStore.subscribe', () => {
         expect(observed).toEqual(Array.from({ length: n }, (_, i) => BigInt(i + 1)));
       })
     )
+  );
+
+  it.effect(
+    'sliding live buffer: a stalled subscriber never wedges appends, drops the oldest un-consumed ' +
+      'live events, and can recover them from history',
+    () =>
+      Effect.gen(function* () {
+        const store = yield* ContractEventStore.ContractEventStore;
+        const gotFirst = yield* Deferred.make<void>();
+        const release = yield* Deferred.make<void>();
+        // Stall the subscriber on its first element: it signals `gotFirst` once (so we know it is
+        // registered and its snapshot is fixed), then parks on `release` for every element. While
+        // parked it pulls nothing, so its capacity-2 live buffer overflows. `take(3)` = the parked
+        // first event + the two survivors the sliding buffer retains.
+        const collector = yield* store
+          .subscribe()
+          .pipe(
+            Stream.tap(() => Deferred.succeed(gotFirst, void 0).pipe(Effect.zipRight(Deferred.await(release)))),
+            Stream.take(3),
+            Stream.runCollect,
+            Effect.fork
+          );
+        // Deliver id 1 and wait until the subscriber is holding it — now every later append
+        // publishes to the (registered) live buffer rather than landing in the replay snapshot.
+        yield* store.append(ContractLog.decodeAll([Fixtures.shieldedSpend])); // id 1
+        yield* Deferred.await(gotFirst);
+        // Burst far past capacity while the subscriber is parked. With a *bounded* buffer, publishAll
+        // would suspend under the append mutex and deadlock every append (this test would then time
+        // out); *sliding* lets them all complete.
+        yield* Effect.all(
+          Array.from({ length: 49 }, () => store.append(ContractLog.decodeAll([Fixtures.shieldedSpend]))), // ids 2..50
+          { concurrency: 1 }
+        );
+        // Every append returned ⇒ the publisher was never wedged, and the full history is retained.
+        expect((yield* store.query()).map((e) => e.id)).toEqual(Array.from({ length: 50 }, (_, i) => BigInt(i + 1)));
+        // Let the parked subscriber drain what survived in its capacity-2 buffer.
+        yield* Deferred.succeed(release, void 0);
+        const observed = ids(yield* Fiber.join(collector));
+        // Newest retained, oldest un-consumed live events dropped: after id 1 the stream jumps
+        // straight to the final two ids — the middle (2..48) is gone. A bounded or default-capacity
+        // (1024) buffer would instead deliver 1,2,3 here, so this asserts the sliding drop directly.
+        expect(observed).toEqual([1n, 49n, 50n]);
+        // Recovery: a fresh subscription with `fromId` backfills the dropped ids from history.
+        const recovered = yield* store.subscribe({ fromId: 2n }).pipe(Stream.take(49), Stream.runCollect);
+        expect(ids(recovered)).toEqual(Array.from({ length: 49 }, (_, i) => BigInt(i + 2)));
+      }).pipe(Effect.provide(ContractEventStore.makeLayer(2)))
   );
 
   it.effect('cleans up on scope close without wedging the store', () =>

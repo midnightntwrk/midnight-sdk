@@ -34,8 +34,8 @@
  * - **⚠️ Payload decoding is experimental**: the intra-`data` field byte-offsets read by
  *   {@link decode} (Maybe flag positions, `Uint<128>` big-endianness, the `Either` discriminant
  *   value) are **derived from the compiler source**, not yet confirmed against a live `emit` — the
- *   bundled compactc emits no `log` ops, so no fixture exercises a real payload (see
- *   `EVENTS_INTEGRATION_PLAN.md` §11.3). The **envelope** (`version`, `eventType`, `address`,
+ *   bundled compactc emits no `log` ops, so no fixture exercises a real payload (see the provenance
+ *   note in `test/effect/logEventFixtures.ts`). The **envelope** (`version`, `eventType`, `address`,
  *   degradation) is confirmed. A wrong offset would decode **silently** to a wrong value rather
  *   than degrading, so treat a decoded `payload` as provisional until re-confirmed against a live
  *   emit.
@@ -270,7 +270,7 @@ const PAYLOAD_SIZE: Record<LogEventType, number> = {
 
 /**
  * Decode the payload buffer for a given event type, or `undefined` if the buffer is too short
- * (degraded). Byte offsets follow the field-aligned layout in `EVENTS_INTEGRATION_PLAN.md` §11.2.
+ * (degraded). Byte offsets follow the field-aligned layout tabulated in `test/effect/logEventFixtures.ts`.
  */
 const decodePayload = (eventType: LogEventType, buf: Uint8Array): PayloadMap[LogEventType] | undefined => {
   if (buf.length < PAYLOAD_SIZE[eventType]) return undefined;
@@ -314,9 +314,9 @@ const decodePayload = (eventType: LogEventType, buf: Uint8Array): PayloadMap[Log
  * event remains on `raw`.
  *
  * @experimental The `payload` field byte-offsets are derived from the compiler source and not yet
- * confirmed against a live `emit` (see the module-level remarks and `EVENTS_INTEGRATION_PLAN.md`
- * §11.3). A wrong offset decodes silently to a wrong value; treat decoded payloads as provisional.
- * The envelope and degradation behaviour are confirmed.
+ * confirmed against a live `emit` (see the module-level remarks and the provenance note in
+ * `test/effect/logEventFixtures.ts`). A wrong offset decodes silently to a wrong value; treat
+ * decoded payloads as provisional. The envelope and degradation behaviour are confirmed.
  *
  * @param raw The raw log event surfaced on a circuit result.
  * @returns The decoded, typed event.

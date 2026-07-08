@@ -61,7 +61,12 @@ export type StoredEvent = ContractLog.ContractEvent & { readonly id: bigint };
  */
 export interface FieldPrefixFilter {
   readonly fieldName?: string;
-  /** A hex string (with or without a leading `0x`), matched case-insensitively as a prefix. */
+  /**
+   * A hex string (with or without a leading `0x`), matched case-insensitively as a prefix of the
+   * field's bytes. Matching is nibble-granular: use an **even-length** prefix for byte-accurate
+   * matching (e.g. `'07'` matches only the byte `0x07`), since an odd-length prefix such as `'7'`
+   * matches any field whose first byte is `0x70`–`0x7f`. An empty prefix matches any present field.
+   */
   readonly prefix: string;
 }
 
@@ -127,8 +132,10 @@ export declare namespace ContractEventStore {
      * **inclusive** (`id >= fromId`), so passing the last-seen id itself would redeliver that event.
      *
      * Under sustained backpressure the live feed may drop the oldest un-consumed events (see
-     * {@link makeLayer}); a subscriber that has fallen behind should reconnect with an updated
-     * `fromId` to backfill the missed events from the retained history.
+     * {@link makeLayer}). There is **no programmatic drop signal** — a filter-induced `id` skip and
+     * a drop-induced one are indistinguishable on the stream — so a subscriber that must not miss
+     * events should periodically reconcile via `query`, and after falling behind reconnect with an
+     * updated `fromId` to backfill the missed events from the retained history.
      *
      * @param filter The criteria to match; when omitted, every event is delivered.
      * @returns A `Stream` of matching events.
@@ -139,10 +146,30 @@ export declare namespace ContractEventStore {
 
 // --- filter matching --------------------------------------------------------------------------
 
-const bytesToHex = (bytes: Uint8Array): string =>
-  Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
-
 const normalizeHex = (hex: string): string => hex.toLowerCase().replace(/^0x/, '');
+
+const HEX_DIGITS = '0123456789abcdef';
+
+/**
+ * Tests whether `bytes` begins with the (already-normalized, lowercase) hex `prefix`, comparing
+ * only the bytes the prefix actually covers rather than rendering the whole field to hex. Each
+ * pair of hex chars matches one whole byte; a trailing odd nibble matches the **high** nibble of
+ * the next byte — so `'7'` matches any field whose first byte is `0x70`–`0x7f`, whereas `'07'`
+ * matches only the byte `0x07`. Pass an **even-length** prefix for byte-accurate matching. An
+ * empty prefix matches any field. A prefix longer (in nibbles) than the field is never a match.
+ */
+const bytesHaveHexPrefix = (bytes: Uint8Array, prefix: string): boolean => {
+  if ((prefix.length + 1) >> 1 > bytes.length) return false;
+  const fullBytes = prefix.length >> 1;
+  for (let i = 0; i < fullBytes; i++) {
+    const hi = HEX_DIGITS.indexOf(prefix[i * 2]);
+    const lo = HEX_DIGITS.indexOf(prefix[i * 2 + 1]);
+    if (bytes[i] !== ((hi << 4) | lo)) return false;
+  }
+  if ((prefix.length & 1) === 1 && bytes[fullBytes] >> 4 !== HEX_DIGITS.indexOf(prefix[prefix.length - 1]))
+    return false;
+  return true;
+};
 
 const sameAddress = (a: ContractAddress.ContractAddress, b: ContractAddress.ContractAddress): boolean =>
   String(a).toLowerCase() === String(b).toLowerCase();
@@ -156,7 +183,7 @@ const matchesFieldPrefix = (event: StoredEvent, filter: FieldPrefixFilter): bool
         ? [fields[filter.fieldName]!]
         : []
       : Object.values(fields);
-  return candidates.some((bytes) => bytesToHex(bytes).startsWith(prefix));
+  return candidates.some((bytes) => bytesHaveHexPrefix(bytes, prefix));
 };
 
 /** Determine whether a stored event satisfies every present criterion of a filter. */
@@ -207,10 +234,8 @@ export const makeLayer = (capacity: number = DEFAULT_CAPACITY): Layer.Layer<Cont
     ContractEventStore,
     Effect.gen(function* () {
       const state = yield* Ref.make<StoreState>({ nextId: 1n, events: [] });
-      // Sliding (not bounded/back-pressuring): `publishAll` runs under `appendMutex` below, so a
-      // back-pressuring buffer would let one non-draining subscriber wedge every append. Sliding
-      // drops the oldest un-consumed events for a lagging subscriber instead of blocking the
-      // publisher — appends stay live. See `makeLayer`'s @remarks for the consequence and recovery.
+      // Sliding, not back-pressuring: see `makeLayer`'s @remarks — because `publishAll` runs under
+      // `appendMutex`, a bounded buffer would let one stalled subscriber wedge every append.
       const pubsub = yield* PubSub.sliding<StoredEvent>(capacity);
       // Serialize appends: id assignment (`Ref.modify`) and publishing to the live feed are two
       // effects, so without a critical section two concurrent appends could publish out of id

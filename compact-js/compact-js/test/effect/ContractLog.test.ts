@@ -149,6 +149,31 @@ describe('ContractLog.decode', () => {
       const decoded = ContractLog.decodeAll([Fixtures.shieldedSpend, Fixtures.malformedAddress, Fixtures.misc]);
       expect(decoded.map((e) => e.degraded)).toEqual([false, true, false]);
     });
+
+    // The never-throw guarantee rests on an invariant: for every event type, the highest byte
+    // offset `decodePayload` reads must be < the declared payload size that gates it (an unchecked
+    // `readUint128`/`readEither` at an offset past the buffer end would throw a `TypeError`, not
+    // degrade). This exercises the boundary for every type so a future offset/size mismatch is
+    // caught here rather than surfacing as a runtime throw in a consumer.
+    it('never reads past the declared payload size — decodes a minimum-size buffer without throwing', () => {
+      // Ground truth for each type's declared size: the fixture's own payload length.
+      const payloadLen = (raw: ContractLog.LogEvent): number =>
+        raw.data.tag === 'cell' ? raw.data.content.value.reduce((n, s) => n + s.length, 0) : 0;
+      for (const fixture of Fixtures.allStandardEvents) {
+        const size = payloadLen(fixture);
+        // Exactly the declared size (arbitrary 0xff bytes): every field read must stay in bounds, so
+        // decoding neither throws nor degrades.
+        const exact = { ...fixture, data: Fixtures.dataCell(new Uint8Array(size).fill(0xff)) };
+        expect(() => ContractLog.decode(exact)).not.toThrow();
+        expect(ContractLog.decode(exact).degraded).toBe(false);
+        // One byte short: the length guard must degrade it (again without throwing).
+        if (size > 0) {
+          const short = { ...fixture, data: Fixtures.dataCell(new Uint8Array(size - 1).fill(0xff)) };
+          expect(() => ContractLog.decode(short)).not.toThrow();
+          expect(ContractLog.decode(short).degraded).toBe(true);
+        }
+      }
+    });
   });
 });
 
