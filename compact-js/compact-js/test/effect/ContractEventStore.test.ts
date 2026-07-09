@@ -16,8 +16,9 @@
 import { describe, expect, it } from '@effect/vitest';
 import * as ContractEventStore from '@midnight-ntwrk/compact-js/effect/ContractEventStore';
 import * as ContractLog from '@midnight-ntwrk/compact-js/effect/ContractLog';
+import * as MalformedHexPrefixError from '@midnight-ntwrk/compact-js/effect/MalformedHexPrefixError';
 import { ContractAddress } from '@midnight-ntwrk/platform-js';
-import { Effect } from 'effect';
+import { Effect, Exit, Stream } from 'effect';
 
 import * as Fixtures from './logEventFixtures.js';
 
@@ -141,6 +142,39 @@ describe('ContractEventStore.query', () => {
       expect(events).toHaveLength(1);
     });
 
+    it('matches an odd-length prefix against the high nibble of the first byte', async () => {
+      // nullifier = 0x11.. — an odd-nibble prefix '1' matches any first byte 0x10–0x1f.
+      const [hit, miss] = await run(
+        Effect.gen(function* () {
+          const store = yield* ContractEventStore.ContractEventStore;
+          yield* store.append(ContractLog.decodeAll([Fixtures.shieldedSpend]));
+          return [
+            yield* store.query({ fieldPrefixes: [{ prefix: '1' }] }),
+            yield* store.query({ fieldPrefixes: [{ prefix: '2' }] })
+          ] as const;
+        })
+      );
+      expect(hit).toHaveLength(1);
+      expect(miss).toEqual([]);
+    });
+
+    it('matches an odd-length prefix after a whole-byte prefix', async () => {
+      // shielded-mint domainSep = 0x32.. — '11' matches the first byte, then odd nibble '3' must
+      // match the high nibble (0x3_) of the next byte, while '4' must not.
+      const [hit, miss] = await run(
+        Effect.gen(function* () {
+          const store = yield* ContractEventStore.ContractEventStore;
+          yield* store.append(ContractLog.decodeAll([Fixtures.shieldedMint])); // commitment 0x31.., domainSep 0x32..
+          return [
+            yield* store.query({ fieldPrefixes: [{ fieldName: 'domainSep', prefix: '323' }] }),
+            yield* store.query({ fieldPrefixes: [{ fieldName: 'domainSep', prefix: '324' }] })
+          ] as const;
+        })
+      );
+      expect(hit).toHaveLength(1);
+      expect(miss).toEqual([]);
+    });
+
     it('scopes the prefix to a named field', async () => {
       const [named, wrongName] = await run(
         Effect.gen(function* () {
@@ -154,6 +188,42 @@ describe('ContractEventStore.query', () => {
       );
       expect(named).toHaveLength(1);
       expect(wrongName).toEqual([]);
+    });
+
+    it('fails fast with MalformedHexPrefixError on a non-hex prefix rather than matching nothing', async () => {
+      const exit = await Effect.runPromiseExit(
+        Effect.gen(function* () {
+          const store = yield* ContractEventStore.ContractEventStore;
+          yield* store.append(ContractLog.decodeAll([Fixtures.shieldedSpend]));
+          return yield* store.query({ fieldPrefixes: [{ prefix: 'xyz' }] });
+        }).pipe(Effect.provide(ContractEventStore.layer))
+      );
+      expect(Exit.isFailure(exit)).toBe(true);
+      const cause = Exit.isFailure(exit) ? exit.cause : undefined;
+      const error = cause !== undefined && cause._tag === 'Fail' ? cause.error : undefined;
+      expect(MalformedHexPrefixError.isMalformedHexPrefixError(error)).toBe(true);
+      // The offending prefix is normalized (a leading 0x stripped) on the error.
+      expect((error as MalformedHexPrefixError.MalformedHexPrefixError).prefix).toBe('xyz');
+    });
+
+    it('fails a non-hex prefix even after stripping a leading 0x', async () => {
+      const exit = await Effect.runPromiseExit(
+        Effect.gen(function* () {
+          const store = yield* ContractEventStore.ContractEventStore;
+          return yield* store.query({ fieldPrefixes: [{ prefix: '0xZZ' }] });
+        }).pipe(Effect.provide(ContractEventStore.layer))
+      );
+      expect(Exit.isFailure(exit)).toBe(true);
+    });
+
+    it('fails the subscribe stream on a non-hex prefix', async () => {
+      const exit = await Effect.runPromiseExit(
+        Effect.gen(function* () {
+          const store = yield* ContractEventStore.ContractEventStore;
+          return yield* Stream.runCollect(store.subscribe({ fieldPrefixes: [{ prefix: 'nothex' }] }));
+        }).pipe(Effect.scoped, Effect.provide(ContractEventStore.layer))
+      );
+      expect(Exit.isFailure(exit)).toBe(true);
     });
 
     it('excludes misc, lifecycle, and degraded events from field filters', async () => {

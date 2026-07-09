@@ -244,11 +244,20 @@ const readMaybeBytes = (buf: Uint8Array, offset: number, size: number): Option.O
 const readMaybeUint128 = (buf: Uint8Array, offset: number): Option.Option<bigint> =>
   buf[offset] === 1 ? Option.some(readUint128(buf, offset + 1)) : Option.none();
 
-/** Read an `Either<ZswapCoinPublicKey, ContractAddress>`: a discriminant byte + 32-byte address. */
-const readEither = (buf: Uint8Array, offset: number): EitherAddress => ({
-  kind: buf[offset] === 0 ? 'coin-public-key' : 'contract-address',
-  bytes: buf.slice(offset + 1, offset + 33)
-});
+/**
+ * Read an `Either<ZswapCoinPublicKey, ContractAddress>`: a discriminant byte + 32-byte address.
+ * The discriminant is structurally `0` (coin-public-key) or `1` (contract-address); any other value
+ * is garbage (out-of-range byte, or a misaligned read) and yields `undefined` so the caller degrades
+ * rather than decoding to a confident wrong `kind`.
+ */
+const readEither = (buf: Uint8Array, offset: number): EitherAddress | undefined => {
+  const discriminant = buf[offset];
+  if (discriminant !== 0 && discriminant !== 1) return undefined;
+  return {
+    kind: discriminant === 0 ? 'coin-public-key' : 'contract-address',
+    bytes: buf.slice(offset + 1, offset + 33)
+  };
+};
 
 /**
  * The declared serialized size, in bytes, of each event's payload (per the compiler's
@@ -287,14 +296,22 @@ const decodePayload = (eventType: LogEventType, buf: Uint8Array): PayloadMap[Log
       return { commitment: buf.slice(0, 32), domainSep: buf.slice(32, 64), amount: readMaybeUint128(buf, 64) };
     case 'shielded-burn':
       return { nullifier: buf.slice(0, 32), amount: readMaybeUint128(buf, 32) };
-    case 'unshielded-spend':
-      return { sender: readEither(buf, 0), tokenType: buf.slice(33, 65), amount: readUint128(buf, 65) };
-    case 'unshielded-receive':
-      return { recipient: readEither(buf, 0), tokenType: buf.slice(33, 65), amount: readUint128(buf, 65) };
+    case 'unshielded-spend': {
+      const sender = readEither(buf, 0);
+      return sender === undefined ? undefined : { sender, tokenType: buf.slice(33, 65), amount: readUint128(buf, 65) };
+    }
+    case 'unshielded-receive': {
+      const recipient = readEither(buf, 0);
+      return recipient === undefined
+        ? undefined
+        : { recipient, tokenType: buf.slice(33, 65), amount: readUint128(buf, 65) };
+    }
     case 'unshielded-mint':
       return { domainSep: buf.slice(0, 32), tokenType: buf.slice(32, 64), amount: readUint128(buf, 64) };
-    case 'unshielded-burn':
-      return { sender: readEither(buf, 0), tokenType: buf.slice(33, 65), amount: readUint128(buf, 65) };
+    case 'unshielded-burn': {
+      const sender = readEither(buf, 0);
+      return sender === undefined ? undefined : { sender, tokenType: buf.slice(33, 65), amount: readUint128(buf, 65) };
+    }
     case 'paused':
     case 'unpaused':
       return {};

@@ -136,6 +136,14 @@ describe('ContractLog.decode', () => {
       expect(event.version).toBe(0);
     });
 
+    it('degrades an out-of-range Either discriminant rather than decoding a wrong kind', () => {
+      const event = ContractLog.decode(Fixtures.invalidEitherDiscriminant);
+      expect(event.degraded).toBe(true);
+      expect(event.payload).toBeUndefined();
+      // The garbage sender must not leak into the indexed fields.
+      expect(ContractLog.indexedFields(event)).toEqual({});
+    });
+
     it('degrades a malformed envelope address without throwing', () => {
       const event = ContractLog.decode(Fixtures.malformedAddress);
       expect(event.degraded).toBe(true);
@@ -161,14 +169,17 @@ describe('ContractLog.decode', () => {
         raw.data.tag === 'cell' ? raw.data.content.value.reduce((n, s) => n + s.length, 0) : 0;
       for (const fixture of Fixtures.allStandardEvents) {
         const size = payloadLen(fixture);
-        // Exactly the declared size (arbitrary 0xff bytes): every field read must stay in bounds, so
-        // decoding neither throws nor degrades.
-        const exact = { ...fixture, data: Fixtures.dataCell(new Uint8Array(size).fill(0xff)) };
+        // Exactly the declared size, filled with 0x01: every field read must stay in bounds, so
+        // decoding neither throws nor degrades. 0x01 (not 0xff) is deliberate — it is a valid
+        // `Either` discriminant AND sets every `Maybe` flag to `some`, so the trailing
+        // `Uint<128>`/payload reads are actually exercised at their maximal offset rather than
+        // short-circuited by a `none` flag or degraded by an out-of-range discriminant.
+        const exact = { ...fixture, data: Fixtures.dataCell(new Uint8Array(size).fill(0x01)) };
         expect(() => ContractLog.decode(exact)).not.toThrow();
         expect(ContractLog.decode(exact).degraded).toBe(false);
         // One byte short: the length guard must degrade it (again without throwing).
         if (size > 0) {
-          const short = { ...fixture, data: Fixtures.dataCell(new Uint8Array(size - 1).fill(0xff)) };
+          const short = { ...fixture, data: Fixtures.dataCell(new Uint8Array(size - 1).fill(0x01)) };
           expect(() => ContractLog.decode(short)).not.toThrow();
           expect(ContractLog.decode(short).degraded).toBe(true);
         }

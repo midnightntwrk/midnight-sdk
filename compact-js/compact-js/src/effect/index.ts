@@ -25,6 +25,7 @@ export * as ContractExecutableRuntime from './ContractExecutableRuntime.js';
 export * as ContractKeyLocation from './ContractKeyLocation.js';
 export * as ContractLog from './ContractLog.js';
 export * as ContractRuntimeError from './ContractRuntimeError.js';
+export * as MalformedHexPrefixError from './MalformedHexPrefixError.js';
 export * as ZKConfiguration from './ZKConfiguration.js';
 export * as ZKConfigurationReadError from './ZKConfigurationReadError.js';
 export * as ZKManifest from './ZKManifest.js';

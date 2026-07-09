@@ -234,3 +234,14 @@ export const fallbackVersionZero: LogEvent = {
  * variant and degrade rather than crash.
  */
 export const malformedAddress: LogEvent = event('shielded-spend', bytes32(0x11), 'deadbeef');
+
+/**
+ * An `unshielded-spend` whose `Either` sender discriminant is `2` — structurally invalid (the
+ * discriminant is `0` = coin-public-key or `1` = contract-address). The declared size is met, so
+ * only the out-of-range discriminant marks this as garbage; the decoder must degrade rather than
+ * decode to a confident wrong `kind`.
+ */
+export const invalidEitherDiscriminant: LogEvent = event(
+  'unshielded-spend',
+  concat(Uint8Array.of(2), bytes32(0x51), bytes32(0x52), uint128(1_000n))
+);

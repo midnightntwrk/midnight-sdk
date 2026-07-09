@@ -43,6 +43,7 @@ import type * as ContractAddress from '@midnight-ntwrk/platform-js/effect/Contra
 import { Context, Effect, Layer, PubSub, Ref, Stream } from 'effect';
 
 import * as ContractLog from './ContractLog.js';
+import * as MalformedHexPrefixError from './MalformedHexPrefixError.js';
 
 /**
  * A {@link ContractLog.ContractEvent} accumulated in a {@link ContractEventStore}, tagged with the
@@ -66,6 +67,8 @@ export interface FieldPrefixFilter {
    * field's bytes. Matching is nibble-granular: use an **even-length** prefix for byte-accurate
    * matching (e.g. `'07'` matches only the byte `0x07`), since an odd-length prefix such as `'7'`
    * matches any field whose first byte is `0x70`–`0x7f`. An empty prefix matches any present field.
+   * A prefix that is not valid hex fails the `query`/`subscribe` with a
+   * {@link MalformedHexPrefixError.MalformedHexPrefixError} rather than silently matching nothing.
    */
   readonly prefix: string;
 }
@@ -116,9 +119,13 @@ export declare namespace ContractEventStore {
      * Returns the accumulated events matching `filter`, in ascending `id` order.
      *
      * @param filter The criteria to match; when omitted, all events are returned.
-     * @returns An `Effect` yielding the matching events.
+     * @returns An `Effect` yielding the matching events, or failing with a
+     * {@link MalformedHexPrefixError.MalformedHexPrefixError} if any `fieldPrefixes` prefix is not
+     * valid hex.
      */
-    readonly query: (filter?: ContractEventFilter) => Effect.Effect<readonly StoredEvent[]>;
+    readonly query: (
+      filter?: ContractEventFilter
+    ) => Effect.Effect<readonly StoredEvent[], MalformedHexPrefixError.MalformedHexPrefixError>;
 
     /**
      * Subscribes to a live, filtered, resumable feed of events in ascending `id` order.
@@ -137,18 +144,42 @@ export declare namespace ContractEventStore {
      * events should periodically reconcile via `query`, and after falling behind reconnect with an
      * updated `fromId` to backfill the missed events from the retained history.
      *
-     * @param filter The criteria to match; when omitted, every event is delivered.
+     * @param filter The criteria to match; when omitted, every event is delivered. A `fieldPrefixes`
+     * prefix that is not valid hex fails the stream with a
+     * {@link MalformedHexPrefixError.MalformedHexPrefixError}.
      * @returns A `Stream` of matching events.
      */
-    readonly subscribe: (filter?: ContractEventFilter) => Stream.Stream<StoredEvent>;
+    readonly subscribe: (
+      filter?: ContractEventFilter
+    ) => Stream.Stream<StoredEvent, MalformedHexPrefixError.MalformedHexPrefixError>;
   }
 }
 
 // --- filter matching --------------------------------------------------------------------------
 
+/** Lowercase and strip a single leading `0x`; does NOT validate that the result is hex. */
 const normalizeHex = (hex: string): string => hex.toLowerCase().replace(/^0x/, '');
 
+/** A (possibly empty) run of lowercase hex digits — the shape a normalized prefix must have. */
+const HEX_PREFIX = /^[0-9a-f]*$/;
+
 const HEX_DIGITS = '0123456789abcdef';
+
+/**
+ * Validates that every `fieldPrefixes` prefix in a filter is valid hex, failing fast with a
+ * {@link MalformedHexPrefixError.MalformedHexPrefixError} otherwise. A non-hex prefix is a caller
+ * programming error that would otherwise silently match nothing (see {@link bytesHaveHexPrefix}),
+ * so it is surfaced rather than swallowed — distinct from the never-throw contract that governs
+ * on-chain event decoding.
+ */
+const validateFilter = (filter?: ContractEventFilter): Effect.Effect<void, MalformedHexPrefixError.MalformedHexPrefixError> =>
+  Effect.gen(function* () {
+    if (filter?.fieldPrefixes === undefined) return;
+    for (const { prefix } of filter.fieldPrefixes) {
+      const normalized = normalizeHex(prefix);
+      if (!HEX_PREFIX.test(normalized)) return yield* Effect.fail(MalformedHexPrefixError.make(normalized));
+    }
+  });
 
 /**
  * Tests whether `bytes` begins with the (already-normalized, lowercase) hex `prefix`, comparing
@@ -259,11 +290,16 @@ export const makeLayer = (capacity: number = DEFAULT_CAPACITY): Layer.Layer<Cont
         );
 
       const query: ContractEventStore.Service['query'] = (filter) =>
-        Ref.get(state).pipe(Effect.map((current) => current.events.filter((event) => matches(event, filter))));
+        validateFilter(filter).pipe(
+          Effect.andThen(Ref.get(state)),
+          Effect.map((current) => current.events.filter((event) => matches(event, filter)))
+        );
 
       const subscribe: ContractEventStore.Service['subscribe'] = (filter) =>
         Stream.unwrapScoped(
           Effect.gen(function* () {
+            // Reject a malformed query prefix before wiring up the subscription (fails the stream).
+            yield* validateFilter(filter);
             // Subscribe to the live feed BEFORE snapshotting history, so no event appended during
             // set-up can slip through the gap between the two.
             const subscription = yield* PubSub.subscribe(pubsub);
