@@ -232,6 +232,10 @@ export declare namespace ContractExecutable {
    * order; each event is tagged with its emitting contract's address, so a per-contract view is a
    * filter over that tag. Events are NOT consensus state and are handled by the indexer; size and
    * well-formedness are enforced on-chain by the ledger/VM (degraded, not failed) per MIP-0002.
+   *
+   * The events are kept **raw** here to avoid paying decode cost when unused. To obtain typed,
+   * per-event payloads, decode on demand with `ContractLog.decodeAll(result.events)` (which
+   * degrades gracefully and never throws); feed them to a `ContractEventStore` to query/subscribe.
    */
   export type CallResult<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
     readonly result: Contract.Contract.CircuitReturnType<C, K>;
