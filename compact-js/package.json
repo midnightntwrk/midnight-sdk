@@ -24,7 +24,7 @@
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s"
   },
   "dependencies": {
-    "@effect/platform": "^0.96.1",
+    "@effect/platform": "^0.96.2",
     "effect": "^3.21.4"
   },
   "devDependencies": {
