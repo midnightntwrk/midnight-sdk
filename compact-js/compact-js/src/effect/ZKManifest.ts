@@ -111,13 +111,178 @@ const RESERVED_KEYS: ReadonlySet<string> = new Set([
   RUNTIME_VERSION_KEY
 ]);
 
-// The JSON parse happens inside the decode boundary via {@link Schema.parseJson}, rather than a
-// hand-rolled `JSON.parse`: Effect's decoder is safe against prototype pollution (a `__proto__` key
-// is dropped, never assigned, so it cannot rewrite the object's prototype), so no manual key scanning
-// is needed. `onExcessProperty: 'error'` rejects unknown keys on the file-leaf struct, in keeping
-// with the "reject what we cannot interpret" posture. (Records match every key via their index
-// signature, so this only tightens `ManifestFileSchema`.)
-const decodeManifestDocument = Schema.decodeUnknown(Schema.parseJson(ManifestDocumentSchema), {
+// JSON.parse collapses duplicate object keys silently (keeping the last occurrence), which
+// would let a tampered manifest with a shadow file entry pass without error. To catch this at the
+// JSON layer — before the manifest ever reaches the Schema validator — we parse with a custom
+// reviver that detects and rejects duplicate keys. `JSON.parse`'s own prototype-pollution guard
+// (it never assigns a `__proto__` property back onto the decoded object) is preserved.
+//
+// `onExcessProperty: 'error'` rejects unknown keys on the file-leaf struct, in keeping with the
+// "reject what we cannot interpret" posture. (Records match every key via their index signature, so
+// this only tightens `ManifestFileSchema`.)
+const parseJsonRejectingDuplicateKeys = (raw: string): unknown => {
+  // Walker state — index walks the raw string without slicing or regex splitting.
+  let index = 0;
+  const input = raw;
+
+  const fail = (msg: string): never => {
+    throw new ZKManifestError.ZKManifestError(`Invalid ZK artifact manifest: ${msg}`);
+  };
+
+  /** Advances past any whitespace (JSON is whitespace-safe between tokens). */
+  const skipWs = () => {
+    while (index < input.length && (input[index] === ' ' || input[index] === '\n' || input[index] === '\r' || input[index] === '\t')) {
+      index++;
+    }
+  };
+
+  /** Reads a double-quoted JSON string, returning the decoded JS string value. Throws on invalid UTF-8 or unterminated strings. */
+  const parseString = (): string => {
+    if (input[index] !== '"') fail(`Expected '"' at position ${index}`);
+    index++;
+    let result = '';
+    while (index < input.length && input[index] !== '"') {
+      const ch = input[index];
+      if (ch === '\\') {
+        index++;
+        if (index >= input.length) fail('Unexpected end of string');
+        const esc = input[index];
+        if (esc === '"' || esc === '\\' || esc === '/') { result += esc; index++; }
+        else if (esc === 'n') { result += '\n'; index++; }
+        else if (esc === 'r') { result += '\r'; index++; }
+        else if (esc === 't') { result += '\t'; index++; }
+        else if (esc === 'u') {
+          if (index + 4 > input.length) fail('Unexpected end of string');
+          const hex = input.slice(index + 1, index + 5);
+          if (!/^[0-9a-fA-F]{4}$/.test(hex)) fail(`Invalid unicode escape \\u${hex}`);
+          result += String.fromCharCode(parseInt(hex, 16));
+          index += 5;
+        } else fail(`Unsupported escape \\${esc}`);
+      } else if (ch === '"') {
+        break;
+      } else if (ch.charCodeAt(0) < 0x20) {
+        fail(`Control character ${ch.charCodeAt(0)} in string`);
+      } else {
+        result += ch;
+        index++;
+      }
+    }
+    if (index >= input.length || input[index] !== '"') fail('Unterminated string');
+    index++; // consume closing quote
+    return result;
+  };
+
+  /** Parses a JSON value, returning the decoded JS value. */
+  const parseValue = (): unknown => {
+    skipWs();
+    if (index >= input.length) fail('Unexpected end of input');
+    const ch = input[index];
+    if (ch === '{') return parseObject();
+    if (ch === '[') return parseArray();
+    if (ch === '"') return parseString();
+    if (ch === 't') {
+      if (input.slice(index, index + 4) !== 'true') fail('Invalid literal');
+      index += 4; return true;
+    }
+    if (ch === 'f') {
+      if (input.slice(index, index + 5) !== 'false') fail('Invalid literal');
+      index += 5; return false;
+    }
+    if (ch === 'n') {
+      if (input.slice(index, index + 4) !== 'null') fail('Invalid literal');
+      index += 4; return null;
+    }
+    if (ch === '-' || (ch.charCodeAt(0) >= 48 && ch.charCodeAt(0) <= 57)) return parseNumber();
+    fail(`Unexpected character '${ch}'`);
+  };
+
+  /** Parses a JSON number, returning a JS number. */
+  const parseNumber = (): number => {
+    const start = index;
+    if (input[index] === '-') index++;
+    if (index >= input.length) fail('Unexpected end of number');
+    if (input[index] === '0') {
+      index++;
+    } else if (input[index].charCodeAt(0) >= 49 && input[index].charCodeAt(0) <= 57) {
+      while (index < input.length && input[index].charCodeAt(0) >= 48 && input[index].charCodeAt(0) <= 57) index++;
+    } else {
+      fail('Invalid number');
+    }
+    if (input[index] === '.') {
+      index++;
+      while (index < input.length && input[index].charCodeAt(0) >= 48 && input[index].charCodeAt(0) <= 57) index++;
+    }
+    if (input[index] === 'e' || input[index] === 'E') {
+      index++;
+      if (input[index] === '+' || input[index] === '-') index++;
+      while (index < input.length && input[index].charCodeAt(0) >= 48 && input[index].charCodeAt(0) <= 57) index++;
+    }
+    const numStr = input.slice(start, index);
+    const num = Number(numStr);
+    if (!Number.isFinite(num)) fail(`Invalid number: ${numStr}`);
+    return num;
+  };
+
+  /** Parses a JSON array, returning a JS array. */
+  const parseArray = (): unknown[] => {
+    if (input[index] !== '[') fail("Expected '['");
+    index++;
+    const arr: unknown[] = [];
+    skipWs();
+    if (input[index] === ']') { index++; return arr; }
+    for (;;) {
+      arr.push(parseValue());
+      skipWs();
+      if (input[index] === ']') { index++; return arr; }
+      if (input[index] !== ',') fail("Expected ',' or ']'");
+      index++;
+    }
+  };
+
+  /** Parses a JSON object, detecting duplicate keys and throwing a descriptive error. */
+  const parseObject = (): Record<string, unknown> => {
+    if (input[index] !== '{') fail("Expected '{'");
+    index++;
+    const obj: Record<string, unknown> = {};
+    skipWs();
+    if (input[index] === '}') { index++; return obj; }
+    for (;;) {
+      const key = parseString();
+      skipWs();
+      if (input[index] !== ':') fail("Expected ':'");
+      index++;
+      const val = parseValue();
+      // Reject duplicate keys — this is the security boundary.
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        fail(`Duplicate key '${key}' in JSON object`);
+      }
+      obj[key] = val;
+      skipWs();
+      if (input[index] === '}') { index++; return obj; }
+      if (input[index] !== ',') fail("Expected ',' or '}'");
+      index++;
+    }
+  };
+
+  const result = parseValue();
+  skipWs();
+  if (index !== input.length) fail(`Unexpected content after JSON value at position ${index}`);
+  return result;
+};
+
+/** Parses the manifest JSON, rejecting duplicate keys with a typed {@link ZKManifestError}. */
+const parseManifestJson = (raw: string): Record<string, unknown> => {
+  try {
+    return parseJsonRejectingDuplicateKeys(raw) as Record<string, unknown>;
+  } catch (err) {
+    // Wrap non-ZKManifestError throws (e.g. from the manual parser) as typed errors.
+    if (err instanceof ZKManifestError.ZKManifestError) throw err;
+    throw new ZKManifestError.ZKManifestError(`Invalid ZK artifact manifest: ${err instanceof Error ? err.message : String(err)}`);
+  }
+};
+
+/** Decodes a pre-parsed manifest document object against the schema. */
+const decodeManifestDocument = Schema.decodeUnknown(ManifestDocumentSchema, {
   errors: 'all',
   onExcessProperty: 'error'
 });
@@ -169,9 +334,16 @@ const formatParseError = (parseError: ParseError): string => {
  * @category constructors
  */
 export const parse = (rawJson: string): Effect.Effect<ZKManifest, ZKManifestError.ZKManifestError> =>
-  decodeManifestDocument(rawJson).pipe(
-    Effect.mapError((parseError) =>
-      ZKManifestError.make(`Invalid ZK artifact manifest: ${formatParseError(parseError)}`, parseError)
+  // Step 1: parse JSON with duplicate-key detection at the JSON layer (throws ZKManifestError on
+  // duplicate keys).  Step 2: validate the decoded structure against the schema (typed failure on
+  // schema errors, wrapping parse errors from the schema layer).
+  Effect.try({ try: () => parseManifestJson(rawJson), catch: (err) => err as ZKManifestError.ZKManifestError }).pipe(
+    Effect.flatMap((document) =>
+      (decodeManifestDocument(document) as Effect.Effect<Record<string, unknown>, ZKManifestError.ZKManifestError>).pipe(
+        Effect.mapError((parseError) =>
+          ZKManifestError.make(`Invalid ZK artifact manifest: ${formatParseError(parseError)}`, parseError)
+        )
+      )
     ),
     Effect.flatMap((document) => {
       // Reserved keys must hold strings. Reject a present-but-malformed value (e.g. an object that

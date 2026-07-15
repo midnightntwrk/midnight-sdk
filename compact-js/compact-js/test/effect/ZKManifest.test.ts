@@ -260,4 +260,62 @@ describe('ZKManifest.parse', () => {
       expect(ZKManifestError.isManifestError(error)).toBe(true);
     })
   );
+
+  // ─── Duplicate-key detection ─────────────────────────────────────────────────
+
+  it.effect('fails when a top-level duplicate key is present', () =>
+    // A tampered manifest that repeats `"keys"` with a different value must not silently
+    // drop the first occurrence — that would let a shadow file entry pass unverified.
+    Effect.gen(function* () {
+      const tamperedManifest = JSON.stringify({
+        'manifest-version': '1',
+        keys: { type: 'directory', 'clear.verifier': { type: 'file', size: 2119, hash: HASH } },
+        keys: { type: 'directory', 'clear.verifier': { type: 'file', size: 9999, hash: 'b'.repeat(64) } }
+      });
+      const error = yield* ZKManifest.parse(tamperedManifest).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('keys');
+      expect(error.message).toContain('Duplicate');
+    })
+  );
+
+  it.effect('fails when a nested directory key is duplicated', () =>
+    Effect.gen(function* () {
+      // The second `"clear.verifier"` entry wins silently with stock JSON.parse; we must reject it.
+      const tamperedManifest = JSON.stringify({
+        'manifest-version': '1',
+        keys: {
+          type: 'directory',
+          'clear.verifier': { type: 'file', size: 2119, hash: HASH },
+          'clear.verifier': { type: 'file', size: 9999, hash: 'b'.repeat(64) }
+        }
+      });
+      const error = yield* ZKManifest.parse(tamperedManifest).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('clear.verifier');
+      expect(error.message).toContain('Duplicate');
+    })
+  );
+
+  it.effect('accepts a well-formed manifest with no duplicate keys', () =>
+    Effect.gen(function* () {
+      // Sanity check: the fix must not break valid manifests.
+      const manifest = yield* parseJson(validManifest);
+      expect(manifest.files.size).toBe(4);
+    })
+  );
+
+  it.effect('accepts a manifest with all optional metadata fields absent', () =>
+    Effect.gen(function* () {
+      const manifest = yield* parseJson({
+        'manifest-version': '1',
+        keys: { type: 'directory', 'clear.prover': { type: 'file', size: 2820290, hash: HASH } }
+      });
+      expect(manifest.manifestVersion).toBe('1');
+      expect(manifest.compilerVersion).toBeUndefined();
+      expect(manifest.languageVersion).toBeUndefined();
+      expect(manifest.runtimeVersion).toBeUndefined();
+      expect(manifest.files.size).toBe(1);
+    })
+  );
 });
