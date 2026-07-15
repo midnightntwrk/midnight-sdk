@@ -315,6 +315,18 @@ describe('ZKManifest.parse', () => {
     })
   );
 
+  it.effect('does not treat repeated strings inside a JSON array as duplicate keys', () =>
+    // Array elements are not object keys, so repeated strings inside an array must not trip the
+    // duplicate-key scan. The array itself is not a valid manifest shape, so this fails at decode
+    // rather than as a duplicate key — pinning the scanner's array-frame handling.
+    Effect.gen(function* () {
+      const rawJson = `{"manifest-version":"1","keys":["clear.verifier","clear.verifier"]}`;
+      const error = yield* ZKManifest.parse(rawJson).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).not.toContain('duplicate key');
+    })
+  );
+
   it.effect('rejects a directory nested more than one level deep', () =>
     Effect.gen(function* () {
       const error = yield* parseJson({
