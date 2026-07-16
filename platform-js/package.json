@@ -1,7 +1,7 @@
 {
   "name": "@midnight-ntwrk/platform-js-sources",
   "description": "",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "private": true,
   "packageManager": "yarn@4.10.3",
   "repository": "git@github.com:midnight-ntwrk/artifacts",
@@ -16,7 +16,11 @@
     "clean": "turbo run clean",
     "test": "turbo run test",
     "package": "turbo run package",
-    "lint": "eslint"
+    "lint": "eslint",
+    "changeset": "changeset",
+    "changeset:status": "changeset status --since=origin/main",
+    "changeset:version": "changeset version && yarn install --mode=update-lockfile",
+    "changeset:publish": "yarn build && yarn package && node scripts/release.mjs"
   },
   "dependencies": {
     "@effect/platform": "^0.96.2",
@@ -29,6 +33,8 @@
     "glob": ">=13.0.1"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.5.1",
+    "@changesets/cli": "^2.29.7",
     "@effect/build-utils": "^0.8.9",
     "@effect/vitest": "^0.29.0",
     "@eslint/js": "^10.0.1",
