@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-undef */
 // Publish the built package tarballs of this workspace root to the registry.
 //
 // Why this exists: packages here publish the `@effect/build-utils pack-v3`
