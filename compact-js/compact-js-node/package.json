@@ -17,7 +17,7 @@
     "@effect/platform-node": "^0.107.0",
     "@effect/rpc": "^0.75.1",
     "@effect/sql": "^0.51.1",
-    "@effect/workflow": "^0.18.2",
+    "@effect/workflow": "^0.19.0",
     "effect": "^3.21.4",
     "tslib": "^2.8.1"
   },
