@@ -21,13 +21,18 @@
     "test": "turbo run test",
     "package": "turbo run package",
     "lint": "eslint",
-    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s"
+    "changeset": "changeset",
+    "changeset:status": "changeset status --since=origin/main",
+    "changeset:version": "changeset version && yarn install --mode=update-lockfile",
+    "changeset:publish": "yarn build && yarn package && node scripts/release.mjs"
   },
   "dependencies": {
     "@effect/platform": "^0.96.2",
     "effect": "^3.21.4"
   },
   "devDependencies": {
+    "@changesets/changelog-github": "^0.5.1",
+    "@changesets/cli": "^2.29.7",
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^19.0.0",
     "@effect/build-utils": "^0.8.9",
