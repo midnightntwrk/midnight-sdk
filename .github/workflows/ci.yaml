@@ -31,12 +31,12 @@ jobs:
       build_p_js: ${{ steps.build-targets.outputs.platform-js }}
 
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v5
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # ratchet:actions/checkout@v5
         with:
           fetch-depth: 0
 
       - name: Determine Build Targets
-        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d
+        uses: dorny/paths-filter@7b450fff21473bca461d4b92ce414b9d0420d706
         id: build-targets
         with:
           filters: |

@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/platform-js",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "description": "Provides a set of core abstractions, utilities, and types for building services and libraries that work with the Midnight blockchain",
   "type": "module",
   "exports": {
@@ -11,8 +11,8 @@
     "./effect/internal/*": null
   },
   "dependencies": {
-    "@effect/platform": "^0.96.1",
-    "effect": "^3.21.0",
+    "@effect/platform": "^0.96.2",
+    "effect": "^3.21.4",
     "tslib": "^2.8.1"
   },
   "repository": {

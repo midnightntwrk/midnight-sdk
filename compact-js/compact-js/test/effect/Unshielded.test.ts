@@ -27,9 +27,9 @@ import {
 } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState, decodeRawTokenType, encodeRawTokenType, rawTokenType } from '@midnight-ntwrk/compact-runtime';
-import { ContractDeploy, ContractState as LedgerContractState } from '@midnight-ntwrk/ledger-v8';
 import { CoinPublicKey, ContractAddress, DomainSeparator } from '@midnight-ntwrk/platform-js';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import { ContractDeploy, ContractState as LedgerContractState } from '@midnightntwrk/ledger-v9';
 import { ConfigProvider, Effect, Layer } from 'effect';
 
 import { UnshieldedContract } from '../contract';
@@ -53,6 +53,17 @@ const testLayer = (configMap: Map<string, string>) =>
     )
   );
 const runtime = ContractExecutableRuntime.make(testLayer(new Map([['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY]])));
+
+// The root contract's call is the last entry in `calls` (callees precede it). These tests
+// perform no cross-contract calls, so `calls` holds exactly the root call.
+const rootPartitionedTranscript = (
+  result: {
+    readonly calls: readonly {
+      readonly public: { readonly partitionedTranscript: ContractExecutable.ContractExecutable.PartitionedTranscript };
+    }[];
+  }
+): ContractExecutable.ContractExecutable.PartitionedTranscript =>
+  result.calls[result.calls.length - 1].public.partitionedTranscript;
 
 const inputsAndOutputs: (
   partitionedTranscript: ContractExecutable.ContractExecutable.PartitionedTranscript
@@ -141,7 +152,7 @@ describe('Unshielded Tokens', () => {
 
       expect(mintResult).toBeDefined();
 
-      const [spends, mints] = spendsAndMints(mintResult.public.partitionedTranscript);
+      const [spends, mints] = spendsAndMints(rootPartitionedTranscript(mintResult));
 
       expect(spends).toMatchObject({
         [address]: {
@@ -170,7 +181,7 @@ describe('Unshielded Tokens', () => {
 
       expect(mintResult).toBeDefined();
 
-      const [spends, mints] = spendsAndMints(mintResult.public.partitionedTranscript);
+      const [spends, mints] = spendsAndMints(rootPartitionedTranscript(mintResult));
 
       expect(spends).toMatchObject({
         [VALID_COIN_PUBLIC_KEY]: {
@@ -198,7 +209,7 @@ describe('Unshielded Tokens', () => {
 
       expect(mintResult).toBeDefined();
 
-      const [spends, mints] = spendsAndMints(mintResult.public.partitionedTranscript);
+      const [spends, mints] = spendsAndMints(rootPartitionedTranscript(mintResult));
 
       expect(spends).toMatchObject({
         [deployment.address]: {
@@ -232,8 +243,8 @@ describe('Unshielded Tokens', () => {
 
       expect(spendResult).toBeDefined();
 
-      const [_, outputs] = inputsAndOutputs(spendResult.public.partitionedTranscript);
-      const [spends, mints] = spendsAndMints(spendResult.public.partitionedTranscript);
+      const [_, outputs] = inputsAndOutputs(rootPartitionedTranscript(spendResult));
+      const [spends, mints] = spendsAndMints(rootPartitionedTranscript(spendResult));
       const tokenType = decodeRawTokenType(color);
 
       expect(spends).toMatchObject({
@@ -270,8 +281,8 @@ describe('Unshielded Tokens', () => {
 
       expect(spendResult).toBeDefined();
 
-      const [inputs] = inputsAndOutputs(spendResult.public.partitionedTranscript);
-      const [_, mints] = spendsAndMints(spendResult.public.partitionedTranscript);
+      const [inputs] = inputsAndOutputs(rootPartitionedTranscript(spendResult));
+      const [_, mints] = spendsAndMints(rootPartitionedTranscript(spendResult));
       const tokenType = decodeRawTokenType(color);
 
       expect(inputs).toMatchObject({

@@ -19,9 +19,16 @@ import { Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
-import { circuitCommand,ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
-import { LedgerParameters } from '@midnight-ntwrk/ledger-v8';
-import { Console,Effect, Layer } from 'effect';
+import { circuitCommand, ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
+import {
+  type ContractCall,
+  Intent,
+  LedgerParameters,
+  type PreBinding,
+  type PreProof,
+  type SignatureEnabled
+} from '@midnightntwrk/ledger-v9';
+import { Console, Effect, Layer } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
 import * as MockConsole from './MockConsole.js';
@@ -34,6 +41,7 @@ const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counte
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.json');
 const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_zswap.json');
 const COUNTER_RESULT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/result.json');
+const COUNTER_OUTPUT_EVENTS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_events.json');
 
 const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext | FileSystem.FileSystem> =
   Effect.gen(function* () {
@@ -45,39 +53,100 @@ const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeCon
   }).pipe(Layer.unwrapEffect);
 
 describe('Circuit Command', () => {
-  it.effect('should report error for unknown circuit in manifest', () =>
-    Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem;
-      yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
+  it.effect(
+    'should report error for unknown circuit in manifest',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
 
-      const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
-      
-      yield* cli([
-        'node', 'circuit.ts',
-        '-c', COUNTER_CONFIG_FILEPATH,
-        '--input', COUNTER_STATE_FILEPATH,
-        '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
-        '--output', COUNTER_OUTPUT_FILEPATH,
-        '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
-        '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
-        '--output-result', COUNTER_RESULT_FILEPATH,
-        '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'unknown_circuit'
-      ]);
+        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
 
-      const lines = yield* MockConsole.getLines({ stripAnsi: true });
-      
-      expect(lines.length).toBe(1);
-      expect(lines[0]).toMatch(/Circuit 'unknown_circuit' not found/);
-    }).pipe(
-      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
-      Effect.provide(testLayer)
-    ),
+        yield* cli([
+          'node',
+          'circuit.ts',
+          '-c',
+          COUNTER_CONFIG_FILEPATH,
+          '--input',
+          COUNTER_STATE_FILEPATH,
+          '--input-ps',
+          COUNTER_OUTPUT_PS_FILEPATH,
+          '--output',
+          COUNTER_OUTPUT_FILEPATH,
+          '--output-ps',
+          COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-zswap',
+          COUNTER_OUTPUT_ZSWAP_FILEPATH,
+          '--output-result',
+          COUNTER_RESULT_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a',
+          'unknown_circuit'
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.length).toBe(1);
+        expect(lines[0]).toMatch(/Circuit 'unknown_circuit' not found/);
+      }).pipe(Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)), Effect.provide(testLayer)),
     30_000
   );
 
-  it.effect('should report success with valid setup', () =>
+  it.effect(
+    'should report success with valid setup',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
+
+        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+
+        yield* cli([
+          'node',
+          'circuit.ts',
+          '-c',
+          COUNTER_CONFIG_FILEPATH,
+          '--input',
+          COUNTER_STATE_FILEPATH,
+          '--input-ps',
+          COUNTER_OUTPUT_PS_FILEPATH,
+          '--output',
+          COUNTER_OUTPUT_FILEPATH,
+          '--output-oc',
+          COUNTER_OUTPUT_OC_FILEPATH,
+          '--output-ps',
+          COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-zswap',
+          COUNTER_OUTPUT_ZSWAP_FILEPATH,
+          '--output-result',
+          COUNTER_RESULT_FILEPATH,
+          '--output-events',
+          COUNTER_OUTPUT_EVENTS_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a',
+          'increment'
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.length).toBe(0);
+        expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_PS_FILEPATH))).toMatchObject({ count: 101 });
+        expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_EVENTS_FILEPATH))).toEqual([]);
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_EVENTS_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
+    30_000
+  );
+
+  it.effect('produces a valid single-call intent for a non-cross-contract circuit', () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
+      const COUNTER_ADDRESS = '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a';
       yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
 
       const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
@@ -88,21 +157,25 @@ describe('Circuit Command', () => {
         '--input', COUNTER_STATE_FILEPATH,
         '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
         '--output', COUNTER_OUTPUT_FILEPATH,
-        '--output-oc', COUNTER_OUTPUT_OC_FILEPATH,
         '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
         '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
         '--output-result', COUNTER_RESULT_FILEPATH,
-        '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
+        COUNTER_ADDRESS, 'increment'
       ]);
 
-      const lines = yield* MockConsole.getLines({ stripAnsi: true });
-      
-      expect(lines.length).toBe(0);
-      expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_PS_FILEPATH))).toMatchObject({ count: 101 });
+      // With no --contract-states-dir the counter makes no cross-contract calls: the rewritten
+      // prototype-building path must still emit exactly one call — the root — for its own address.
+      const intent = Intent.deserialize<SignatureEnabled, PreProof, PreBinding>(
+        'signature', 'pre-proof', 'pre-binding', yield* fs.readFile(COUNTER_OUTPUT_FILEPATH)
+      );
+      const calls = intent.actions as ContractCall<PreProof>[];
+      expect(calls).toHaveLength(1);
+      expect(calls[0].address).toBe(COUNTER_ADDRESS);
+      const entryPoint = calls[0].entryPoint;
+      expect(typeof entryPoint === 'string' ? entryPoint : new TextDecoder().decode(entryPoint)).toBe('increment');
     }).pipe(
       Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
-      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
@@ -111,46 +184,59 @@ describe('Circuit Command', () => {
     30_000
   );
 
-  it.effect('should report success with valid ledger parameters', () =>
-    Effect.gen(function* () {
-      const fs = yield* FileSystem.FileSystem;
-      yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
+  it.effect(
+    'should report success with valid ledger parameters',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
 
-      const ledgerParameters = LedgerParameters.initialParameters();
-      ledgerParameters.feePrices.blockUsageFactor = 3; // Modify some aspect of the ledger parameters.
- 
-      yield* fs.writeFile(COUNTER_LEDGER_PARAMS_FILEPATH, ledgerParameters.serialize());
+        const ledgerParameters = LedgerParameters.initialParameters();
+        ledgerParameters.feePrices.blockUsageFactor = 3; // Modify some aspect of the ledger parameters.
 
-      const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+        yield* fs.writeFile(COUNTER_LEDGER_PARAMS_FILEPATH, ledgerParameters.serialize());
 
-      yield* cli([
-        'node', 'circuit.ts',
-        '-c', COUNTER_CONFIG_FILEPATH,
-        '--input', COUNTER_STATE_FILEPATH,
-        '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
-        '--input-ledger-params', COUNTER_LEDGER_PARAMS_FILEPATH,
-        '--output', COUNTER_OUTPUT_FILEPATH,
-        '--output-oc', COUNTER_OUTPUT_OC_FILEPATH,
-        '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
-        '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
-        '--output-result', COUNTER_RESULT_FILEPATH,
-        '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
-      ]);
+        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
 
-      const lines = yield* MockConsole.getLines({ stripAnsi: true });
-      
-      expect(lines.length).toBe(0);
-      expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_PS_FILEPATH))).toMatchObject({ count: 101 });
-    }).pipe(
-      Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
-      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
-      Effect.ensuring(ensureRemovePath(COUNTER_LEDGER_PARAMS_FILEPATH)),
-      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
-      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
-      Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
-      Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
-      Effect.provide(testLayer)
-    ),
+        yield* cli([
+          'node',
+          'circuit.ts',
+          '-c',
+          COUNTER_CONFIG_FILEPATH,
+          '--input',
+          COUNTER_STATE_FILEPATH,
+          '--input-ps',
+          COUNTER_OUTPUT_PS_FILEPATH,
+          '--input-ledger-params',
+          COUNTER_LEDGER_PARAMS_FILEPATH,
+          '--output',
+          COUNTER_OUTPUT_FILEPATH,
+          '--output-oc',
+          COUNTER_OUTPUT_OC_FILEPATH,
+          '--output-ps',
+          COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-zswap',
+          COUNTER_OUTPUT_ZSWAP_FILEPATH,
+          '--output-result',
+          COUNTER_RESULT_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a',
+          'increment'
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.length).toBe(0);
+        expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_PS_FILEPATH))).toMatchObject({ count: 101 });
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_LEDGER_PARAMS_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
     30_000
   );
 });

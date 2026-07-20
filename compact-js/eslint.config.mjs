@@ -114,5 +114,15 @@ export default tseslint.config(
       ],
     }
   },
+  {
+    // Node.js build/release utility scripts (run directly with `node`).
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      globals: {
+        process: 'readonly',
+        console: 'readonly'
+      }
+    }
+  },
   prettierConfig
 );

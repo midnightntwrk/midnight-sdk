@@ -39,7 +39,7 @@ jobs:
       run:
         working-directory: ./${{ inputs.workspace }} # Workspace name has affinity to a folder in the root of the repo.
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd  # ratchet:actions/checkout@v5
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # ratchet:actions/checkout@v5
         with:
           fetch-depth: 0
 
@@ -51,14 +51,14 @@ jobs:
           done
 
       - name: Log in to GitHub Container registry
-        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # ratchet:docker/login-action@v4.2.0
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # ratchet:docker/login-action@v4.4.0
         with:
           registry: 'https://ghcr.io'
           username: ${{ github.actor }}
           password: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # ratchet:actions/setup-node@v4
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v4
         with:
           always-auth: true
           registry-url: https://npm.pkg.github.com/
@@ -72,7 +72,7 @@ jobs:
           yarn config set 'npmRegistries["https://npm.pkg.github.com"].npmAuthToken' "$MIDNIGHTCI_PACKAGES_WRITE"
           yarn config set 'npmRegistries["https://npm.pkg.github.com"].npmAlwaysAuth' true
       - name: Cache Turbo and Yarn dependencies
-        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             **/node_modules
@@ -122,7 +122,7 @@ jobs:
 
       - name: Publish Test Coverage
         if: ${{ inputs.coverage-files }} # Publish the comment if we have received coverage files
-        uses: MishaKav/jest-coverage-comment@40d7aed38d0fbaea266c34c12ab06356eec894eb # ratchet:MishaKav/jest-coverage-comment@v1
+        uses: MishaKav/jest-coverage-comment@25f2818fee93043532f640ad32a7565b4bd4ea9a # ratchet:MishaKav/jest-coverage-comment@v1
         with:
           hide-comment: false
           unique-id-for-comment: ${{ inputs.workspace }}-coverage

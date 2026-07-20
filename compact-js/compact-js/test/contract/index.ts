@@ -13,6 +13,10 @@
  * limitations under the License.
  */
 
+import { Contract as _CCCInnerContract } from './managed/cccInner/contract';
+import { Contract as _CCCMiddleContract } from './managed/cccMiddle/contract';
+import { Contract as _CCCOuterContract } from './managed/cccOuter/contract';
+import { Contract as _CCCSelfContract } from './managed/cccSelf/contract';
 import { Contract as _CounterContract } from './managed/counter/contract';
 import { Contract as _UnshieldedContract } from './managed/unshielded/contract';
 
@@ -22,6 +26,18 @@ type CounterPrivateState = {
 
 export type CounterContract = _CounterContract<CounterPrivateState>;
 export const CounterContract = _CounterContract;
+
+export type CCCInnerContract = _CCCInnerContract<undefined>;
+export const CCCInnerContract = _CCCInnerContract;
+
+export type CCCMiddleContract = _CCCMiddleContract<undefined>;
+export const CCCMiddleContract = _CCCMiddleContract;
+
+export type CCCOuterContract = _CCCOuterContract<undefined>;
+export const CCCOuterContract = _CCCOuterContract;
+
+export type CCCSelfContract = _CCCSelfContract<undefined>;
+export const CCCSelfContract = _CCCSelfContract;
 
 export type UnshieldedContract = _UnshieldedContract<undefined>;
 export const UnshieldedContract = _UnshieldedContract;

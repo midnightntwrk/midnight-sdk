@@ -24,18 +24,17 @@ import {
 import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
+import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
+import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import {
   ContractDeploy,
   ContractState as LedgerContractState,
-  LedgerParameters,
-  partitionTranscripts,
-  PreTranscript,
   type ReplaceAuthority,
   type VerifierKeyInsert,
-  type VerifierKeyRemove
-} from '@midnight-ntwrk/ledger-v8';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
+  type VerifierKeyRemove,
+  verifySignature
+} from '@midnightntwrk/ledger-v9';
 import { ConfigProvider, Effect, Layer, Option } from 'effect';
 
 import { CounterContract } from '../contract';
@@ -44,7 +43,9 @@ const COUNTER_ASSETS_PATH = resolve(import.meta.dirname, '../contract/managed/co
 
 const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
 const INVALID_COIN_PUBLIC_KEY = 'INVALIDd9da5fcd4c601';
-const VALID_SIGNING_KEY = sampleSigningKey();
+// Ledger v9 signing keys are tagged objects; the configuration layer expects the bare hex string.
+const VALID_SIGNING_KEY = sampleSigningKey('schnorr').value;
+const VALID_ECDSA_SIGNING_KEY = sampleSigningKey('ecdsa').value;
 
 const asLedgerContractState = (contractState: ContractState): LedgerContractState =>
   LedgerContractState.deserialize(contractState.serialize());
@@ -100,7 +101,30 @@ describe('ContractExecutable', () => {
         const result = yield* contract.initialize(initialPS);
 
         expect(result.public.contractState).toBeDefined();
-        expect(result.private.signingKey).toBe(VALID_SIGNING_KEY);
+        expect(result.private.signingKey).toEqual(SigningKey.make(VALID_SIGNING_KEY));
+      })
+    );
+
+    it.effect('should derive an ECDSA maintenance authority from an ECDSA signing key', () =>
+      Effect.gen(function* () {
+        const contract = counterContract.pipe(
+          ContractExecutable.provide(
+            testLayer(
+              new Map([
+                ['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY],
+                ['KEYS_SIGNING', VALID_ECDSA_SIGNING_KEY],
+                ['KEYS_SIGNING_KIND', 'ecdsa']
+              ])
+            )
+          )
+        );
+        const result = yield* contract.initialize(initialPS);
+
+        expect(result.private.signingKey).toEqual(SigningKey.make(VALID_ECDSA_SIGNING_KEY, 'ecdsa'));
+        // The CMA verifying key must be derived with the caller-supplied scheme, not coerced to Schnorr.
+        const committee = asLedgerContractState(result.public.contractState).maintenanceAuthority.committee;
+        expect(committee).toHaveLength(1);
+        expect(committee[0].tag).toEqual('ecdsa');
       })
     );
 
@@ -147,32 +171,11 @@ describe('ContractExecutable', () => {
           privateState: { count: 0 }
         });
 
-        expect(result.public.contractState).toBeDefined();
-        expect(result.private.privateState).toMatchObject({ count: 1 });
+        expect(result.calls[result.calls.length - 1].public.contractState).toBeDefined();
+        expect(result.privateState).toMatchObject({ count: 1 });
       })
     );
 
-    it.effect('should expose the PreTranscript used to derive the partitioned transcript', () =>
-      Effect.gen(function* () {
-        const result = yield* contract.circuit(Contract.ProvableCircuitId<CounterContract>('increment'), {
-          address: ContractAddress.ContractAddress(deployment.address),
-          contractState: asContractState(deployment.initialState),
-          privateState: { count: 0 }
-        });
-
-        expect(result.public.preTranscript).toBeInstanceOf(PreTranscript);
-
-        const [guaranteed, fallible] = result.public.partitionedTranscript;
-        const repartitioned = partitionTranscripts(
-          [result.public.preTranscript],
-          LedgerParameters.initialParameters()
-        );
-        expect(repartitioned).toHaveLength(1);
-        const [reGuaranteed, reFallible] = repartitioned[0];
-        expect(reGuaranteed?.program).toEqual(guaranteed?.program);
-        expect(reFallible?.program).toEqual(fallible?.program);
-      })
-    );
   });
 
   describe('contract maintenance operations', () => {
@@ -211,7 +214,7 @@ describe('ContractExecutable', () => {
           (result.public.maintenanceUpdate.updates[0] as ReplaceAuthority).authority.counter
             - deployment.initialState.maintenanceAuthority.counter
         ).toEqual(1n);
-        expect(result.private.signingKey).not.toEqual(VALID_SIGNING_KEY);
+        expect(result.private.signingKey).not.toEqual(SigningKey.make(VALID_SIGNING_KEY));
       })
     );
 
@@ -228,7 +231,7 @@ describe('ContractExecutable', () => {
         expect(result.public.maintenanceUpdate).toBeDefined();
         expect(result.public.maintenanceUpdate.counter).toEqual(deployment.initialState.maintenanceAuthority.counter);
         expect((result.public.maintenanceUpdate.updates[0] as VerifierKeyRemove).operation).toEqual('increment');
-        expect(result.private.signingKey).toEqual(VALID_SIGNING_KEY);
+        expect(result.private.signingKey).toEqual(SigningKey.make(VALID_SIGNING_KEY));
       })
     );
 
@@ -246,7 +249,57 @@ describe('ContractExecutable', () => {
         expect(result.public.maintenanceUpdate).toBeDefined();
         expect(result.public.maintenanceUpdate.counter).toEqual(deployment.initialState.maintenanceAuthority.counter);
         expect((result.public.maintenanceUpdate.updates[0] as VerifierKeyInsert).operation).toEqual('increment');
-        expect(result.private.signingKey).toEqual(VALID_SIGNING_KEY);
+        expect(result.private.signingKey).toEqual(SigningKey.make(VALID_SIGNING_KEY));
+      })
+    );
+
+    it.effect('should sign a maintenance update with an ECDSA key that verifies against the installed authority', () =>
+      Effect.gen(function* () {
+        const ecdsaContract = counterContract.pipe(
+          ContractExecutable.provide(
+            testLayer(
+              new Map([
+                ['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY],
+                ['KEYS_SIGNING', VALID_ECDSA_SIGNING_KEY],
+                ['KEYS_SIGNING_KIND', 'ecdsa']
+              ])
+            )
+          )
+        );
+        const deployResult = yield* ecdsaContract.initialize({ count: 0 });
+        const ecdsaDeployment = new ContractDeploy(asLedgerContractState(deployResult.public.contractState));
+        const installedAuthority = ecdsaDeployment.initialState.maintenanceAuthority.committee[0];
+
+        const result = yield* ecdsaContract.removeContractOperation(
+          Contract.ProvableCircuitId<CounterContract>('increment'),
+          {
+            address: ContractAddress.ContractAddress(ecdsaDeployment.address),
+            contractState: asContractState(ecdsaDeployment.initialState),
+          }
+        );
+
+        const [, signature] = result.public.maintenanceUpdate.signatures[0];
+        expect(installedAuthority.tag).toEqual('ecdsa');
+        expect(signature.tag).toEqual('ecdsa');
+        expect(verifySignature(installedAuthority, result.public.maintenanceUpdate.dataToSign, signature)).toBe(true);
+      })
+    );
+
+    it.effect('should fail loudly when the signing key uses an unsupported signature scheme', () =>
+      Effect.gen(function* () {
+        // The typed API advertises only 'schnorr' | 'ecdsa'; a scheme outside that set must be
+        // rejected at the boundary rather than silently coerced to Schnorr.
+        const unsupportedKey = SigningKey.make(VALID_SIGNING_KEY, 'rsa' as SigningKey.SignatureKind);
+        const error = yield* contract.replaceContractMaintenanceAuthority(
+          Option.some(unsupportedKey),
+          {
+            address: ContractAddress.ContractAddress(deployment.address),
+            contractState: asContractState(deployment.initialState),
+          }
+        ).pipe(Effect.flip);
+
+        expect(error).toBeInstanceOf(ContractConfigurationError.ContractConfigurationError);
+        expect((error as ContractConfigurationError.ContractConfigurationError).message).toContain('rsa');
       })
     );
   });

@@ -1,8 +1,10 @@
 {
   "name": "@midnight-ntwrk/compact-js",
-  "version": "2.5.3",
+  "version": "2.5.5-rc.7",
   "description": "Typescript-based execution environment for smart contracts compiled with the Compact language",
   "type": "module",
+  "main": "./dist/cjs/index.js",
+  "types": "./dist/dts/index.d.ts",
   "exports": {
     "./package.json": "./package.json",
     ".": "./src/index.ts",
@@ -11,11 +13,12 @@
     "./effect/internal/*": null
   },
   "dependencies": {
-    "@effect/platform": "^0.96.1",
-    "@midnight-ntwrk/compact-runtime": "0.16.0",
-    "@midnight-ntwrk/ledger-v9": "^0.1.0-alpha.1",
-    "@midnight-ntwrk/platform-js": "^2.2.4",
-    "effect": "^3.20.0",
+    "@effect/platform": "^0.96.2",
+    "@midnight-ntwrk/compact-runtime": "0.18.0-rc.1",
+    "@midnight-ntwrk/platform-js": "^3.0.0",
+    "@midnightntwrk/ledger-v9": "^1.0.0-rc.3",
+    "@noble/hashes": "^2.2.0",
+    "effect": "^3.21.4",
     "tslib": "^2.8.1"
   },
   "repository": {
@@ -26,15 +29,20 @@
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
-    "build": "yarn build-compact && yarn build-esm && build-utils pack-v3",
+    "build": "yarn build-compact && yarn build-esm && yarn build-cjs && build-utils pack-v3",
     "build-esm": "tsc -b tsconfig.build.json",
+    "build-cjs": "tsc -b tsconfig.cjs.json",
     "build-compact": "(shx --negate test -d ./test/contract/managed && yarn compact || true)",
-    "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
+    "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage .tsbuildinfo",
     "test": "yarn build-compact && vitest run && tstyche",
-    "package": "shx rm -rf ./dist/src && (cd ./dist; npm pack)",
-    "compact": "fetch-compactc && yarn compact-counter && yarn compact-unshielded",
+    "package": "shx rm -rf ./dist/src && node ../scripts/resolve-workspace-protocol.mjs ./dist/package.json && (cd ./dist; npm pack)",
+    "compact": "fetch-compactc && yarn compact-counter && yarn compact-unshielded && yarn compact-ccc-inner && yarn compact-ccc-middle && yarn compact-ccc-outer && yarn compact-ccc-self",
     "compact-counter": "run-compactc ./test/contract/counter.compact ./test/contract/managed/counter",
-    "compact-unshielded": "run-compactc ./test/contract/unshielded.compact ./test/contract/managed/unshielded"
+    "compact-unshielded": "run-compactc ./test/contract/unshielded.compact ./test/contract/managed/unshielded",
+    "compact-ccc-inner": "run-compactc ./test/contract/cccInner.compact ./test/contract/managed/cccInner",
+    "compact-ccc-middle": "run-compactc ./test/contract/cccMiddle.compact ./test/contract/managed/cccMiddle",
+    "compact-ccc-outer": "run-compactc ./test/contract/cccOuter.compact ./test/contract/managed/cccOuter",
+    "compact-ccc-self": "run-compactc ./test/contract/cccSelf.compact ./test/contract/managed/cccSelf"
   },
   "files": [
     "dist/"

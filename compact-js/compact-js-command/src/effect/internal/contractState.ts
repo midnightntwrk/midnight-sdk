@@ -15,7 +15,10 @@
 
 import { ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { ContractState } from '@midnight-ntwrk/compact-runtime';
-import { ContractState as LedgerContractState } from '@midnight-ntwrk/ledger-v8';
+import {
+  type ContractOperation as LedgerContractOperation,
+  ContractState as LedgerContractState
+} from '@midnightntwrk/ledger-v9';
 import { Effect } from 'effect';
 
 /** @internal */
@@ -44,3 +47,26 @@ export const asContractState: (
     try: () => ContractState.deserialize(state.serialize()),
     catch: (err) => ContractRuntimeError.make('Unexpected error converting ledger contract state', err),
   });
+
+/**
+ * Resolves the {@link LedgerContractOperation} for a circuit from a contract's ledger state, failing
+ * with a {@link ContractRuntimeError.ContractRuntimeError} if absent. Used when assembling a
+ * cross-contract call's prototype: a state with no operation for the called circuit (e.g. a
+ * `--contract-states-dir` file for the wrong contract) would otherwise be cast from `undefined` and
+ * surface as an opaque native fault.
+ *
+ * @internal
+ */
+export const operationForCircuit: (
+  contractState: LedgerContractState,
+  circuitId: string,
+  contractAddress: string
+) => Effect.Effect<LedgerContractOperation, ContractRuntimeError.ContractRuntimeError> =
+  (state, circuitId, contractAddress) => {
+    const operation = state.operation(circuitId);
+    return operation === undefined
+      ? ContractRuntimeError.make(
+          `Contract state for '${contractAddress}' has no operation for circuit '${circuitId}'.`
+        )
+      : Effect.succeed(operation);
+  };
