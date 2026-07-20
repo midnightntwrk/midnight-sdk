@@ -154,6 +154,87 @@ const formatParseError = (parseError: ParseError): string => {
 };
 
 /**
+ * Scans raw JSON text for a duplicated object key — the one layer where the ambiguity is still
+ * visible. `JSON.parse` (and therefore {@link Schema.parseJson}) silently collapses duplicate keys
+ * within an object, keeping the last occurrence; a forged shadow entry with a tampered hash thus
+ * overwrites the honest one before any structural check runs. For an integrity manifest that is a
+ * classic tampering vector, so duplicates are rejected here, against the raw text, where they can
+ * still be seen — a `JSON.parse` reviver runs only *after* the merge and cannot help.
+ *
+ * The scan is a single iterative pass (no recursion — a pathologically deep manifest cannot overflow
+ * the call stack here) that tracks object/array nesting and, per object, the set of keys already
+ * seen. It is deliberately total: any input it cannot make sense of yields `undefined`, deferring the
+ * canonical syntax error to {@link Schema.parseJson}. Key tokens are decoded via `JSON.parse` so that
+ * escape-equivalent spellings (`"a"` and `"a"`) compare equal, matching how `JSON.parse` itself
+ * would collapse them.
+ *
+ * @returns The first duplicated key encountered, or `undefined` if there is none.
+ */
+const findDuplicateKey = (json: string): string | undefined => {
+  const stack: (Set<string> | null)[] = []; // Set → keys seen in an object frame; null → array frame
+  let awaitingKey = false;
+  const n = json.length;
+  let i = 0;
+  while (i < n) {
+    const ch = json[i];
+    switch (ch) {
+      case '{':
+        stack.push(new Set());
+        awaitingKey = true;
+        i++;
+        break;
+      case '[':
+        stack.push(null);
+        awaitingKey = false;
+        i++;
+        break;
+      case '}':
+      case ']':
+        stack.pop();
+        awaitingKey = false;
+        i++;
+        break;
+      case ',':
+        awaitingKey = stack[stack.length - 1] instanceof Set;
+        i++;
+        break;
+      case ':':
+        awaitingKey = false;
+        i++;
+        break;
+      case '"': {
+        // Find the closing quote, honouring backslash escapes so a `"` (or a `{`/`}`) inside a string
+        // value is never mistaken for structure.
+        const start = i++;
+        while (i < n && json[i] !== '"') {
+          if (json[i] === '\\') i++; // skip the escaped character
+          i++;
+        }
+        if (i >= n) return undefined; // unterminated string → let Schema.parseJson report it
+        i++; // consume the closing quote
+        const top = stack[stack.length - 1];
+        if (awaitingKey && top instanceof Set) {
+          let key: string;
+          try {
+            key = JSON.parse(json.slice(start, i)) as string; // decode escapes for a faithful compare
+          } catch {
+            return undefined;
+          }
+          if (top.has(key)) return key;
+          top.add(key);
+        }
+        awaitingKey = false;
+        break;
+      }
+      default:
+        i++;
+        break;
+    }
+  }
+  return undefined;
+};
+
+/**
  * Parses and validates the raw JSON contents of a ZK artifact manifest, flattening its
  * directory-nested entries into {@link ZKManifest.files}.
  *
@@ -169,10 +250,24 @@ const formatParseError = (parseError: ParseError): string => {
  * @category constructors
  */
 export const parse = (rawJson: string): Effect.Effect<ZKManifest, ZKManifestError.ZKManifestError> =>
-  decodeManifestDocument(rawJson).pipe(
-    Effect.mapError((parseError) =>
-      ZKManifestError.make(`Invalid ZK artifact manifest: ${formatParseError(parseError)}`, parseError)
-    ),
+  Effect.suspend(() => {
+    // Reject duplicate keys before decoding: `JSON.parse` would have already collapsed them to the
+    // last occurrence, letting a forged shadow entry silently overwrite the honest one. This is the
+    // only layer where that ambiguity is still visible.
+    const duplicateKey = findDuplicateKey(rawJson);
+    if (duplicateKey !== undefined) {
+      return Effect.fail(
+        ZKManifestError.make(
+          `ZK artifact manifest contains a duplicate key '${duplicateKey}'; an ambiguous manifest cannot be trusted as an integrity check.`
+        )
+      );
+    }
+    return decodeManifestDocument(rawJson).pipe(
+      Effect.mapError((parseError) =>
+        ZKManifestError.make(`Invalid ZK artifact manifest: ${formatParseError(parseError)}`, parseError)
+      )
+    );
+  }).pipe(
     Effect.flatMap((document) => {
       // Reserved keys must hold strings. Reject a present-but-malformed value (e.g. an object that
       // matched the directory arm of the union) rather than silently coercing it to "absent", which
@@ -242,8 +337,9 @@ export const parse = (rawJson: string): Effect.Effect<ZKManifest, ZKManifestErro
               ZKManifestError.make(`ZK artifact manifest file name '${key}/${fileName}' is not a valid path segment.`)
             );
           }
-          // With both segments validated as separator-free and unique within their JSON object, each
-          // `<dir>/<file>` path is necessarily unique, so no collision check is needed.
+          // With both segments validated as separator-free, and duplicate keys already rejected up
+          // front by {@link findDuplicateKey}, each `<dir>/<file>` path is necessarily unique, so no
+          // collision check is needed here.
           files.set(`${key}/${fileName}`, { size: fileNode.size, hash: fileNode.hash });
         }
       }
