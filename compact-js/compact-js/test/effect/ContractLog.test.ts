@@ -124,10 +124,15 @@ describe('ContractLog.decode', () => {
       expect(event.raw).toBe(Fixtures.degradedNullData);
     });
 
-    it('degrades a truncated payload', () => {
-      const event = ContractLog.decode(Fixtures.truncatedPayload);
-      expect(event.degraded).toBe(true);
-      expect(event.payload).toBeUndefined();
+    it('right-pads a short (trailing-zero-stripped) payload rather than degrading', () => {
+      // The wire strips trailing zero bytes, so a short buffer is normal, not degraded: an 8-byte
+      // shielded-spend decodes to the 8-byte prefix followed by zero pad (canonical width 32).
+      const event = ContractLog.decode(Fixtures.paddedShortSpend);
+      expect(event.degraded).toBe(false);
+      if (event.degraded || event.eventType !== 'shielded-spend') throw new Error('unreachable');
+      const expected = new Uint8Array(32);
+      expected.fill(0x77, 0, 8);
+      expect(event.payload.nullifier).toEqual(expected);
     });
 
     it('degrades the reserved fallback version 0', () => {
@@ -158,30 +163,31 @@ describe('ContractLog.decode', () => {
       expect(decoded.map((e) => e.degraded)).toEqual([false, true, false]);
     });
 
-    // The never-throw guarantee rests on an invariant: for every event type, the highest byte
-    // offset `decodePayload` reads must be < the declared payload size that gates it (an unchecked
-    // `readUint128`/`readEither` at an offset past the buffer end would throw a `TypeError`, not
-    // degrade). This exercises the boundary for every type so a future offset/size mismatch is
-    // caught here rather than surfacing as a runtime throw in a consumer.
-    it('never reads past the declared payload size — decodes a minimum-size buffer without throwing', () => {
-      // Ground truth for each type's declared size: the fixture's own payload length.
+    // The never-throw guarantee rests on `decodePayload` right-padding the raw buffer to the
+    // canonical payload size before slicing: every field read then stays in bounds regardless of how
+    // many trailing zero bytes the wire stripped. This exercises that for every type — a short buffer
+    // must decode (not degrade, not throw), so a future offset/size mismatch surfaces here rather
+    // than as a runtime throw in a consumer.
+    it('right-pads short buffers for every event type — never throws, never degrades', () => {
+      // Ground truth for each type's canonical size: the fixture's own payload length.
       const payloadLen = (raw: ContractLog.LogEvent): number =>
         raw.data.tag === 'cell' ? raw.data.content.value.reduce((n, s) => n + s.length, 0) : 0;
       for (const fixture of Fixtures.allStandardEvents) {
         const size = payloadLen(fixture);
-        // Exactly the declared size, filled with 0x01: every field read must stay in bounds, so
-        // decoding neither throws nor degrades. 0x01 (not 0xff) is deliberate — it is a valid
-        // `Either` discriminant AND sets every `Maybe` flag to `some`, so the trailing
-        // `Uint<128>`/payload reads are actually exercised at their maximal offset rather than
-        // short-circuited by a `none` flag or degraded by an out-of-range discriminant.
+        // Exactly the fixture size, filled with 0x01: every field read stays in bounds, so decoding
+        // neither throws nor degrades. 0x01 (not 0xff) is deliberate — it is a valid `Either`
+        // discriminant AND sets every `Maybe` flag to `some`, so the trailing `Uint<128>`/payload
+        // reads are actually exercised rather than short-circuited by a `none` flag or degraded by an
+        // out-of-range discriminant.
         const exact = { ...fixture, data: Fixtures.dataCell(new Uint8Array(size).fill(0x01)) };
         expect(() => ContractLog.decode(exact)).not.toThrow();
         expect(ContractLog.decode(exact).degraded).toBe(false);
-        // One byte short: the length guard must degrade it (again without throwing).
+        // One byte short (a stripped trailing zero): the decoder right-pads and still decodes — no
+        // throw, and (unlike the old length-guard model) no degradation.
         if (size > 0) {
           const short = { ...fixture, data: Fixtures.dataCell(new Uint8Array(size - 1).fill(0x01)) };
           expect(() => ContractLog.decode(short)).not.toThrow();
-          expect(ContractLog.decode(short).degraded).toBe(true);
+          expect(ContractLog.decode(short).degraded).toBe(false);
         }
       }
     });
