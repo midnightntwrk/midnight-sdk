@@ -107,7 +107,7 @@ export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, 
 
   /**
    * Retrieves the provable circuits available as part of the underlying contract.
-   * 
+   *
    * @returns An array of {@link Contract.ProvableCircuitId} describing the available provable circuits.
    */
   getProvableCircuitIds(): Contract.ProvableCircuitId<C>[];
@@ -174,7 +174,7 @@ export declare namespace ContractExecutable {
   } & (
       | { readonly stateProvider?: undefined; readonly parentBlockHash?: undefined }
       | { readonly stateProvider: ContractStateProvider; readonly parentBlockHash: string }
-    )
+    );
 
   export type DeployResultPublic = {
     readonly contractState: ContractState;
@@ -232,6 +232,10 @@ export declare namespace ContractExecutable {
    * order; each event is tagged with its emitting contract's address, so a per-contract view is a
    * filter over that tag. Events are NOT consensus state and are handled by the indexer; size and
    * well-formedness are enforced on-chain by the ledger/VM (degraded, not failed) per MIP-0002.
+   *
+   * The events are kept **raw** here to avoid paying decode cost when unused. To obtain typed,
+   * per-event payloads, decode on demand with `ContractLog.decodeAll(result.events)` (which
+   * degrades gracefully and never throws); feed them to a `ContractEventStore` to query/subscribe.
    */
   export type CallResult<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
     readonly result: Contract.Contract.CircuitReturnType<C, K>;
@@ -243,14 +247,14 @@ export declare namespace ContractExecutable {
 
   export type MaintenanceResultPublic = {
     readonly maintenanceUpdate: MaintenanceUpdate;
-  }
+  };
   export type MaintenanceResultPrivate = {
     readonly signingKey: SigningKey.SigningKey;
-  }
+  };
   export type MaintenanceResult = {
     readonly public: MaintenanceResultPublic;
     readonly private: MaintenanceResultPrivate;
-  }
+  };
 }
 
 /**
@@ -270,15 +274,33 @@ type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<
 const DEFAULT_CMA_THRESHOLD = 1;
 const DEFAULT_SIGNATURE_INDEX = 0n;
 
-// Ledger v9 tags signing keys with their signature scheme ('schnorr' | 'ecdsa'), while
-// platform-js still models a signing key as a bare hex string. Untagged keys in earlier
-// ledger versions were Schnorr keys, so tagging with 'schnorr' preserves the previous
-// semantics. The onchain-runtime `SigningKey` is structurally identical, so this adapter
-// serves both `signData` (ledger) and `signatureVerifyingKey` (compact-runtime).
-const asTaggedSigningKey = (signingKey: SigningKey.SigningKey): LedgerSigningKey => ({
-  tag: 'schnorr',
-  value: signingKey.value
-});
+// The signature schemes verified to work through the ledger CMA path (`signData` and
+// `signatureVerifyingKey`), so the caller-supplied scheme is threaded through unchanged. Any other
+// scheme is rejected loudly rather than silently coerced.
+//
+// This is deliberately an explicit allowlist, NOT `SigningKey.SignatureKinds`: the constraint is
+// what the ledger primitives support, not what platform-js's type union happens to include. A new
+// scheme must be added here only once it is verified end-to-end against the ledger CMA path.
+const SUPPORTED_CMA_SIGNATURE_KINDS: ReadonlySet<SigningKey.SignatureKind> = new Set(['schnorr', 'ecdsa']);
+
+// Adapts a platform-js `SigningKey` to a ledger `SigningKey`. As of platform-js@3.0.0 both are
+// `{ tag: SignatureKind, value }` and structurally compatible; the onchain-runtime `SigningKey`
+// is identical too, so this serves both `signData` (ledger) and `signatureVerifyingKey`
+// (compact-runtime). The caller-supplied `tag` is preserved so ECDSA-tagged keys are not silently
+// treated as Schnorr; an unsupported scheme fails with a `ContractConfigurationError`.
+const asTaggedSigningKey = (
+  signingKey: SigningKey.SigningKey,
+  contractState?: ContractState
+): Either.Either<LedgerSigningKey, ContractConfigurationError.ContractConfigurationError> =>
+  SUPPORTED_CMA_SIGNATURE_KINDS.has(signingKey.tag)
+    ? Either.right({ tag: signingKey.tag, value: signingKey.value })
+    : Either.left(
+        ContractConfigurationError.make(
+          `Unsupported signature scheme '${signingKey.tag}' for a contract maintenance authority; ` +
+            `supported schemes are: ${[...SUPPORTED_CMA_SIGNATURE_KINDS].join(', ')}`,
+          contractState
+        )
+      );
 
 const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
   const stateValue = LedgerStateValue.decode(queryContext.state.state.encode());
@@ -287,7 +309,7 @@ const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
   ledgerQueryContext.block = queryContext.block;
   ledgerQueryContext.effects = queryContext.effects;
   return ledgerQueryContext;
-}
+};
 
 // Partition the public transcripts of every call in the trace in a single batch.
 //
@@ -311,15 +333,10 @@ const partitionAllTranscripts = (
         entry.commCommData?.commComm
       )
   );
-  const partitioned = partitionTranscripts(
-    preTranscripts,
-    ledgerParameters ?? LedgerParameters.initialParameters()
-  );
+  const partitioned = partitionTranscripts(preTranscripts, ledgerParameters ?? LedgerParameters.initialParameters());
   return partitioned.length === trace.length
     ? Either.right(partitioned)
-    : Either.left(
-        new Error(`Expected ${trace.length} transcript partition pairs, received: ${partitioned.length}`)
-      );
+    : Either.left(new Error(`Expected ${trace.length} transcript partition pairs, received: ${partitioned.length}`));
 };
 
 class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implements ContractExecutable<C, PS, E, R> {
@@ -363,7 +380,10 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             err instanceof CompactError
               ? ContractRuntimeError.make('Failed to initialize contract', err)
               : ContractConfigurationError.make(
-                'Failed to configure constructor context with coin public key', undefined, err)
+                  'Failed to configure constructor context with coin public key',
+                  undefined,
+                  err
+                )
         }).pipe(
           Effect.flatMap(({ contractState, privateState, zswapLocalState }) =>
             Effect.gen(this, function* () {
@@ -442,8 +462,19 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             }
             const zswapLocalState = circuitContext.zswapLocalState
               ? encodeZswapLocalState(circuitContext.zswapLocalState)
-              : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey))
-            const runtimeContext = createCircuitContext(provableCircuitId, circuitContext.address, zswapLocalState, circuitContext.contractState, circuitContext.privateState, circuitContext.stateProvider, undefined, undefined, undefined, circuitContext.parentBlockHash)
+              : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey));
+            const runtimeContext = createCircuitContext(
+              provableCircuitId,
+              circuitContext.address,
+              zswapLocalState,
+              circuitContext.contractState,
+              circuitContext.privateState,
+              circuitContext.stateProvider,
+              undefined,
+              undefined,
+              undefined,
+              circuitContext.parentBlockHash
+            );
             return await circuit(runtimeContext, ...args);
           },
           catch: identity
@@ -523,27 +554,29 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     return Effect.all({
       keyConfig: Configuration.Keys
     }).pipe(
-      Effect.flatMap(({ keyConfig }) => Effect.gen(this, function* () {
-        const { contractState } = contractContext;
-        const [cma, signingKey] = yield* this.createMaintenanceAuthority(newSigningKey, contractState);
-        const ledger_cma = LedgerContractMaintenanceAuthority.deserialize(cma.serialize()) as unknown as LedgerContractMaintenanceAuthority;
-        const update = yield* this.createSignedMaintenanceUpdate(
-          () => {
-            return Either.right([
-              new ReplaceAuthority(ledger_cma)
-            ]);
-          },
-          keyConfig,
-          contractContext
-        );
-        return {
-          ...update,
-          private: {
-            ...update.private,
-            signingKey // We need to include the new signing key in the result (rather than the current).
-          }
-        }
-      })),
+      Effect.flatMap(({ keyConfig }) =>
+        Effect.gen(this, function* () {
+          const { contractState } = contractContext;
+          const [cma, signingKey] = yield* this.createMaintenanceAuthority(newSigningKey, contractState);
+          const ledger_cma = LedgerContractMaintenanceAuthority.deserialize(
+            cma.serialize()
+          ) as unknown as LedgerContractMaintenanceAuthority;
+          const update = yield* this.createSignedMaintenanceUpdate(
+            () => {
+              return Either.right([new ReplaceAuthority(ledger_cma)]);
+            },
+            keyConfig,
+            contractContext
+          );
+          return {
+            ...update,
+            private: {
+              ...update.private,
+              signingKey // We need to include the new signing key in the result (rather than the current).
+            }
+          };
+        })
+      ),
       this.transform
     );
   }
@@ -556,17 +589,17 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     return Effect.all({
       keyConfig: Configuration.Keys
     }).pipe(
-      Effect.flatMap(({ keyConfig }) => Effect.gen(this, function* () {
-        return yield* this.createSignedMaintenanceUpdate(
-          () => {
-            return Either.right([
-              new VerifierKeyRemove(provableCircuitId, new ContractOperationVersion('v3'))
-            ]);
-          },
-          keyConfig,
-          contractContext
-        );
-      })),
+      Effect.flatMap(({ keyConfig }) =>
+        Effect.gen(this, function* () {
+          return yield* this.createSignedMaintenanceUpdate(
+            () => {
+              return Either.right([new VerifierKeyRemove(provableCircuitId, new ContractOperationVersion('v3'))]);
+            },
+            keyConfig,
+            contractContext
+          );
+        })
+      ),
       this.transform
     );
   }
@@ -579,17 +612,19 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     return Effect.all({
       keyConfig: Configuration.Keys
     }).pipe(
-      Effect.flatMap(({ keyConfig }) => Effect.gen(this, function* () {
-        return yield* this.createSignedMaintenanceUpdate(
-          () => {
-            return Either.right([
-              new VerifierKeyInsert(provableCircuitId, new ContractOperationVersionedVerifierKey('v3', verifierKey))
-            ]);
-          },
-          keyConfig,
-          contractContext
-        );
-      })),
+      Effect.flatMap(({ keyConfig }) =>
+        Effect.gen(this, function* () {
+          return yield* this.createSignedMaintenanceUpdate(
+            () => {
+              return Either.right([
+                new VerifierKeyInsert(provableCircuitId, new ContractOperationVersionedVerifierKey('v3', verifierKey))
+              ]);
+            },
+            keyConfig,
+            contractContext
+          );
+        })
+      ),
       this.transform
     );
   }
@@ -602,25 +637,31 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     const { address, contractState } = contractContext;
     const currentSigningKey = keyConfig.getSigningKey();
     if (Option.isNone(currentSigningKey)) {
-      return Either.left(ContractConfigurationError.make(
-        'Signing key required to authorize contract maintenance update',
-        contractState
-      ));
+      return Either.left(
+        ContractConfigurationError.make('Signing key required to authorize contract maintenance update', contractState)
+      );
     }
     const signingKey = currentSigningKey.value;
+    const ledgerSigningKey = asTaggedSigningKey(signingKey, contractState);
+    if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);
     const update = createUpdateFn();
     if (Either.isLeft(update)) return Either.left(update.left);
-    const maintenanceUpdate = new MaintenanceUpdate(
-      address,
-      update.right,
-      contractState.maintenanceAuthority.counter
-    );
+    const maintenanceUpdate = new MaintenanceUpdate(address, update.right, contractState.maintenanceAuthority.counter);
+    let signature: ReturnType<typeof signData>;
+    try {
+      signature = signData(ledgerSigningKey.right, maintenanceUpdate.dataToSign);
+    } catch (err: unknown) {
+      return Either.left(
+        ContractConfigurationError.make(
+          `Failed to sign contract maintenance update with a '${signingKey.tag}' signing key`,
+          contractState,
+          err
+        )
+      );
+    }
     return Either.right({
       public: {
-        maintenanceUpdate: maintenanceUpdate.addSignature(
-          DEFAULT_SIGNATURE_INDEX,
-          signData(asTaggedSigningKey(signingKey), maintenanceUpdate.dataToSign)
-        )
+        maintenanceUpdate: maintenanceUpdate.addSignature(DEFAULT_SIGNATURE_INDEX, signature)
       },
       private: {
         signingKey
@@ -631,26 +672,33 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
   protected createMaintenanceAuthority(
     key: Option.Option<SigningKey.SigningKey>,
     contractState?: ContractState
-  ): Either.Either<[ContractMaintenanceAuthority, SigningKey.SigningKey], ContractConfigurationError.ContractConfigurationError> {
+  ): Either.Either<
+    [ContractMaintenanceAuthority, SigningKey.SigningKey],
+    ContractConfigurationError.ContractConfigurationError
+  > {
     const signingKey = Option.match(key, {
       onSome: identity,
       onNone: () => SigningKey.make(sampleSigningKey('schnorr').value)
     });
+    const ledgerSigningKey = asTaggedSigningKey(signingKey, contractState);
+    if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);
     try {
       return Either.right([
         new ContractMaintenanceAuthority(
-          [signatureVerifyingKey(asTaggedSigningKey(signingKey))],
+          [signatureVerifyingKey(ledgerSigningKey.right)],
           DEFAULT_CMA_THRESHOLD,
           contractState ? contractState.maintenanceAuthority.counter + 1n : 0n
         ),
         signingKey
       ]);
     } catch (err: unknown) {
-      return Either.left(ContractConfigurationError.make(
-        `Failed to create a signature verifying key for signing key '${signingKey}'`,
-        contractState,
-        err
-      ));
+      return Either.left(
+        ContractConfigurationError.make(
+          `Failed to create a signature verifying key for signing key '${signingKey}'`,
+          contractState,
+          err
+        )
+      );
     }
   }
 
@@ -691,9 +739,7 @@ export const provide: {
    * @param layer The layer to provide.
    * @returns A function that receives the {@link ContractExecutable} that `layer` should be provided to.
    */
-  <LA, LE, LR>(
-    layer: Layer.Layer<LA, LE, LR>
-  ): <C extends Contract.Contract<PS>, PS, E, R>(
+  <LA, LE, LR>(layer: Layer.Layer<LA, LE, LR>): <C extends Contract.Contract<PS>, PS, E, R>(
     self: ContractExecutable<C, PS, E, R>
   ) => ContractExecutable<C, PS, E | LE, LR | Exclude<R, LA>>;
   /**

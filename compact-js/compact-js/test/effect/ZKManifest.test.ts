@@ -251,6 +251,82 @@ describe('ZKManifest.parse', () => {
     })
   );
 
+  it.effect('rejects a manifest with a duplicated file entry (same path, differing hash)', () =>
+    // The core tampering vector: `JSON.parse` collapses duplicate keys to the last occurrence, so a
+    // forged shadow entry would silently overwrite the honest one. `JSON.stringify` cannot emit
+    // duplicates, so the fixture is raw JSON text.
+    Effect.gen(function* () {
+      const rawJson =
+        `{"manifest-version":"1","keys":{"type":"directory",` +
+        `"clear.verifier":{"type":"file","size":2119,"hash":"${'a'.repeat(64)}"},` +
+        `"clear.verifier":{"type":"file","size":2119,"hash":"${'b'.repeat(64)}"}}}`;
+      const error = yield* ZKManifest.parse(rawJson).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('duplicate key');
+      expect(error.message).toContain('clear.verifier');
+    })
+  );
+
+  it.effect('rejects a manifest with a duplicated top-level metadata key', () =>
+    Effect.gen(function* () {
+      const rawJson = `{"manifest-version":"1","manifest-version":"2","keys":{"type":"directory"}}`;
+      const error = yield* ZKManifest.parse(rawJson).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('duplicate key');
+      expect(error.message).toContain('manifest-version');
+    })
+  );
+
+  it.effect('detects a duplicate key spelled with a JSON string escape', () =>
+    // `"clear.verifier"` and `"clear.verifier"` decode to the same key, exactly as `JSON.parse`
+    // would collapse them; the scan must compare decoded key values, not raw tokens.
+    Effect.gen(function* () {
+      const rawJson =
+        `{"manifest-version":"1","keys":{"type":"directory",` +
+        `"clear.verifier":{"type":"file","size":1,"hash":"${'a'.repeat(64)}"},` +
+        `"clear\\u002everifier":{"type":"file","size":1,"hash":"${'b'.repeat(64)}"}}}`;
+      const error = yield* ZKManifest.parse(rawJson).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).toContain('duplicate key');
+    })
+  );
+
+  it.effect('accepts the same file name under two different directories', () =>
+    // Keys in distinct JSON objects are not duplicates; a name reused across directories must parse.
+    Effect.gen(function* () {
+      const rawJson =
+        `{"manifest-version":"1",` +
+        `"keys":{"type":"directory","clear.verifier":{"type":"file","size":1,"hash":"${'a'.repeat(64)}"}},` +
+        `"zkir":{"type":"directory","clear.verifier":{"type":"file","size":2,"hash":"${'b'.repeat(64)}"}}}`;
+      const manifest = yield* ZKManifest.parse(rawJson);
+      expect([...manifest.files.keys()].sort()).toEqual(['keys/clear.verifier', 'zkir/clear.verifier']);
+    })
+  );
+
+  it.effect('does not mistake key-like structure inside a string value for a duplicate key', () =>
+    // A `"` or `":"` inside a string value must not be read as structure; this manifest has no real
+    // duplicate and must parse successfully.
+    Effect.gen(function* () {
+      const rawJson =
+        `{"manifest-version":"1","compiler-version":"weird\\":\\"value","keys":{"type":"directory"}}`;
+      const manifest = yield* ZKManifest.parse(rawJson);
+      expect(manifest.compilerVersion).toBe('weird":"value');
+      expect(manifest.files.size).toBe(0);
+    })
+  );
+
+  it.effect('does not treat repeated strings inside a JSON array as duplicate keys', () =>
+    // Array elements are not object keys, so repeated strings inside an array must not trip the
+    // duplicate-key scan. The array itself is not a valid manifest shape, so this fails at decode
+    // rather than as a duplicate key — pinning the scanner's array-frame handling.
+    Effect.gen(function* () {
+      const rawJson = `{"manifest-version":"1","keys":["clear.verifier","clear.verifier"]}`;
+      const error = yield* ZKManifest.parse(rawJson).pipe(Effect.flip);
+      expect(ZKManifestError.isManifestError(error)).toBe(true);
+      expect(error.message).not.toContain('duplicate key');
+    })
+  );
+
   it.effect('rejects a directory nested more than one level deep', () =>
     Effect.gen(function* () {
       const error = yield* parseJson({
