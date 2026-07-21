@@ -3,7 +3,7 @@
   "description": "",
   "version": "2.5.5-rc.7",
   "private": true,
-  "packageManager": "yarn@4.10.3",
+  "packageManager": "yarn@4.17.1",
   "resolutions": {
     "effect": "^3.21.4"
   },
@@ -27,22 +27,22 @@
     "changeset:publish": "yarn build && yarn package && node scripts/release.mjs"
   },
   "dependencies": {
-    "@effect/platform": "^0.96.2",
+    "@effect/platform": "^0.97.0",
     "effect": "^3.21.4"
   },
   "devDependencies": {
-    "@changesets/changelog-github": "^0.5.1",
+    "@changesets/changelog-github": "^0.7.0",
     "@changesets/cli": "^2.29.7",
     "@commitlint/cli": "^21.0.2",
     "@commitlint/config-conventional": "^19.0.0",
     "@effect/build-utils": "^0.8.9",
-    "@effect/cluster": "^0.57.0",
-    "@effect/experimental": "^0.60.0",
+    "@effect/cluster": "^0.60.0",
+    "@effect/experimental": "^0.61.0",
     "@effect/platform-node": "^0.108.0",
-    "@effect/platform-node-shared": "^0.59.0",
+    "@effect/platform-node-shared": "^0.61.0",
     "@effect/rpc": "^0.76.0",
-    "@effect/sql": "^0.51.1",
-    "@effect/vitest": "^0.29.0",
+    "@effect/sql": "^0.52.0",
+    "@effect/vitest": "^0.30.0",
     "@effect/workflow": "^0.19.0",
     "@eslint/js": "^10.0.1",
     "@midnight-ntwrk/compact-js-node": "workspace:*",
