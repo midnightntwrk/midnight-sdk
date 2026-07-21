@@ -19,7 +19,7 @@ import { FileSystem } from '@effect/platform';
 import { type PlatformError } from '@effect/platform/Error';
 import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
-import { ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import { Contract, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import * as CompiledContract from '@midnight-ntwrk/compact-js/effect/CompiledContract';
 import { CompiledContractReflection } from '@midnight-ntwrk/compact-js-command/effect';
 import { Effect, Layer, String } from 'effect';
@@ -46,13 +46,15 @@ const testLayer: Layer.Layer<
 const parseArgumentsTest = (
   argText: string,
   fn: (argsParser: CompiledContractReflection.CompiledContractReflection.AnyArgumentParser)
-    => Effect.Effect<any[], ContractRuntimeError.ContractRuntimeError> // eslint-disable-line @typescript-eslint/no-explicit-any
+    => Effect.Effect<any[], ContractRuntimeError.ContractRuntimeError>, // eslint-disable-line @typescript-eslint/no-explicit-any
+  prelude = ''
 ) => Effect.gen(function* () {
       const NullContract = (() => ({} as any)) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
       const fs = yield* FileSystem.FileSystem;
 
       yield* fs.makeDirectory(join(BASE_PATH, 'contract'));
       yield* fs.writeFileString(DECLARATION_FILEPATH, String.stripMargin(`
+        |${prelude}
         |export type ImpureCircuits<T> = {
         | circuit(_: any, ${argText}): void;
         |}
@@ -214,6 +216,88 @@ describe.sequential('CompiledContractReflection', () => {
 
         expect(parsedArgs[0].data.bytes).toBeInstanceOf(Uint8Array);
         expect(parsedArgs[0].label).toBe('test');
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should parse a named struct type alias (ShieldedCoinInfo)', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const nonce = 'ff'.repeat(32);
+        const color = 'ab'.repeat(32);
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: ShieldedCoinInfo',
+          (_) => _.parseInitializationArgs(
+            [`{"nonce":"${nonce}","color":"${color}","value":100}`]
+          ),
+          'export type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };'
+        );
+
+        expect(parsedArgs[0].nonce).toBeInstanceOf(Uint8Array);
+        expect(parsedArgs[0].nonce).toHaveLength(32);
+        expect(parsedArgs[0].color).toBeInstanceOf(Uint8Array);
+        expect(parsedArgs[0].color).toHaveLength(32);
+        expect(Buffer.from(parsedArgs[0].nonce).toString('hex')).toEqual(nonce);
+        expect(Buffer.from(parsedArgs[0].color).toString('hex')).toEqual(color);
+        expect(parsedArgs[0].value).toEqual(100n);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should parse multiple named struct alias arguments', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const nonce = 'ff'.repeat(32);
+        const color = 'ab'.repeat(32);
+        const coin = `{"nonce":"${nonce}","color":"${color}","value":100}`;
+        const parsedArgs = yield* parseArgumentsTest(
+          'amount: bigint, coinA: ShieldedCoinInfo, coinB: ShieldedCoinInfo',
+          (_) => _.parseInitializationArgs(['5', coin, coin]),
+          'export type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };'
+        );
+
+        expect(parsedArgs[0]).toEqual(5n);
+        expect(parsedArgs[1].value).toEqual(100n);
+        expect(parsedArgs[2].value).toEqual(100n);
+        expect(parsedArgs[1].nonce).toBeInstanceOf(Uint8Array);
+        expect(parsedArgs[2].color).toBeInstanceOf(Uint8Array);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should resolve a named alias that references another named alias', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const bytes = 'cd'.repeat(32);
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Outer',
+          (_) => _.parseInitializationArgs(
+            [`{"inner":{"bytes":"${bytes}"},"count":7}`]
+          ),
+          String.stripMargin(`
+            |export type Inner = { bytes: Uint8Array };
+            |export type Outer = { inner: Inner; count: bigint };
+          `)
+        );
+
+        expect(parsedArgs[0].inner.bytes).toBeInstanceOf(Uint8Array);
+        expect(Buffer.from(parsedArgs[0].inner.bytes).toString('hex')).toEqual(bytes);
+        expect(parsedArgs[0].count).toEqual(7n);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should fail with a descriptive error for an unknown type reference', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        expect(yield* parseArgumentsTest(
+          'a: Mystery',
+          (_) => _.parseCircuitArgs(Contract.ProvableCircuitId('circuit'), ['{}'])
+        ).pipe(Effect.flip)
+        ).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should fail with a descriptive error for an unsupported generic alias', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        expect(yield* parseArgumentsTest(
+          'a: Maybe',
+          (_) => _.parseCircuitArgs(Contract.ProvableCircuitId('circuit'), ['{"is_some":true,"value":1}']),
+          'export type Maybe<T> = { is_some: boolean; value: T };'
+        ).pipe(Effect.flip)
+        ).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
       }).pipe(Effect.provide(testLayer)));
     });
   });
