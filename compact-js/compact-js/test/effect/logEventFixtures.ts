@@ -309,3 +309,92 @@ export const unshieldedReceiveContractAddress: LogEvent = event(
   'unshielded-receive',
   concat(either('right', bytes32(0x63)), bytes32(0x6a), bytes32(0x62), uint128(42n))
 );
+
+// --- live-emit golden fixtures (SDK#278) ------------------------------------------------------
+
+/**
+ * Golden fixtures whose byte layout is the **confirmed on-chain wire format**, captured from a live
+ * `emit`. Where the fixtures above were derived from the compiler source (and so agree with the
+ * decoder rather than the chain — see the `@remarks` at the top of this module), these encode what
+ * a real contract actually emits, so they exercise the decoder against ground truth.
+ *
+ * @remarks
+ * **Provenance.** Layout confirmed by deploying `types-breadth` (one circuit per event type) on a
+ * local devnet and reading every event back through the indexer, which decodes the same on-chain
+ * bytes (compact `0.33.0-rc.1`, events-capable `indexer-standalone`; `compact-end-2-end`'s
+ * `events-introspect` diagnostic). Each difference from the derived fixtures is a distinct
+ * mis-decode tracked by midnight-sdk#278:
+ * - **`Uint<128>` is little-endian** (not big-endian) — see {@link uint128LE}.
+ * - **`Either` carries both arms** (`[disc][coinPublicKey:32][contractAddress:32]`, 65 bytes; the
+ *   unused arm is zero-filled) and the discriminant is `1` = coin-public-key, `0` = contract —
+ *   the inverse of the derived assumption. See {@link eitherBoth}.
+ * - **`unshielded-spend`/`unshielded-receive` carry a `domainSep` field** (32 bytes, between the
+ *   `Either` and `token_type`) that the derived layout omits, shifting `token_type` and `amount`.
+ * - **`shielded-receive` field order** is `commitment · ciphertext · contract_address` (the
+ *   `ciphertext` and `contract_address` were transposed in the pre-`0.33.0-rc.1` layout).
+ */
+
+/** A `Uint<128>` encoded the way the chain emits it: little-endian (16 bytes). */
+const uint128LE = (value: bigint): Uint8Array => {
+  const out = new Uint8Array(16);
+  let v = value;
+  for (let i = 0; i < 16; i++) {
+    out[i] = Number(v & 0xffn);
+    v >>= 8n;
+  }
+  return out;
+};
+
+/**
+ * An `Either<ZswapCoinPublicKey, ContractAddress>` as emitted on-chain: a discriminant byte
+ * (`1` = coin-public-key, `0` = contract-address) followed by **both** 32-byte arms, the unused one
+ * zero-filled — 65 bytes total.
+ */
+const eitherBoth = (kind: 'coin-public-key' | 'contract-address', value: Uint8Array): Uint8Array =>
+  concat(
+    Uint8Array.of(kind === 'coin-public-key' ? 1 : 0),
+    kind === 'coin-public-key' ? value : fill(32, 0),
+    kind === 'contract-address' ? value : fill(32, 0)
+  );
+
+/** `shielded-receive`: commitment · ciphertext `Maybe<Bytes<512>>` · contract_address `Maybe<Bytes<32>>`. */
+export const goldenShieldedReceive: LogEvent = event(
+  'shielded-receive',
+  concat(bytes32(0xc0), maybe(fill(512, 0xc1), 512), maybe(bytes32(0xc2), 32))
+);
+
+/** `shielded-mint`: commitment · domain_sep · amount `Maybe<Uint<128>>` (little-endian). */
+export const goldenShieldedMint: LogEvent = event(
+  'shielded-mint',
+  concat(bytes32(0xd0), bytes32(0xd1), maybe(uint128LE(1_000n), 16))
+);
+
+/** `shielded-burn`: nullifier · amount `Maybe<Uint<128>>` (little-endian). */
+export const goldenShieldedBurn: LogEvent = event(
+  'shielded-burn',
+  concat(bytes32(0xe0), maybe(uint128LE(7n), 16))
+);
+
+/** `unshielded-spend`: sender `Either` (65) · domain_sep (32) · token_type (32) · amount (LE). */
+export const goldenUnshieldedSpend: LogEvent = event(
+  'unshielded-spend',
+  concat(eitherBoth('coin-public-key', bytes32(0x51)), bytes32(0x55), bytes32(0x52), uint128LE(1_000n))
+);
+
+/** `unshielded-receive`: recipient `Either` (65) · domain_sep (32) · token_type (32) · amount (LE). */
+export const goldenUnshieldedReceive: LogEvent = event(
+  'unshielded-receive',
+  concat(eitherBoth('contract-address', bytes32(0x61)), bytes32(0x65), bytes32(0x62), uint128LE(1_000n))
+);
+
+/** `unshielded-mint`: domain_sep · token_type · amount (little-endian). */
+export const goldenUnshieldedMint: LogEvent = event(
+  'unshielded-mint',
+  concat(bytes32(0x71), bytes32(0x72), uint128LE(1_000n))
+);
+
+/** `unshielded-burn`: sender `Either` (65) · token_type (32) · amount (little-endian). */
+export const goldenUnshieldedBurn: LogEvent = event(
+  'unshielded-burn',
+  concat(eitherBoth('coin-public-key', bytes32(0x81)), bytes32(0x82), uint128LE(500n))
+);
