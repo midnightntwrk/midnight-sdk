@@ -31,14 +31,15 @@
  * - **Indexed fields** are derived from the event type (not marked by the author); see
  *   {@link indexedFields}. `Misc` and lifecycle events index nothing.
  * - **Non-consensus**: events are NOT consensus state; retention is a downstream (indexer) policy.
- * - **⚠️ Payload decoding is experimental**: the intra-`data` field byte-offsets read by
- *   {@link decode} (Maybe flag positions, `Uint<128>` big-endianness, the `Either` discriminant
- *   value) are **derived from the compiler source**, not yet confirmed against a live `emit` — the
- *   bundled compactc emits no `log` ops, so no fixture exercises a real payload (see the provenance
- *   note in `test/effect/logEventFixtures.ts`). The **envelope** (`version`, `eventType`, `address`,
- *   degradation) is confirmed. A wrong offset would decode **silently** to a wrong value rather
- *   than degrading, so treat a decoded `payload` as provisional until re-confirmed against a live
- *   emit.
+ * - **Wire layout**: the intra-`data` field byte-offsets read by {@link decode} follow the
+ *   corrected field-aligned layout from issue #278 — a 65-byte `Either` (`[is_left:1][left:32][right:32]`,
+ *   `is_left=1` → coin-public-key), little-endian `Uint<128>` with trailing zeros stripped (buffers
+ *   are right-padded to canonical width before slicing), and the post-compact#590 `shielded-receive`
+ *   field order `(commitment, ciphertext, contractAddress)`. See the layout table in
+ *   `test/effect/logEventFixtures.ts`. The authoritative reference is the indexer's Rust decoder
+ *   (`ledger_state.rs`); the end-to-end cross-check against a live `emit` (see that file's provenance
+ *   note) is the final validation gate. A wrong offset decodes **silently** to a wrong value rather
+ *   than degrading.
  *
  * @packageDocumentation
  */
@@ -113,12 +114,16 @@ export interface ShieldedBurnPayload {
 /** @category model */
 export interface UnshieldedSpendPayload {
   readonly sender: EitherAddress;
+  /** The 32-byte domain separator carried on the wire (not an indexed field). */
+  readonly domainSep: Uint8Array;
   readonly tokenType: Uint8Array;
   readonly amount: bigint;
 }
 /** @category model */
 export interface UnshieldedReceivePayload {
   readonly recipient: EitherAddress;
+  /** The 32-byte domain separator carried on the wire (not an indexed field). */
+  readonly domainSep: Uint8Array;
   readonly tokenType: Uint8Array;
   readonly amount: bigint;
 }
@@ -229,10 +234,10 @@ const concatSegments = (segments: readonly Uint8Array[]): Uint8Array => {
 const flatten = (data: LogEvent['data']): Uint8Array | undefined =>
   data.tag === 'cell' ? concatSegments(data.content.value) : undefined;
 
-/** Read a big-endian `Uint<128>` (16 bytes) as a `bigint`. */
+/** Read a little-endian `Uint<128>` (≤16 bytes; wire strips trailing/high-order zeros). */
 const readUint128 = (buf: Uint8Array, offset: number): bigint => {
   let v = 0n;
-  for (let i = 0; i < 16; i++) v = (v << 8n) | BigInt(buf[offset + i]!);
+  for (let i = 15; i >= 0; i--) v = (v << 8n) | BigInt(buf[offset + i] ?? 0);
   return v;
 };
 
@@ -245,52 +250,66 @@ const readMaybeUint128 = (buf: Uint8Array, offset: number): Option.Option<bigint
   buf[offset] === 1 ? Option.some(readUint128(buf, offset + 1)) : Option.none();
 
 /**
- * Read an `Either<ZswapCoinPublicKey, ContractAddress>`: a discriminant byte + 32-byte address.
- * The discriminant is structurally `0` (coin-public-key) or `1` (contract-address); any other value
- * is garbage (out-of-range byte, or a misaligned read) and yields `undefined` so the caller degrades
- * rather than decoding to a confident wrong `kind`.
+ * Read an `Either<ZswapCoinPublicKey, ContractAddress>` (65 B): `[is_left:1][left:32][right:32]`,
+ * both arms present, inactive arm zero-filled. `is_left=1` → Left → coin-public-key (left arm);
+ * `is_left=0` → Right → contract-address (right arm). Any other discriminant is garbage (out-of-range
+ * byte, or a misaligned read) and yields `undefined` so the caller degrades rather than decoding to a
+ * confident wrong `kind`.
  */
 const readEither = (buf: Uint8Array, offset: number): EitherAddress | undefined => {
-  const discriminant = buf[offset];
-  if (discriminant !== 0 && discriminant !== 1) return undefined;
-  return {
-    kind: discriminant === 0 ? 'coin-public-key' : 'contract-address',
-    bytes: buf.slice(offset + 1, offset + 33)
-  };
+  const isLeft = buf[offset];
+  if (isLeft !== 0 && isLeft !== 1) return undefined;
+  return isLeft === 1
+    ? { kind: 'coin-public-key', bytes: buf.slice(offset + 1, offset + 33) }
+    : { kind: 'contract-address', bytes: buf.slice(offset + 33, offset + 65) };
+};
+
+/** Right-pad `buf` with zero bytes up to `size` (undoing the wire's trailing-zero stripping). */
+const padRight = (buf: Uint8Array, size: number): Uint8Array => {
+  if (buf.length >= size) return buf;
+  const out = new Uint8Array(size);
+  out.set(buf, 0);
+  return out;
 };
 
 /**
- * The declared serialized size, in bytes, of each event's payload (per the compiler's
- * `midnight-events.ss`). A buffer shorter than this decodes to a {@link DegradedEvent}.
+ * The canonical (unstripped) serialized size, in bytes, of each event's payload. The wire strips
+ * trailing zero bytes, so a real buffer may be shorter; {@link decodePayload} right-pads to this
+ * width before slicing at fixed offsets (indexer parity), so a short buffer is normal, not degraded.
  */
 const PAYLOAD_SIZE: Record<LogEventType, number> = {
   'shielded-spend': 32,
   'shielded-receive': 578,
   'shielded-mint': 81,
   'shielded-burn': 49,
-  'unshielded-spend': 81,
-  'unshielded-receive': 81,
+  'unshielded-spend': 145,
+  'unshielded-receive': 145,
   'unshielded-mint': 80,
-  'unshielded-burn': 81,
+  'unshielded-burn': 113,
   'paused': 0,
   'unpaused': 0,
   'misc': 288
 };
 
 /**
- * Decode the payload buffer for a given event type, or `undefined` if the buffer is too short
- * (degraded). Byte offsets follow the field-aligned layout tabulated in `test/effect/logEventFixtures.ts`.
+ * Decode the payload buffer for a given event type. Byte offsets follow the field-aligned layout
+ * tabulated in `test/effect/logEventFixtures.ts`.
+ *
+ * The wire strips trailing zero bytes, so the raw buffer is first right-padded to the canonical
+ * width ({@link PAYLOAD_SIZE}) before slicing — a short buffer is normal (small/zero tail), not
+ * degraded. Degradation still occurs on `{ tag: 'null' }` data, `version: 0`, a bad envelope
+ * address, or an out-of-range `Either` discriminant (which returns `undefined` here).
  */
-const decodePayload = (eventType: LogEventType, buf: Uint8Array): PayloadMap[LogEventType] | undefined => {
-  if (buf.length < PAYLOAD_SIZE[eventType]) return undefined;
+const decodePayload = (eventType: LogEventType, raw: Uint8Array): PayloadMap[LogEventType] | undefined => {
+  const buf = padRight(raw, PAYLOAD_SIZE[eventType]);
   switch (eventType) {
     case 'shielded-spend':
       return { nullifier: buf.slice(0, 32) };
     case 'shielded-receive':
       return {
         commitment: buf.slice(0, 32),
-        contractAddress: readMaybeBytes(buf, 32, 32),
-        ciphertext: readMaybeBytes(buf, 65, 512)
+        ciphertext: readMaybeBytes(buf, 32, 512),
+        contractAddress: readMaybeBytes(buf, 545, 32)
       };
     case 'shielded-mint':
       return { commitment: buf.slice(0, 32), domainSep: buf.slice(32, 64), amount: readMaybeUint128(buf, 64) };
@@ -298,19 +317,23 @@ const decodePayload = (eventType: LogEventType, buf: Uint8Array): PayloadMap[Log
       return { nullifier: buf.slice(0, 32), amount: readMaybeUint128(buf, 32) };
     case 'unshielded-spend': {
       const sender = readEither(buf, 0);
-      return sender === undefined ? undefined : { sender, tokenType: buf.slice(33, 65), amount: readUint128(buf, 65) };
+      return sender === undefined
+        ? undefined
+        : { sender, domainSep: buf.slice(65, 97), tokenType: buf.slice(97, 129), amount: readUint128(buf, 129) };
     }
     case 'unshielded-receive': {
       const recipient = readEither(buf, 0);
       return recipient === undefined
         ? undefined
-        : { recipient, tokenType: buf.slice(33, 65), amount: readUint128(buf, 65) };
+        : { recipient, domainSep: buf.slice(65, 97), tokenType: buf.slice(97, 129), amount: readUint128(buf, 129) };
     }
     case 'unshielded-mint':
       return { domainSep: buf.slice(0, 32), tokenType: buf.slice(32, 64), amount: readUint128(buf, 64) };
     case 'unshielded-burn': {
       const sender = readEither(buf, 0);
-      return sender === undefined ? undefined : { sender, tokenType: buf.slice(33, 65), amount: readUint128(buf, 65) };
+      return sender === undefined
+        ? undefined
+        : { sender, tokenType: buf.slice(65, 97), amount: readUint128(buf, 97) };
     }
     case 'paused':
     case 'unpaused':
@@ -330,10 +353,9 @@ const decodePayload = (eventType: LogEventType, buf: Uint8Array): PayloadMap[Log
  * (`degraded: true`, `payload: undefined`) per the MIP-0002 graceful-degradation rule; the raw
  * event remains on `raw`.
  *
- * @experimental The `payload` field byte-offsets are derived from the compiler source and not yet
- * confirmed against a live `emit` (see the module-level remarks and the provenance note in
- * `test/effect/logEventFixtures.ts`). A wrong offset decodes silently to a wrong value; treat
- * decoded payloads as provisional. The envelope and degradation behaviour are confirmed.
+ * The `payload` field byte-offsets follow the corrected layout from issue #278 (see the module-level
+ * remarks). The end-to-end cross-check against a live `emit` is the final validation gate; a wrong
+ * offset decodes silently to a wrong value rather than degrading.
  *
  * @param raw The raw log event surfaced on a circuit result.
  * @returns The decoded, typed event.
@@ -369,9 +391,6 @@ export const decode = (raw: LogEvent): ContractEvent => {
  *
  * Like {@link decode}, this never throws — degraded events are preserved in place rather than
  * dropped, so the returned array is index-aligned with the input.
- *
- * @experimental Inherits {@link decode}'s experimental caveat: decoded payload offsets are derived,
- * not yet confirmed against a live `emit`.
  *
  * @param events The raw log events to decode.
  * @returns The decoded, typed events, in input order.
