@@ -333,13 +333,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/vitest@npm:^0.29.0":
-  version: 0.29.0
-  resolution: "@effect/vitest@npm:0.29.0"
+"@effect/vitest@npm:^0.30.0":
+  version: 0.30.0
+  resolution: "@effect/vitest@npm:0.30.0"
   peerDependencies:
-    effect: ^3.21.0
+    effect: ^3.22.0
     vitest: ^3.2.0
-  checksum: 10/76f3846a62082d9220cfb76cc54a07256c4f419a31af0a7817c67f67b70cb8bb4429c50e8c56d5e97a62d37e46f209aeb2031214e4a245dc56f4a3ad0882fe48
+  checksum: 10/dee87f65e73c288f8a50dff839c6f016334b5751ead7138c0dd7b8ca2cc137d490bf5d9794904906efa367b8e4c60f648134f42a2fa44b465055c7164c1f3abb
   languageName: node
   linkType: hard
 
@@ -598,7 +598,7 @@ __metadata:
     "@changesets/cli": "npm:^2.29.7"
     "@effect/build-utils": "npm:^0.8.9"
     "@effect/platform": "npm:^0.96.2"
-    "@effect/vitest": "npm:^0.29.0"
+    "@effect/vitest": "npm:^0.30.0"
     "@eslint/js": "npm:^10.0.1"
     "@tsconfig/node22": "npm:^22.0.5"
     "@types/node": "npm:^26.1.1"
