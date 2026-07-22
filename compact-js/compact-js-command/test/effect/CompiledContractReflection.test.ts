@@ -282,11 +282,21 @@ describe.sequential('CompiledContractReflection', () => {
 
     it('should fail with a descriptive error for an unknown type reference', async () => {
       await Effect.runPromise(Effect.gen(function* () {
-        expect(yield* parseArgumentsTest(
+        const error = yield* parseArgumentsTest(
           'a: Mystery',
           (_) => _.parseCircuitArgs(Contract.ProvableCircuitId('circuit'), ['{}'])
-        ).pipe(Effect.flip)
-        ).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+        ).pipe(Effect.flip);
+
+        expect(error).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+        expect(error.message).toEqual('Failed to parse argument with index 0');
+
+        const cause = error.cause as ContractRuntimeError.ContractRuntimeError;
+        expect(cause).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+        expect(cause.message).toEqual("Failed to parse string '{}' as type of Mystery");
+        expect(cause.cause).toBeInstanceOf(SyntaxError);
+        expect((cause.cause as SyntaxError).message).toEqual(
+          'Cannot convert {}: unsupported argument type Mystery'
+        );
       }).pipe(Effect.provide(testLayer)));
     });
 

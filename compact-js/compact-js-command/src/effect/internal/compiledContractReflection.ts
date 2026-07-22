@@ -93,25 +93,16 @@ const typeNodeName: (type: TS.TypeNode) => string =
       const typeLiteral = type as TS.TypeLiteralNode;
       return `{ ${typeLiteral.members.map((_) => `${(_.name as TS.Identifier).escapedText.toString()}: ${typeNodeName((_ as TS.PropertySignature).type!)}`).join(', ')} }`;
     }
-    if (type.kind === TS.SyntaxKind.TypeReference) {
-      const typeRef = type as TS.TypeReferenceNode;
-      const typeName = typeRef.typeName;
-      if (TS.isIdentifier(typeName)) {
-        const name = typeName.escapedText.toString();
-        if (typeRef.typeArguments?.length) {
-          return `${name}<${typeRef.typeArguments.map((_) => typeNodeName(_)).join(', ')}>`;
-        }
-        return name;
-      }
+    if (TS.isTypeReferenceNode(type) && TS.isIdentifier(type.typeName)) {
+      const name = type.typeName.escapedText.toString();
+      const typeArgs = type.typeArguments?.map(typeNodeName) ?? [];
+      return typeArgs.length ? `${name}<${typeArgs.join(', ')}>` : name;
     }
     return '<unknown>';
   };
 
-// Maps a source file's top-level type aliases (e.g. `ShieldedCoinInfo`, `Maybe`) to their
-// declaration, so `transformParams` can resolve a named alias from a type node it already holds
-// via `getSourceFile()`. Generic aliases (`Maybe<T>`) are included: their type parameters are
-// bound to the reference's type arguments before their body is decoded. Cached per source file,
-// since `transformParams` resolves an alias for every type reference it decodes.
+// A source file's top-level type aliases by name, generic ones (`Maybe<T>`) included, so
+// `transformParams` can resolve a named reference. Cached, since every reference looks one up.
 const typeAliasCache = new WeakMap<TS.SourceFile, ReadonlyMap<string, TS.TypeAliasDeclaration>>();
 const getTypeAliases = (sourceFile: TS.SourceFile): ReadonlyMap<string, TS.TypeAliasDeclaration> => {
   const cached = typeAliasCache.get(sourceFile);
@@ -179,7 +170,7 @@ const transformParams: (
             }
             return transformOrThrow(
               arrayElems.map((arrayElem) => stringify(arrayElem)),
-              Array(arrayElems.length).fill((type as TS.ArrayTypeNode).elementType), // Same type repeated.
+              Array(arrayElems.length).fill((type as TS.ArrayTypeNode).elementType),
               true,
               bindings
             );
@@ -260,7 +251,6 @@ const transformParams: (
                 );
                 return transformOrThrow([args[idx]], [aliasDecl.type], quotedStrings, aliasBindings)[0];
               }
-              // Unknown or unbound type reference: fall through to the terminal error below.
             }
           }
           // Unsupported type: fail legibly instead of silently returning `undefined`.
