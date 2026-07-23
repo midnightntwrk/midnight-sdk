@@ -100,6 +100,20 @@ const typeNodeName: (type: TS.TypeNode) => string =
     return '<unknown>';
   };
 
+// Maps a source file's top-level, non-generic type aliases (e.g. `ShieldedCoinInfo`) to their
+// underlying type node, so `transformParams` can resolve a named alias from a type node it
+// already holds via `getSourceFile()`. Generic aliases (`Maybe<T>`) are excluded — type-argument
+// substitution is out of scope.
+const getTypeAliases = (sourceFile: TS.SourceFile): ReadonlyMap<string, TS.TypeNode> => {
+  const aliases = new Map<string, TS.TypeNode>();
+  for (const statement of sourceFile.statements) {
+    if (TS.isTypeAliasDeclaration(statement) && !statement.typeParameters?.length) {
+      aliases.set(statement.name.escapedText.toString(), statement.type);
+    }
+  }
+  return aliases;
+};
+
 const transformParams: (
   args: string[],
   types: TS.TypeNode[],
@@ -178,25 +192,43 @@ const transformParams: (
           }
           if (type!.kind === TS.SyntaxKind.TypeReference) {
             const typeName = (type as TS.TypeReferenceNode).typeName;
-            if (TS.isIdentifier(typeName) && typeName.escapedText === 'Uint8Array') {
-              const cleanInput = quotedStrings ? args[idx].replaceAll('\'', '') : args[idx];
+            if (TS.isIdentifier(typeName)) {
+              if (typeName.escapedText === 'Uint8Array') {
+                const cleanInput = quotedStrings ? args[idx].replaceAll('\'', '') : args[idx];
 
-              const bech32Result = parseBech32mToHex(cleanInput);
-              const hexString = Either.match(bech32Result, {
-                onLeft: () => cleanInput,
-                onRight: (hex) => hex
-              });
+                const bech32Result = parseBech32mToHex(cleanInput);
+                const hexString = Either.match(bech32Result, {
+                  onLeft: () => cleanInput,
+                  onRight: (hex) => hex
+                });
 
-              return Either.match(Hex.parseHex(hexString), {
-                onRight: (parsedHex) => Buffer.from(parsedHex.byteChars, 'hex'),
-                onLeft: (parseErr) => {
-                  throw new SyntaxError(
-                    `Cannot convert ${args[idx]} to a Uint8Array: ${parseErr.message}`
-                  );
-                }
-              });
+                return Either.match(Hex.parseHex(hexString), {
+                  onRight: (parsedHex) => Buffer.from(parsedHex.byteChars, 'hex'),
+                  onLeft: (parseErr) => {
+                    throw new SyntaxError(
+                      `Cannot convert ${args[idx]} to a Uint8Array: ${parseErr.message}`
+                    );
+                  }
+                });
+              }
+              // Resolve a named alias to its type node and recurse, reusing the branches that
+              // already decode it (e.g. `TypeLiteral` for a struct). Nested aliases resolve for
+              // free since each type node reaches its own alias table.
+              const resolvedType = getTypeAliases(type!.getSourceFile()).get(typeName.escapedText.toString());
+              if (resolvedType) {
+                const resolved = Either.getOrThrowWith(
+                  transformParams([args[idx]], [resolvedType], quotedStrings),
+                  identity // Rethrow the error from `transformParams`.
+                );
+                return resolved[0];
+              }
+              // Unknown or generic alias: fall through to the terminal error below.
             }
           }
+          // Unsupported type: fail legibly instead of silently returning `undefined`.
+          throw new SyntaxError(
+            `Cannot convert ${args[idx]}: unsupported argument type ${typeNodeName(type!)}`
+          );
         },
         catch: (err) => ContractRuntimeError.make(
           `Failed to parse argument with index ${idx}`,
