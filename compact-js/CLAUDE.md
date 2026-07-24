@@ -121,6 +121,24 @@ The codebase heavily leverages Effect for:
 
 Exports use both direct paths (`.`) and `/effect` subpaths for Effect-integrated APIs.
 
+> [!IMPORTANT]
+> **Use the `effect-ts` skill when writing, modifying, or reviewing any Effect code.**
+> This repo is written in Effect and idiomatic usage matters. Before touching `.ts` files
+> that import from `effect`, `@effect/*`, or the `/effect` subpaths, invoke the skill (`/effect-ts`,
+> located at `.claude/skills/effect-ts/` in the repo root) and follow its guidance.
+>
+> In particular:
+> - Prefer `Effect.gen` for sequencing and typed `Data.TaggedError` / `Schema.TaggedError` for
+>   domain failures over `Effect.die` or plain `Error`.
+> - Compose `Layer`s at the composition root; effects should declare requirements via `Context`,
+>   not provide layers inside business logic.
+> - Use bounded concurrency, `Ref` for shared state, and `Effect.acquireRelease`/scopes for resources.
+> - **Consult `.claude/skills/effect-ts/references/anti-patterns.md` and avoid the listed
+>   non-idiomatic patterns** — this is the reference to check when a change "works" but doesn't
+>   look like the surrounding Effect code.
+>
+> When unsure which reference applies, start from `SKILL.md`'s "Reference Documents" index.
+
 ### Contract Configuration
 Compact.js commands operate on contracts compiled by `compactc`. The workflow requires:
 1. A `.compact` source file compiled to JavaScript runtime + TypeScript declarations + ZK assets
