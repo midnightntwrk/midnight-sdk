@@ -19,6 +19,21 @@ import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { ConfigProvider, Effect, Option, Schema } from 'effect';
 
+/**
+ * Resolves an optional filesystem path against the platform `Path` service while preserving
+ * absence: `Option.none` stays `Option.none`, and `Option.some(p)` becomes `Option.some(<resolved
+ * p>)`. Shared by the optional path/directory options below.
+ *
+ * @internal
+ */
+const resolveOptionalPath = (
+  opt: Option.Option<string>
+): Effect.Effect<Option.Option<string>, never, Path.Path> =>
+  Option.match(opt, {
+    onSome: (filePath) => Path.Path.pipe(Effect.map((path) => Option.some(path.resolve(filePath)))),
+    onNone: () => Effect.succeed(Option.none())
+  });
+
 /** @internal */
 export const config = Options.file('config', { exists: 'either' }).pipe(
   Options.withAlias('c'),
@@ -109,24 +124,14 @@ export const inputPrivateStateFilePath = Options.file('input-ps', { exists: 'eit
 export const inputZswapLocalStateFilePath = Options.file('input-zswap', { exists: 'either' }).pipe(
   Options.withDescription('A file path of where the current Zswap local state data can be read.'),
   Options.optional,
-  Options.mapEffect((_) =>
-    Option.match(_, {
-      onSome: (filePath) => Path.Path.pipe(Effect.map((path) => Option.some(path.resolve(filePath)))),
-      onNone: () => Effect.succeed(Option.none())
-    })
-  )
+  Options.mapEffect(resolveOptionalPath)
 );
 
 /** @internal */
 export const inputLedgerParamsFilePath = Options.file('input-ledger-params', { exists: 'either' }).pipe(
   Options.withDescription('A file path of where optional ledger parameters data can be read.'),
   Options.optional,
-  Options.mapEffect((_) =>
-    Option.match(_, {
-      onSome: (filePath) => Path.Path.pipe(Effect.map((path) => Option.some(path.resolve(filePath)))),
-      onNone: () => Effect.succeed(Option.none())
-    })
-  )
+  Options.mapEffect(resolveOptionalPath)
 );
 
 /** @internal */
@@ -138,10 +143,7 @@ export const outputContractStatesDirPath = Options.directory('output-contract-st
     'back as --contract-states-dir). The directory is created if absent.'
   ),
   Options.optional,
-  Options.mapEffect((_) => Option.match(_, {
-    onSome: (dirPath) => Path.Path.pipe(Effect.map((path) => Option.some(path.resolve(dirPath)))),
-    onNone: () => Effect.succeed(Option.none())
-  }))
+  Options.mapEffect(resolveOptionalPath)
 );
 
 /** @internal */
@@ -152,10 +154,7 @@ export const inputContractStatesDirPath = Options.directory('contract-states-dir
     'contracts and the resulting intent will include a call for each.'
   ),
   Options.optional,
-  Options.mapEffect((_) => Option.match(_, {
-    onSome: (dirPath) => Path.Path.pipe(Effect.map((path) => Option.some(path.resolve(dirPath)))),
-    onNone: () => Effect.succeed(Option.none())
-  }))
+  Options.mapEffect(resolveOptionalPath)
 );
 
 export type ConfigOptionInput = Command.Command.ParseConfig<{
