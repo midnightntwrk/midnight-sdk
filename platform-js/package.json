@@ -33,7 +33,7 @@
     "glob": ">=13.0.1"
   },
   "devDependencies": {
-    "@changesets/changelog-github": "^0.5.1",
+    "@changesets/changelog-github": "^0.7.0",
     "@changesets/cli": "^2.29.7",
     "@effect/build-utils": "^0.8.9",
     "@effect/vitest": "^0.30.0",
