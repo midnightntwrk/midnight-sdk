@@ -199,6 +199,14 @@ export declare namespace ContractExecutable {
     readonly input: AlignedValue;
     readonly output: AlignedValue;
     readonly privateTranscriptOutputs: AlignedValue[];
+    /**
+     * The shielded coins this call consumed and produced. Recorded per call rather than only for
+     * the root, because a cross-contract callee can perform Zswap operations too — and must, since
+     * a coin addressed to a contract is only credited if that contract claims the receive in the
+     * same transaction. Transaction assembly uses the per-call address to bind each contract-owned
+     * input and output to the contract that actually made it.
+     */
+    readonly zswapLocalState: ZswapLocalState;
   };
 
   /**
@@ -226,7 +234,8 @@ export declare namespace ContractExecutable {
    * `callProofDataTrace` order — callees first, the root call last. The application-facing
    * `result`, `privateState`, and `zswapLocalState` belong to the root contract and are
    * statically typed for it; sub-calls expose only proof data (other contracts' types are not
-   * known here, and only the root holds private/zswap state).
+   * known here, and only the root holds private state). Each call carries its own Zswap local
+   * state on `calls[i].private.zswapLocalState` — the root's is repeated here for convenience.
    *
    * `events` is the single execution-wide log-event list across the whole call tree, in emission
    * order; each event is tagged with its emitting contract's address, so a per-contract view is a
@@ -516,6 +525,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                       partitionedTranscript
                     },
                     private: {
+                      zswapLocalState: decodeZswapLocalState(entry.zswapLocalState),
                       input: entry.input,
                       output: entry.output,
                       privateTranscriptOutputs: entry.privateTranscriptOutputs
