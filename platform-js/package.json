@@ -23,7 +23,7 @@
     "changeset:publish": "yarn build && yarn package && node scripts/release.mjs"
   },
   "dependencies": {
-    "@effect/platform": "^0.96.2",
+    "@effect/platform": "^0.97.0",
     "effect": "^3.22.0"
   },
   "resolutions": {
