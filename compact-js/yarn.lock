@@ -628,14 +628,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/experimental@npm:^0.61.0":
-  version: 0.61.0
-  resolution: "@effect/experimental@npm:0.61.0"
+"@effect/experimental@npm:^0.61.1":
+  version: 0.61.1
+  resolution: "@effect/experimental@npm:0.61.1"
   dependencies:
     uuid: "npm:^11.0.3"
   peerDependencies:
-    "@effect/platform": ^0.97.0
-    effect: ^3.22.0
+    "@effect/platform": ^0.97.1
+    effect: ^3.22.1
     ioredis: ^5
     lmdb: ^3
   peerDependenciesMeta:
@@ -643,7 +643,7 @@ __metadata:
       optional: true
     lmdb:
       optional: true
-  checksum: 10/3b95f5debec080b498a74573b51d0b9fedebb00f2b9e059c1ba19b0bad70a95674b16bc4be7b3779783cf159c43a874a5c089b190bca79a040b3b5080256eb3d
+  checksum: 10/169001dded3b1cc6eca51fc4b98975354c6db484bb978f367e17d1e70aede46c7b7d1ea08c478eddb2abd85d266eee4bf5a33f1c9d52373eca4edfe668ef8ade
   languageName: node
   linkType: hard
 
@@ -737,16 +737,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/printer@npm:^0.49.0":
-  version: 0.49.0
-  resolution: "@effect/printer@npm:0.49.0"
-  peerDependencies:
-    "@effect/typeclass": ^0.40.0
-    effect: ^3.21.0
-  checksum: 10/7e063413d10086a79a5a4315b98cc4b546bc22408876f92421b567a1bfdb85d88d36466341e7c51987972949fe2fd31f15576a57fd9dd82f2ba7418bc62ad88d
-  languageName: node
-  linkType: hard
-
 "@effect/printer@npm:^0.50.0":
   version: 0.50.0
   resolution: "@effect/printer@npm:0.50.0"
@@ -754,6 +744,16 @@ __metadata:
     "@effect/typeclass": ^0.41.0
     effect: ^3.22.0
   checksum: 10/93afff2a90b39dd0c6967988f792f1588be9168dec4d798872f736bcb92a533dbaada6dcc5024e03cb14f4e214d0228873e5d58245987fbdfce85997728d2d1d
+  languageName: node
+  linkType: hard
+
+"@effect/printer@npm:^0.51.0":
+  version: 0.51.0
+  resolution: "@effect/printer@npm:0.51.0"
+  peerDependencies:
+    "@effect/typeclass": ^0.41.0
+    effect: ^3.22.1
+  checksum: 10/8120caf4ff746bae454c92705727fc216c531f833dcc89be5d29960caf716b2b94aaaf89623606bee555cc06bd6bac851a24ed9b6601cc4fda51698c5310ca77
   languageName: node
   linkType: hard
 
@@ -1073,11 +1073,11 @@ __metadata:
   dependencies:
     "@effect/cli": "npm:^0.76.0"
     "@effect/cluster": "npm:^0.57.0"
-    "@effect/experimental": "npm:^0.61.0"
+    "@effect/experimental": "npm:^0.61.1"
     "@effect/platform": "npm:^0.96.2"
     "@effect/platform-node": "npm:^0.108.0"
     "@effect/platform-node-shared": "npm:^0.59.0"
-    "@effect/printer": "npm:^0.49.0"
+    "@effect/printer": "npm:^0.51.0"
     "@effect/printer-ansi": "npm:^0.50.0"
     "@effect/rpc": "npm:^0.76.0"
     "@effect/sql": "npm:^0.51.1"
@@ -1101,7 +1101,7 @@ __metadata:
   resolution: "@midnight-ntwrk/compact-js-node@workspace:compact-js-node"
   dependencies:
     "@effect/cluster": "npm:^0.57.0"
-    "@effect/experimental": "npm:^0.61.0"
+    "@effect/experimental": "npm:^0.61.1"
     "@effect/platform": "npm:^0.96.2"
     "@effect/platform-node": "npm:^0.108.0"
     "@effect/rpc": "npm:^0.76.0"
@@ -1124,7 +1124,7 @@ __metadata:
     "@commitlint/config-conventional": "npm:^19.0.0"
     "@effect/build-utils": "npm:^0.8.9"
     "@effect/cluster": "npm:^0.57.0"
-    "@effect/experimental": "npm:^0.61.0"
+    "@effect/experimental": "npm:^0.61.1"
     "@effect/platform": "npm:^0.96.2"
     "@effect/platform-node": "npm:^0.108.0"
     "@effect/platform-node-shared": "npm:^0.59.0"
