@@ -39,7 +39,7 @@
     "@effect/cluster": "^0.60.0",
     "@effect/experimental": "^0.61.1",
     "@effect/platform-node": "^0.108.0",
-    "@effect/platform-node-shared": "^0.61.0",
+    "@effect/platform-node-shared": "^0.61.1",
     "@effect/rpc": "^0.76.0",
     "@effect/sql": "^0.52.1",
     "@effect/vitest": "^0.30.0",
