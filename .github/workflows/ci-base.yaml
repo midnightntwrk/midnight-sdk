@@ -66,6 +66,10 @@ jobs:
           node-version-file: ${{ inputs.node-version-file }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+      # Provisions the Yarn version pinned by each workspace's `packageManager`
+      # field. Without this the runner's Yarn 1.x shim is used instead.
+      - name: Enable corepack
+        run: corepack enable
       - name: Configure yarn
         run: |
           yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$MIDNIGHTCI_PACKAGES_WRITE"
