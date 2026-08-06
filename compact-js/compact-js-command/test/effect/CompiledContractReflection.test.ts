@@ -282,15 +282,106 @@ describe.sequential('CompiledContractReflection', () => {
 
     it('should fail with a descriptive error for an unknown type reference', async () => {
       await Effect.runPromise(Effect.gen(function* () {
-        expect(yield* parseArgumentsTest(
+        const error = yield* parseArgumentsTest(
           'a: Mystery',
           (_) => _.parseCircuitArgs(Contract.ProvableCircuitId('circuit'), ['{}'])
-        ).pipe(Effect.flip)
-        ).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+        ).pipe(Effect.flip);
+
+        expect(error).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+        expect(error.message).toEqual('Failed to parse argument with index 0');
+
+        const cause = error.cause as ContractRuntimeError.ContractRuntimeError;
+        expect(cause).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+        expect(cause.message).toEqual("Failed to parse string '{}' as type of Mystery");
+        expect(cause.cause).toBeInstanceOf(SyntaxError);
+        expect((cause.cause as SyntaxError).message).toEqual(
+          'Cannot convert {}: unsupported argument type Mystery'
+        );
       }).pipe(Effect.provide(testLayer)));
     });
 
-    it('should fail with a descriptive error for an unsupported generic alias', async () => {
+    it('should parse a generic alias by binding its type argument (Maybe<bigint>)', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Maybe<bigint>',
+          (_) => _.parseCircuitArgs(Contract.ProvableCircuitId('circuit'), ['{"is_some":true,"value":42}']),
+          'export type Maybe<T> = { is_some: boolean; value: T };'
+        );
+
+        expect(parsedArgs[0]).toStrictEqual({ is_some: true, value: 42n });
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should parse a generic alias whose type argument needs decoding (Maybe<Uint8Array>)', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const bytes = 'ab'.repeat(32);
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Maybe<Uint8Array>',
+          (_) => _.parseInitializationArgs([`{"is_some":true,"value":"${bytes}"}`]),
+          'export type Maybe<T> = { is_some: boolean; value: T };'
+        );
+
+        expect(parsedArgs[0].is_some).toEqual(true);
+        expect(parsedArgs[0].value).toBeInstanceOf(Uint8Array);
+        expect(Buffer.from(parsedArgs[0].value).toString('hex')).toEqual(bytes);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should parse an array of a generic alias (Maybe<string>[])', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Maybe<string>[]',
+          (_) => _.parseInitializationArgs(['[{"is_some":true,"value":"hosky"},{"is_some":false,"value":""}]']),
+          'export type Maybe<T> = { is_some: boolean; value: T };'
+        );
+
+        expect(parsedArgs[0]).toStrictEqual([
+          { is_some: true, value: 'hosky' },
+          { is_some: false, value: '' }
+        ]);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should parse a nested generic alias without type-parameter collision (Maybe<Maybe<bigint>>)', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Maybe<Maybe<bigint>>',
+          (_) => _.parseInitializationArgs(['{"is_some":true,"value":{"is_some":true,"value":7}}']),
+          'export type Maybe<T> = { is_some: boolean; value: T };'
+        );
+
+        expect(parsedArgs[0]).toStrictEqual({ is_some: true, value: { is_some: true, value: 7n } });
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should parse a multi-parameter generic alias (Either<bigint, string>)', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Either<bigint, string>',
+          (_) => _.parseInitializationArgs(['{"is_left":true,"left":9,"right":"hosky"}']),
+          'export type Either<A, B> = { is_left: boolean; left: A; right: B };'
+        );
+
+        expect(parsedArgs[0]).toStrictEqual({ is_left: true, left: 9n, right: 'hosky' });
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should resolve a type parameter passed through to another generic alias', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Wrapper<bigint>',
+          (_) => _.parseInitializationArgs(['{"inner":{"is_some":true,"value":3}}']),
+          String.stripMargin(`
+            |export type Maybe<T> = { is_some: boolean; value: T };
+            |export type Wrapper<T> = { inner: Maybe<T> };
+          `)
+        );
+
+        expect(parsedArgs[0]).toStrictEqual({ inner: { is_some: true, value: 3n } });
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should fail when a generic alias is used without its type argument', async () => {
       await Effect.runPromise(Effect.gen(function* () {
         expect(yield* parseArgumentsTest(
           'a: Maybe',
