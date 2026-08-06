@@ -628,14 +628,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/experimental@npm:^0.61.0":
-  version: 0.61.0
-  resolution: "@effect/experimental@npm:0.61.0"
+"@effect/experimental@npm:^0.61.1":
+  version: 0.61.1
+  resolution: "@effect/experimental@npm:0.61.1"
   dependencies:
     uuid: "npm:^11.0.3"
   peerDependencies:
-    "@effect/platform": ^0.97.0
-    effect: ^3.22.0
+    "@effect/platform": ^0.97.1
+    effect: ^3.22.1
     ioredis: ^5
     lmdb: ^3
   peerDependenciesMeta:
@@ -643,7 +643,7 @@ __metadata:
       optional: true
     lmdb:
       optional: true
-  checksum: 10/3b95f5debec080b498a74573b51d0b9fedebb00f2b9e059c1ba19b0bad70a95674b16bc4be7b3779783cf159c43a874a5c089b190bca79a040b3b5080256eb3d
+  checksum: 10/169001dded3b1cc6eca51fc4b98975354c6db484bb978f367e17d1e70aede46c7b7d1ea08c478eddb2abd85d266eee4bf5a33f1c9d52373eca4edfe668ef8ade
   languageName: node
   linkType: hard
 
@@ -737,16 +737,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/printer@npm:^0.49.0":
-  version: 0.49.0
-  resolution: "@effect/printer@npm:0.49.0"
-  peerDependencies:
-    "@effect/typeclass": ^0.40.0
-    effect: ^3.21.0
-  checksum: 10/7e063413d10086a79a5a4315b98cc4b546bc22408876f92421b567a1bfdb85d88d36466341e7c51987972949fe2fd31f15576a57fd9dd82f2ba7418bc62ad88d
-  languageName: node
-  linkType: hard
-
 "@effect/printer@npm:^0.50.0":
   version: 0.50.0
   resolution: "@effect/printer@npm:0.50.0"
@@ -754,6 +744,16 @@ __metadata:
     "@effect/typeclass": ^0.41.0
     effect: ^3.22.0
   checksum: 10/93afff2a90b39dd0c6967988f792f1588be9168dec4d798872f736bcb92a533dbaada6dcc5024e03cb14f4e214d0228873e5d58245987fbdfce85997728d2d1d
+  languageName: node
+  linkType: hard
+
+"@effect/printer@npm:^0.51.0":
+  version: 0.51.0
+  resolution: "@effect/printer@npm:0.51.0"
+  peerDependencies:
+    "@effect/typeclass": ^0.41.0
+    effect: ^3.22.1
+  checksum: 10/8120caf4ff746bae454c92705727fc216c531f833dcc89be5d29960caf716b2b94aaaf89623606bee555cc06bd6bac851a24ed9b6601cc4fda51698c5310ca77
   languageName: node
   linkType: hard
 
@@ -898,12 +898,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@eslint/config-helpers@npm:^0.6.0":
-  version: 0.6.0
-  resolution: "@eslint/config-helpers@npm:0.6.0"
+"@eslint/config-helpers@npm:^0.7.0":
+  version: 0.7.0
+  resolution: "@eslint/config-helpers@npm:0.7.0"
   dependencies:
     "@eslint/core": "npm:^1.2.1"
-  checksum: 10/2daa66b0c3821313a6239beed2236ad7f3a45540050b5ce69527206ba7e58e9c17aff2f68be6d3f0f95d6294a911da86aa50863a1aeadd607faa943c11677a46
+  checksum: 10/57f9cdf303fd56f0da6712e7d6da350c18a332f7d1dc0f5a5f8a9c357f0d5ab9ff9e7515be4726ad4b0fc41c297570a118d7ede02246c5b7a37932c3df46271e
   languageName: node
   linkType: hard
 
@@ -1073,11 +1073,11 @@ __metadata:
   dependencies:
     "@effect/cli": "npm:^0.76.0"
     "@effect/cluster": "npm:^0.57.0"
-    "@effect/experimental": "npm:^0.61.0"
+    "@effect/experimental": "npm:^0.61.1"
     "@effect/platform": "npm:^0.96.2"
     "@effect/platform-node": "npm:^0.108.0"
     "@effect/platform-node-shared": "npm:^0.59.0"
-    "@effect/printer": "npm:^0.49.0"
+    "@effect/printer": "npm:^0.51.0"
     "@effect/printer-ansi": "npm:^0.50.0"
     "@effect/rpc": "npm:^0.76.0"
     "@effect/sql": "npm:^0.51.1"
@@ -1101,7 +1101,7 @@ __metadata:
   resolution: "@midnight-ntwrk/compact-js-node@workspace:compact-js-node"
   dependencies:
     "@effect/cluster": "npm:^0.57.0"
-    "@effect/experimental": "npm:^0.61.0"
+    "@effect/experimental": "npm:^0.61.1"
     "@effect/platform": "npm:^0.96.2"
     "@effect/platform-node": "npm:^0.108.0"
     "@effect/rpc": "npm:^0.76.0"
@@ -1124,7 +1124,7 @@ __metadata:
     "@commitlint/config-conventional": "npm:^19.0.0"
     "@effect/build-utils": "npm:^0.8.9"
     "@effect/cluster": "npm:^0.57.0"
-    "@effect/experimental": "npm:^0.61.0"
+    "@effect/experimental": "npm:^0.61.1"
     "@effect/platform": "npm:^0.96.2"
     "@effect/platform-node": "npm:^0.108.0"
     "@effect/platform-node-shared": "npm:^0.59.0"
@@ -1141,12 +1141,12 @@ __metadata:
     "@vitest/ui": "npm:^4.1.10"
     conventional-changelog-cli: "npm:^5.0.0"
     effect: "npm:^3.21.4"
-    eslint: "npm:^10.6.0"
+    eslint: "npm:^10.8.0"
     eslint-config-prettier: "npm:^10.1.8"
     eslint-import-resolver-typescript: "npm:^4.4.5"
     eslint-plugin-import-x: "npm:^4.17.1"
     eslint-plugin-prettier: "npm:^5.5.6"
-    eslint-plugin-simple-import-sort: "npm:^12.1.1"
+    eslint-plugin-simple-import-sort: "npm:^14.0.0"
     eslint-plugin-unused-imports: "npm:^4.4.1"
     husky: "npm:^9.0.0"
     shx: "npm:^0.4.0"
@@ -2605,6 +2605,15 @@ __metadata:
   languageName: node
   linkType: hard
 
+"brace-expansion@npm:^5.0.8":
+  version: 5.0.9
+  resolution: "brace-expansion@npm:5.0.9"
+  dependencies:
+    balanced-match: "npm:^4.0.2"
+  checksum: 10/d8683d612919212c7cf298861acd1c15101e7e2ad186e7ae9747390e5b3fc9e9b55ce71107570d32985784d9d88fbbe438d725863aed7b0f3d08d5f080535eec
+  languageName: node
+  linkType: hard
+
 "braces@npm:^3.0.3":
   version: 3.0.3
   resolution: "braces@npm:3.0.3"
@@ -3244,12 +3253,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint-plugin-simple-import-sort@npm:^12.1.1":
-  version: 12.1.1
-  resolution: "eslint-plugin-simple-import-sort@npm:12.1.1"
+"eslint-plugin-simple-import-sort@npm:^14.0.0":
+  version: 14.0.0
+  resolution: "eslint-plugin-simple-import-sort@npm:14.0.0"
   peerDependencies:
     eslint: ">=5.0.0"
-  checksum: 10/2a690cea9243fbefa70345687bca8952f5e185fa459b7a8db687a908cc31082435cfee236c619d5245548fa5f89a2f2c4f8499f80512e048d2bedc60e3662d5a
+  checksum: 10/82665d1664bb3443a1271a13764b01ceffaa2b8bcb1e887aa464e2e9d2d2910390a94de0e9211133eaf77c368dcbd75890ed92ac889e314726170e644a1f8d5e
   languageName: node
   linkType: hard
 
@@ -3292,14 +3301,14 @@ __metadata:
   languageName: node
   linkType: hard
 
-"eslint@npm:^10.6.0":
-  version: 10.6.0
-  resolution: "eslint@npm:10.6.0"
+"eslint@npm:^10.8.0":
+  version: 10.8.0
+  resolution: "eslint@npm:10.8.0"
   dependencies:
     "@eslint-community/eslint-utils": "npm:^4.8.0"
     "@eslint-community/regexpp": "npm:^4.12.2"
     "@eslint/config-array": "npm:^0.23.5"
-    "@eslint/config-helpers": "npm:^0.6.0"
+    "@eslint/config-helpers": "npm:^0.7.0"
     "@eslint/core": "npm:^1.2.1"
     "@eslint/plugin-kit": "npm:^0.7.2"
     "@humanfs/node": "npm:^0.16.6"
@@ -3323,7 +3332,7 @@ __metadata:
     imurmurhash: "npm:^0.1.4"
     is-glob: "npm:^4.0.0"
     json-stable-stringify-without-jsonify: "npm:^1.0.1"
-    minimatch: "npm:^10.2.4"
+    minimatch: "npm:^10.2.5"
     natural-compare: "npm:^1.4.0"
     optionator: "npm:^0.9.3"
   peerDependencies:
@@ -3333,7 +3342,7 @@ __metadata:
       optional: true
   bin:
     eslint: bin/eslint.js
-  checksum: 10/36d02cdbe37668e601f255917c605d10a5d06d278648dc72cec21fe23b7b60a53453241b32c382ba8107533cacba70aeec97581cc4f4bb591544b1ada2516335
+  checksum: 10/6128174fffd198e2d10ac211fabdc7292e3214c62a5aede66d2397a0628cf4f704f85a2efb1d5733584a005a6edcf5ca70436894c8befe4ac9e374609c721687
   languageName: node
   linkType: hard
 
@@ -4466,6 +4475,15 @@ __metadata:
   dependencies:
     brace-expansion: "npm:^5.0.2"
   checksum: 10/aea4874e521c55bb60744685bbffe3d152e5460f84efac3ea936e6bbe2ceba7deb93345fec3f9bb17f7b6946776073a64d40ae32bf5f298ad690308121068a1f
+  languageName: node
+  linkType: hard
+
+"minimatch@npm:^10.2.5":
+  version: 10.2.6
+  resolution: "minimatch@npm:10.2.6"
+  dependencies:
+    brace-expansion: "npm:^5.0.8"
+  checksum: 10/a5e43f7c57d6061a77da320b42aa35ffff826030cf67c83c0eee47a26ede4d66486935881492b968c609bf27a7d48cc4b9f54b2806643cd8fb792fcf9240cc1b
   languageName: node
   linkType: hard
 
