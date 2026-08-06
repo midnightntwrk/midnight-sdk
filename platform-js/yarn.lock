@@ -2,7 +2,7 @@
 # Manual changes might be lost - proceed with caution!
 
 __metadata:
-  version: 8
+  version: 10
   cacheKey: 10
 
 "@babel/helper-string-parser@npm:^7.29.7":
@@ -321,15 +321,15 @@ __metadata:
   linkType: hard
 
 "@effect/platform@npm:^0.97.0":
-  version: 0.97.0
-  resolution: "@effect/platform@npm:0.97.0"
+  version: 0.97.1
+  resolution: "@effect/platform@npm:0.97.1"
   dependencies:
     find-my-way-ts: "npm:^0.1.6"
     msgpackr: "npm:^1.11.10"
-    multipasta: "npm:^0.2.7"
+    multipasta: "npm:^0.2.8"
   peerDependencies:
-    effect: ^3.22.0
-  checksum: 10/bdec2a622dfbb32b59c350f24a6c71e379367a6b6fdfdb3e29c603e4ac7745495bce7a999f053bba5ec92d5519fef522a91df83db37f9bade85638c117edcdaf
+    effect: ^3.22.1
+  checksum: 10/8ad429411303da559f6b939b259a7370c69bace15baea4e77b58eb6ae8fbf212396127d639ddcb8086578dcd139bd55d1362c261e4fcbca98526f8b85dde0f45
   languageName: node
   linkType: hard
 
@@ -1632,12 +1632,12 @@ __metadata:
   linkType: hard
 
 "effect@npm:^3.22.0":
-  version: 3.22.0
-  resolution: "effect@npm:3.22.0"
+  version: 3.22.1
+  resolution: "effect@npm:3.22.1"
   dependencies:
     "@standard-schema/spec": "npm:^1.0.0"
     fast-check: "npm:^3.23.1"
-  checksum: 10/5c6b8897158ecf5e32bde00785e69c6c9e5e5e7c487c16d965f3af8eac470f15ad7178a92f1ac16016991892c45e292fff2f4519d4ebcf5fe9022a2628785c9d
+  checksum: 10/00575333225e2dabf0a873e993357ad0e923476db7a44f24b8a65f766683ac9cbc98b2b30a299a65b581694709d35df85f46fb6fa6f5c922c134aa5e2dea6ce5
   languageName: node
   linkType: hard
 
@@ -2109,9 +2109,9 @@ __metadata:
   linkType: hard
 
 "flatted@npm:>=3.4.2":
-  version: 3.4.2
-  resolution: "flatted@npm:3.4.2"
-  checksum: 10/a9e78fe5c2c1fcd98209a015ccee3a6caa953e01729778e83c1fe92e68601a63e1e69cd4e573010ca99eaf585a581b80ccf1018b99283e6cbc2117bcba1e030f
+  version: 3.4.4
+  resolution: "flatted@npm:3.4.4"
+  checksum: 10/5a6682ab87ed15e125419c61352c4bef26f310adceece03eae5f22c119d64ed47bfc0ee1948a77d0122559eaa86395ea06ef45b59bfe3db4fb13fb4cdff876de
   languageName: node
   linkType: hard
 
@@ -2764,7 +2764,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"multipasta@npm:^0.2.7":
+"multipasta@npm:^0.2.8":
   version: 0.2.8
   resolution: "multipasta@npm:0.2.8"
   checksum: 10/7de1e5cbb7c88526a690cc6206970a0956a4b22087f75ab8e45ace06f7cd3fcf647add2cb8a1bb17c35cd72c142cf13669e5faca1a0ccf4294b39fb282fb0912
@@ -3191,7 +3191,7 @@ __metadata:
 
 "resolve@patch:resolve@npm%3A^1.1.6#optional!builtin<compat/resolve>":
   version: 1.22.12
-  resolution: "resolve@patch:resolve@npm%3A1.22.12#optional!builtin<compat/resolve>::version=1.22.12&hash=c3c19d"
+  resolution: "resolve@patch:resolve@npm%3A1.22.12#optional!builtin<compat/resolve>::version=1.22.12&hash=9bd1a5"
   dependencies:
     es-errors: "npm:^1.3.0"
     is-core-module: "npm:^2.16.1"
@@ -3199,7 +3199,7 @@ __metadata:
     supports-preserve-symlinks-flag: "npm:^1.0.0"
   bin:
     resolve: bin/resolve
-  checksum: 10/f80ad2c2b6820331cbe079198a184ffce322cfeca140065118066276bc08b03d5fa2c1ce652aeb584ec74050d1f656f46f034cc0dd9300452c5ab7866907f8c0
+  checksum: 10/7c0ee8a1bd6126d7adde06b8cbba7578f6b791560200cd235b696106b9803038fcf680f0273b350a4e9476de1a5194a9a77827cb08e10d80bea38f4d63b1d254
   languageName: node
   linkType: hard
 
