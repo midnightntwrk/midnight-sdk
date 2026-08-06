@@ -344,16 +344,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@commitlint/config-conventional@npm:^19.0.0":
-  version: 19.8.1
-  resolution: "@commitlint/config-conventional@npm:19.8.1"
-  dependencies:
-    "@commitlint/types": "npm:^19.8.1"
-    conventional-changelog-conventionalcommits: "npm:^7.0.2"
-  checksum: 10/aa61837baaf49e8ccf5eb8fa1bd78656abbea58edb73dacddc64c8915f1d28b27590005d66664c88b9a28a57e9a03ff11cf3b1d913af1ea4e86f3b66678ce630
-  languageName: node
-  linkType: hard
-
 "@commitlint/config-conventional@npm:^21.2.0":
   version: 21.2.0
   resolution: "@commitlint/config-conventional@npm:21.2.0"
@@ -508,16 +498,6 @@ __metadata:
   dependencies:
     escalade: "npm:^3.2.0"
   checksum: 10/93df951010309533eb091ca141fe12e1c49205c5975a32b2327688a51a124ae68f22412f157eddf138bbb93b55b9fb7e9056b6174c7a6a3d694061bed2b92d77
-  languageName: node
-  linkType: hard
-
-"@commitlint/types@npm:^19.8.1":
-  version: 19.8.1
-  resolution: "@commitlint/types@npm:19.8.1"
-  dependencies:
-    "@types/conventional-commits-parser": "npm:^5.0.0"
-    chalk: "npm:^5.3.0"
-  checksum: 10/d1943a5789a02c75b0c72755673ab8d50c850b025abb7806b7eef83b373591948f5d1d9cd22022f89302a256546934d797445913c5c495d8e92711cf17b0fbf0
   languageName: node
   linkType: hard
 
@@ -1094,7 +1074,7 @@ __metadata:
     "@changesets/changelog-github": "npm:^0.7.0"
     "@changesets/cli": "npm:^2.29.7"
     "@commitlint/cli": "npm:^21.2.1"
-    "@commitlint/config-conventional": "npm:^19.0.0"
+    "@commitlint/config-conventional": "npm:^21.2.0"
     "@effect/build-utils": "npm:^0.8.9"
     "@effect/cluster": "npm:^0.60.0"
     "@effect/experimental": "npm:^0.61.1"
@@ -1886,15 +1866,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@types/conventional-commits-parser@npm:^5.0.0":
-  version: 5.0.2
-  resolution: "@types/conventional-commits-parser@npm:5.0.2"
-  dependencies:
-    "@types/node": "npm:*"
-  checksum: 10/c6f9a47f66dc4f8d0de89ba44f47a1574db010b012c082c43ff1a86856053424e84dd53f59f88ab7cd64b9b20f7ee8957553aba2408768a128a9feb8d0ecfd60
-  languageName: node
-  linkType: hard
-
 "@types/deep-eql@npm:*":
   version: 4.0.2
   resolution: "@types/deep-eql@npm:4.0.2"
@@ -1920,15 +1891,6 @@ __metadata:
   version: 7.0.15
   resolution: "@types/json-schema@npm:7.0.15"
   checksum: 10/1a3c3e06236e4c4aab89499c428d585527ce50c24fe8259e8b3926d3df4cfbbbcf306cfc73ddfb66cbafc973116efd15967020b0f738f63e09e64c7d260519e7
-  languageName: node
-  linkType: hard
-
-"@types/node@npm:*":
-  version: 25.9.1
-  resolution: "@types/node@npm:25.9.1"
-  dependencies:
-    undici-types: "npm:>=7.24.0 <7.24.7"
-  checksum: 10/8a1ccf60f0c0ca856d3324a690ee35776f26dfc1d51c3763aecdf246a3246a7971a0156bf6eb3239aa22dfa940eb361d048212f5c3204264d31ef4c41d17416a
   languageName: node
   linkType: hard
 
@@ -2629,13 +2591,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"chalk@npm:^5.3.0":
-  version: 5.6.2
-  resolution: "chalk@npm:5.6.2"
-  checksum: 10/1b2f48f6fba1370670d5610f9cd54c391d6ede28f4b7062dd38244ea5768777af72e5be6b74fb6c6d54cb84c4a2dff3f3afa9b7cb5948f7f022cfd3d087989e0
-  languageName: node
-  linkType: hard
-
 "chardet@npm:^2.1.1":
   version: 2.2.0
   resolution: "chardet@npm:2.2.0"
@@ -2730,15 +2685,6 @@ __metadata:
   dependencies:
     "@conventional-changelog/template": "npm:^1.2.1"
   checksum: 10/670efe9ba741a1b8daae4cb456961e00e1325b54c5d1af7bed7b2b7f0ab2c034668a0f18b5c8a309773f062795d813d14d64b91fa025790557c9b27d8531e5a0
-  languageName: node
-  linkType: hard
-
-"conventional-changelog-conventionalcommits@npm:^7.0.2":
-  version: 7.0.2
-  resolution: "conventional-changelog-conventionalcommits@npm:7.0.2"
-  dependencies:
-    compare-func: "npm:^2.0.0"
-  checksum: 10/3cc6586ac57cc54c0595b28ae22e8b674c970034bad35e467f71aba395278a6ef43351cfbf782a5fc33eb13ed4ad843a145b89ad1444f5fa571e3bf9c1d5519b
   languageName: node
   linkType: hard
 
@@ -5876,13 +5822,6 @@ __metadata:
   bin:
     uglifyjs: bin/uglifyjs
   checksum: 10/6b9639c1985d24580b01bb0ab68e78de310d38eeba7db45bec7850ab4093d8ee464d80ccfaceda9c68d1c366efbee28573b52f95e69ac792354c145acd380b11
-  languageName: node
-  linkType: hard
-
-"undici-types@npm:>=7.24.0 <7.24.7":
-  version: 7.24.6
-  resolution: "undici-types@npm:7.24.6"
-  checksum: 10/defc9538b952e3c15b8526596c591f7c1f0c7605ad27a2b7feddbea7ef2e3003f3eda2cdb051a3cb1a2185e3893100fd9cb925c799db99d48131ea63b5233d10
   languageName: node
   linkType: hard
 
