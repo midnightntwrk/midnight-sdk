@@ -16,7 +16,7 @@
     "@effect/experimental": "^0.61.1",
     "@effect/platform": "^0.97.0",
     "@effect/platform-node": "^0.108.0",
-    "@effect/platform-node-shared": "^0.61.0",
+    "@effect/platform-node-shared": "^0.61.1",
     "@effect/printer": "^0.51.0",
     "@effect/printer-ansi": "^0.51.0",
     "@effect/rpc": "^0.76.0",
