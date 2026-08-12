@@ -49,11 +49,11 @@ const parseArgumentsTest = (
     => Effect.Effect<any[], ContractRuntimeError.ContractRuntimeError>, // eslint-disable-line @typescript-eslint/no-explicit-any
   prelude = ''
 ) => Effect.gen(function* () {
-      const NullContract = (() => ({} as any)) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
-      const fs = yield* FileSystem.FileSystem;
+  const NullContract = (() => ({} as any)) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  const fs = yield* FileSystem.FileSystem;
 
-      yield* fs.makeDirectory(join(BASE_PATH, 'contract'));
-      yield* fs.writeFileString(DECLARATION_FILEPATH, String.stripMargin(`
+  yield* fs.makeDirectory(join(BASE_PATH, 'contract'));
+  yield* fs.writeFileString(DECLARATION_FILEPATH, String.stripMargin(`
         |${prelude}
         |export type ImpureCircuits<T> = {
         | circuit(_: any, ${argText}): void;
@@ -64,17 +64,17 @@ const parseArgumentsTest = (
         |}
       `));
 
-      const contractReflection = yield* CompiledContractReflection.CompiledContractReflection;
-      const argsParser = yield* contractReflection.createArgumentParser(
-        CompiledContract.make('NullContract', NullContract).pipe(
-          CompiledContract.withWitnesses({} as never),
-          CompiledContract.withCompiledFileAssets(BASE_PATH)
-        )
-      );
-      return yield* fn(argsParser);
-  }).pipe(
-    Effect.ensuring(ensureRemovePath(join(BASE_PATH, 'contract')))
+  const contractReflection = yield* CompiledContractReflection.CompiledContractReflection;
+  const argsParser = yield* contractReflection.createArgumentParser(
+    CompiledContract.make('NullContract', NullContract).pipe(
+      CompiledContract.withWitnesses({} as never),
+      CompiledContract.withCompiledFileAssets(BASE_PATH)
+    )
   );
+  return yield* fn(argsParser);
+}).pipe(
+  Effect.ensuring(ensureRemovePath(join(BASE_PATH, 'contract')))
+);
 
 describe.sequential('CompiledContractReflection', () => {
   describe('argument parsing', () => {
@@ -84,9 +84,9 @@ describe.sequential('CompiledContractReflection', () => {
     ])('should fail to parse with an invalid argument (%s)', async (type, invalidValue) => {
       await Effect.runPromise(Effect.gen(function* () {
         expect(yield* parseArgumentsTest(
-            `a: ${type}`,
-            (_) => _.parseInitializationArgs([invalidValue])
-          ).pipe(Effect.flip)
+          `a: ${type}`,
+          (_) => _.parseInitializationArgs([invalidValue])
+        ).pipe(Effect.flip)
         ).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
       }).pipe(Effect.provide(testLayer)));
     });
@@ -101,9 +101,9 @@ describe.sequential('CompiledContractReflection', () => {
     ])('should parse with a valid argument (%s)', async (type, validString) => {
       await Effect.runPromise(Effect.gen(function* () {
         expect(yield* parseArgumentsTest(
-            `a: ${type}`,
-            (_) => _.parseInitializationArgs([validString])
-          )
+          `a: ${type}`,
+          (_) => _.parseInitializationArgs([validString])
+        )
         ).toHaveLength(1);
       }).pipe(Effect.provide(testLayer)));
     });
@@ -119,10 +119,10 @@ describe.sequential('CompiledContractReflection', () => {
 
     it('should fail when parsing an invalid tuple element', async () => {
       await Effect.runPromise(Effect.gen(function* () {
-          expect(yield* parseArgumentsTest(
-            'a: [bigint, boolean]',
-            (_) => _.parseInitializationArgs(['[100, maybe]'])
-          ).pipe(Effect.flip)
+        expect(yield* parseArgumentsTest(
+          'a: [bigint, boolean]',
+          (_) => _.parseInitializationArgs(['[100, maybe]'])
+        ).pipe(Effect.flip)
         ).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError)
       }).pipe(Effect.provide(testLayer)));
     });
@@ -381,14 +381,88 @@ describe.sequential('CompiledContractReflection', () => {
       }).pipe(Effect.provide(testLayer)));
     });
 
+    it('should let a type parameter shadow a same-named alias', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Box<bigint>',
+          (_) => _.parseInitializationArgs(['{"v":1}']),
+          String.stripMargin(`
+            |export type T = string;
+            |export type Box<T> = { v: T };
+          `)
+        );
+
+        expect(parsedArgs[0]).toStrictEqual({ v: 1n });
+      }).pipe(Effect.provide(testLayer)));
+    });
+
     it('should fail when a generic alias is used without its type argument', async () => {
       await Effect.runPromise(Effect.gen(function* () {
-        expect(yield* parseArgumentsTest(
+        const arg = '{"is_some":true,"value":1}';
+        const error = yield* parseArgumentsTest(
           'a: Maybe',
-          (_) => _.parseCircuitArgs(Contract.ProvableCircuitId('circuit'), ['{"is_some":true,"value":1}']),
+          (_) => _.parseCircuitArgs(Contract.ProvableCircuitId('circuit'), [arg]),
           'export type Maybe<T> = { is_some: boolean; value: T };'
-        ).pipe(Effect.flip)
-        ).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+        ).pipe(Effect.flip);
+
+        expect(error).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+        expect(error.message).toEqual('Failed to parse argument with index 0');
+
+        const cause = error.cause as ContractRuntimeError.ContractRuntimeError;
+        expect(cause).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+        expect(cause.message).toEqual(`Failed to parse string '${arg}' as type of Maybe`);
+        expect(cause.cause).toBeInstanceOf(SyntaxError);
+        expect((cause.cause as SyntaxError).message).toEqual(
+          'Cannot resolve Maybe: expected 1 type argument(s), but got 0'
+        );
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it.each([
+      ['a self-referential alias', 'a: Cycle', 'export type Cycle = Cycle;'],
+      [
+        'a mutually recursive alias pair',
+        'a: Ping',
+        String.stripMargin(`
+          |export type Ping = Pong;
+          |export type Pong = Ping;
+        `)
+      ],
+      ['a self-referential generic alias', 'a: Loop<bigint>', 'export type Loop<T> = Loop<T>;']
+    ])('should fail with a depth limit rather than overflowing the stack for %s', async (_name, argText, prelude) => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const error = yield* parseArgumentsTest(
+          argText,
+          (_) => _.parseCircuitArgs(Contract.ProvableCircuitId('circuit'), ['{}']),
+          prelude
+        ).pipe(Effect.flip);
+
+        expect(error).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+
+        let cause: unknown = error;
+        while (ContractRuntimeError.isRuntimeError(cause)) cause = cause.cause;
+        expect(cause).toBeInstanceOf(SyntaxError);
+        expect((cause as SyntaxError).message).toMatch(/maximum type nesting depth/);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should still resolve a recursive alias that consumes input at each step', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Tree',
+          (_) => _.parseInitializationArgs(
+            ['{"value":1,"children":[{"value":2,"children":[]},{"value":3,"children":[]}]}']
+          ),
+          'export type Tree = { value: bigint; children: Tree[] };'
+        );
+
+        expect(parsedArgs[0]).toStrictEqual({
+          value: 1n,
+          children: [
+            { value: 2n, children: [] },
+            { value: 3n, children: [] }
+          ]
+        });
       }).pipe(Effect.provide(testLayer)));
     });
   });

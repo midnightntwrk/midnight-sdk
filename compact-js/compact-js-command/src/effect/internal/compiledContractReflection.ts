@@ -29,6 +29,10 @@ const CONTRACT_FOLDER = 'contract';
 const CONTRACT_DECLARATION_FILE = 'index.d.ts';
 const TRUE_OR_FALSE_REGEXP = /^true|false$/;
 
+// Ceiling on `transformParams` recursion. Resolving an alias, or a bound type parameter, consumes no
+// input, so a cyclic alias (`type A = A`) would otherwise recurse until the stack overflows.
+const MAX_TYPE_DEPTH = 64;
+
 type FileSnapshot = {
   file: TS.IScriptSnapshot;
   version: number;
@@ -126,9 +130,10 @@ const transformParams: (
   args: string[],
   types: TS.TypeNode[],
   quotedStrings?: boolean,
-  bindings?: TypeBindings
+  bindings?: TypeBindings,
+  depth?: number
 ) => Either.Either<any[], ContractRuntimeError.ContractRuntimeError> = // eslint-disable-line @typescript-eslint/no-explicit-any
-  (args, types, quotedStrings = false, bindings = new Map()) => {
+  (args, types, quotedStrings = false, bindings = new Map(), depth = 0) => {
     // Recurse, rethrowing the typed error as an exception so it is caught by the enclosing
     // `Either.try`. Used by the branches that decode a compound type element by element.
     const transformOrThrow = (
@@ -136,7 +141,17 @@ const transformParams: (
       elemTypes: TS.TypeNode[],
       elemQuoted: boolean,
       elemBindings: TypeBindings
-    ) => Either.getOrThrowWith(transformParams(elemArgs, elemTypes, elemQuoted, elemBindings), identity);
+    ) => {
+      if (depth >= MAX_TYPE_DEPTH) {
+        throw new SyntaxError(
+          `Exceeded the maximum type nesting depth of ${MAX_TYPE_DEPTH}; the declaration may contain a cyclic type alias`
+        );
+      }
+      return Either.getOrThrowWith(
+        transformParams(elemArgs, elemTypes, elemQuoted, elemBindings, depth + 1),
+        identity
+      );
+    };
 
     if (args.length !== types.length) {
       return Either.left(
