@@ -27,7 +27,7 @@ import * as CompiledContractReflection from "../CompiledContractReflection.js";
 
 const CONTRACT_FOLDER = 'contract';
 const CONTRACT_DECLARATION_FILE = 'index.d.ts';
-const TRUE_OR_FALSE_REGEXP = /^true|false$/;
+const TRUE_OR_FALSE_REGEXP = /^(true|false)$/;
 
 // Ceiling on `transformParams` recursion. Resolving an alias, or a bound type parameter, consumes no
 // input, so a cyclic alias (`type A = A`) would otherwise recurse until the stack overflows.
@@ -166,7 +166,11 @@ const transformParams: (
       const transformedArg = Either.try({
         try: () => {
           if (type!.kind === TS.SyntaxKind.NumberKeyword) {
-            return Number(args[idx]);
+            const num = Number(args[idx]);
+            if (Number.isNaN(num) || args[idx].trim() === '') {
+              throw new SyntaxError(`Cannot convert ${args[idx]} to a Number`);
+            }
+            return num;
           }
           if (type!.kind === TS.SyntaxKind.BigIntKeyword) {
             return BigInt(args[idx]);
