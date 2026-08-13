@@ -150,8 +150,18 @@ export const outputContractStatesDirPath = Options.directory('output-contract-st
 export const inputContractStatesDirPath = Options.directory('contract-states-dir', { exists: 'yes' }).pipe(
   Options.withDescription(
     'A directory of ledger-serialized contract-state files, each named by its contract address, used to ' +
-    'resolve the targets of cross-contract calls. When provided, the invoked circuit may call into other ' +
-    'contracts and the resulting intent will include a call for each.'
+    'resolve the state of cross-contract call targets. Give this with --contract-modules-dir to let the ' +
+    'invoked circuit call into other contracts; the resulting intent will include a call for each.'
+  ),
+  Options.optional,
+  Options.mapEffect(resolveOptionalPath)
+);
+
+/** @internal */
+export const inputContractModulesDirPath = Options.directory('contract-modules-dir', { exists: 'yes' }).pipe(
+  Options.withDescription(
+    'A directory of compiled contract directories, each named by its contract address, used to resolve the ' +
+    'code of cross-contract call targets. Give this with --contract-states-dir.'
   ),
   Options.optional,
   Options.mapEffect(resolveOptionalPath)

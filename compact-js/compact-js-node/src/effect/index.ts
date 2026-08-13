@@ -13,5 +13,6 @@
  * limitations under the License.
  */
 
+export * as FileSystemContractModuleProvider from './FileSystemContractModuleProvider.js';
 export * as FileSystemContractStateProvider from './FileSystemContractStateProvider.js';
 export * as ZKFileConfiguration from './ZKFileConfiguration.js';
