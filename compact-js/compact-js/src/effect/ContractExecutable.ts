@@ -19,6 +19,7 @@ import {
   type CommunicationCommitmentData,
   CompactError,
   ContractMaintenanceAuthority,
+  type ContractModuleProvider,
   type ContractState,
   type ContractStateProvider,
   createCircuitContext,
@@ -167,13 +168,26 @@ export declare namespace ContractExecutable {
     readonly contractState: ContractState;
   };
 
+  /**
+   * Resolving a cross-contract callee needs its state, the module implementing it, and a block to
+   * read that state at, so the two providers arrive together and pin a block. A block hash on its own
+   * is still meaningful — it reaches the VM's block context whether or not anything is called.
+   */
   export type CircuitContext<PS> = ContractContext & {
     readonly privateState: PS;
     readonly zswapLocalState?: ZswapLocalState;
     readonly ledgerParameters?: LedgerParameters;
   } & (
-      | { readonly stateProvider?: undefined; readonly parentBlockHash?: undefined }
-      | { readonly stateProvider: ContractStateProvider; readonly parentBlockHash: string }
+      | {
+          readonly stateProvider?: undefined;
+          readonly moduleProvider?: undefined;
+          readonly parentBlockHash?: string;
+        }
+      | {
+          readonly stateProvider: ContractStateProvider;
+          readonly moduleProvider: ContractModuleProvider;
+          readonly parentBlockHash: string;
+        }
     );
 
   export type DeployResultPublic = {
@@ -472,18 +486,18 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             const zswapLocalState = circuitContext.zswapLocalState
               ? encodeZswapLocalState(circuitContext.zswapLocalState)
               : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey));
-            const runtimeContext = createCircuitContext(
-              provableCircuitId,
-              circuitContext.address,
-              zswapLocalState,
-              circuitContext.contractState,
-              circuitContext.privateState,
-              circuitContext.stateProvider,
-              undefined,
-              undefined,
-              undefined,
-              circuitContext.parentBlockHash
-            );
+            const runtimeContext = createCircuitContext({
+              circuitId: provableCircuitId,
+              contractAddress: circuitContext.address,
+              coinPublicKeyOrZswapState: zswapLocalState,
+              contractState: circuitContext.contractState,
+              privateState: circuitContext.privateState,
+              parentBlockHash: circuitContext.parentBlockHash,
+              crossContract:
+                circuitContext.stateProvider === undefined
+                  ? undefined
+                  : { stateProvider: circuitContext.stateProvider, moduleProvider: circuitContext.moduleProvider }
+            });
             return await circuit(runtimeContext, ...args);
           },
           catch: identity
