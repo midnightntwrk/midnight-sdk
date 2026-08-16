@@ -627,23 +627,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform-node-shared@npm:^0.61.0":
-  version: 0.61.0
-  resolution: "@effect/platform-node-shared@npm:0.61.0"
-  dependencies:
-    "@parcel/watcher": "npm:^2.5.1"
-    multipasta: "npm:^0.2.7"
-    ws: "npm:^8.18.2"
-  peerDependencies:
-    "@effect/cluster": ^0.60.0
-    "@effect/platform": ^0.97.0
-    "@effect/rpc": ^0.76.0
-    "@effect/sql": ^0.52.0
-    effect: ^3.22.0
-  checksum: 10/141cd8b6eba3b99ff959c837e9e0b3e9c87c29e0922088c92211b042111c5d3bb144ea5c471af2e7a2bf445ab8c33ff3f6a4dee4241df265cefea94033181067
-  languageName: node
-  linkType: hard
-
 "@effect/platform-node-shared@npm:^0.61.1":
   version: 0.61.1
   resolution: "@effect/platform-node-shared@npm:0.61.1"
@@ -661,21 +644,21 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@effect/platform-node@npm:^0.108.0":
-  version: 0.108.0
-  resolution: "@effect/platform-node@npm:0.108.0"
+"@effect/platform-node@npm:^0.108.1":
+  version: 0.108.1
+  resolution: "@effect/platform-node@npm:0.108.1"
   dependencies:
-    "@effect/platform-node-shared": "npm:^0.61.0"
+    "@effect/platform-node-shared": "npm:^0.61.1"
     mime: "npm:^3.0.0"
     undici: "npm:^7.10.0"
     ws: "npm:^8.18.2"
   peerDependencies:
-    "@effect/cluster": ^0.60.0
-    "@effect/platform": ^0.97.0
-    "@effect/rpc": ^0.76.0
-    "@effect/sql": ^0.52.0
-    effect: ^3.22.0
-  checksum: 10/1b4e4d8e73d0b0e48813ede33e0b06a10c2201610371e6f90add75203b418e5a4c739e503dd81dcb128f5139285e6618b0f08dd907793f639f50bae3f0d5ba79
+    "@effect/cluster": ^0.60.2
+    "@effect/platform": ^0.97.1
+    "@effect/rpc": ^0.76.2
+    "@effect/sql": ^0.52.1
+    effect: ^3.22.1
+  checksum: 10/c6bc7be8faedcf89942566ebc78d47c0f8bbf1830803fd2ffafa9f8f9603b38a5beac308122ce1d04546180a5532b1b8acc865bfbf6f723b79cea53e5d79ab05
   languageName: node
   linkType: hard
 
@@ -1045,7 +1028,7 @@ __metadata:
     "@effect/cluster": "npm:^0.60.0"
     "@effect/experimental": "npm:^0.61.1"
     "@effect/platform": "npm:^0.97.0"
-    "@effect/platform-node": "npm:^0.108.0"
+    "@effect/platform-node": "npm:^0.108.1"
     "@effect/platform-node-shared": "npm:^0.61.1"
     "@effect/printer": "npm:^0.51.0"
     "@effect/printer-ansi": "npm:^0.51.0"
@@ -1073,7 +1056,7 @@ __metadata:
     "@effect/cluster": "npm:^0.60.0"
     "@effect/experimental": "npm:^0.61.1"
     "@effect/platform": "npm:^0.97.0"
-    "@effect/platform-node": "npm:^0.108.0"
+    "@effect/platform-node": "npm:^0.108.1"
     "@effect/rpc": "npm:^0.76.2"
     "@effect/sql": "npm:^0.52.1"
     "@effect/workflow": "npm:^0.19.0"
@@ -1096,7 +1079,7 @@ __metadata:
     "@effect/cluster": "npm:^0.60.0"
     "@effect/experimental": "npm:^0.61.1"
     "@effect/platform": "npm:^0.97.0"
-    "@effect/platform-node": "npm:^0.108.0"
+    "@effect/platform-node": "npm:^0.108.1"
     "@effect/platform-node-shared": "npm:^0.61.1"
     "@effect/rpc": "npm:^0.76.2"
     "@effect/sql": "npm:^0.52.1"
