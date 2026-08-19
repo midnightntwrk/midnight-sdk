@@ -167,12 +167,15 @@ const transformParams: (
         try: () => {
           if (type!.kind === TS.SyntaxKind.NumberKeyword) {
             const num = Number(args[idx]);
-            if (Number.isNaN(num) || args[idx].trim() === '') {
+            if (!Number.isFinite(num) || args[idx].trim() === '') {
               throw new SyntaxError(`Cannot convert ${args[idx]} to a Number`);
             }
             return num;
           }
           if (type!.kind === TS.SyntaxKind.BigIntKeyword) {
+            if (args[idx].trim() === '') {
+              throw new SyntaxError(`Cannot convert ${args[idx]} to a BigInt`);
+            }
             return BigInt(args[idx]);
           }
           if (type!.kind === TS.SyntaxKind.StringKeyword) {

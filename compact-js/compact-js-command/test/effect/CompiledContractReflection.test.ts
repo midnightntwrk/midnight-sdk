@@ -80,11 +80,16 @@ describe.sequential('CompiledContractReflection', () => {
   describe('argument parsing', () => {
     it.each([
       ['bigint', 'abc'],
+      ['bigint', ''],
+      ['bigint', '   '],
       ['boolean', 'maybe'],
       ['boolean', 'trueX'],
       ['boolean', 'xfalse'],
       ['number', 'abc'],
-      ['number', '']
+      ['number', ''],
+      ['number', 'Infinity'],
+      ['number', '-Infinity'],
+      ['number', '1e999']
     ])('should fail to parse with an invalid argument (%s: %s)', async (type, invalidValue) => {
       await Effect.runPromise(Effect.gen(function* () {
         expect(yield* parseArgumentsTest(
