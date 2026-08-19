@@ -29,9 +29,10 @@ const CONTRACT_FOLDER = 'contract';
 const CONTRACT_DECLARATION_FILE = 'index.d.ts';
 const TRUE_OR_FALSE_REGEXP = /^(true|false)$/;
 
-// Ceiling on `transformParams` recursion. Resolving an alias, or a bound type parameter, consumes no
-// input, so a cyclic alias (`type A = A`) would otherwise recurse until the stack overflows.
-const MAX_TYPE_DEPTH = 64;
+// Ceiling on consecutive alias and type-parameter resolutions. Those steps consume no input, so a
+// cyclic alias (`type A = A`) would otherwise recurse until the stack overflows. Branches that do
+// consume input reset the count, leaving deeply nested values bounded by the input itself.
+const MAX_RESOLUTION_DEPTH = 64;
 
 type FileSnapshot = {
   file: TS.IScriptSnapshot;
@@ -140,15 +141,16 @@ const transformParams: (
       elemArgs: string[],
       elemTypes: TS.TypeNode[],
       elemQuoted: boolean,
-      elemBindings: TypeBindings
+      elemBindings: TypeBindings,
+      elemDepth = 0
     ) => {
-      if (depth >= MAX_TYPE_DEPTH) {
+      if (elemDepth >= MAX_RESOLUTION_DEPTH) {
         throw new SyntaxError(
-          `Exceeded the maximum type nesting depth of ${MAX_TYPE_DEPTH}; the declaration may contain a cyclic type alias`
+          `Exceeded the maximum type alias resolution depth of ${MAX_RESOLUTION_DEPTH}; the declaration may contain a cyclic type alias`
         );
       }
       return Either.getOrThrowWith(
-        transformParams(elemArgs, elemTypes, elemQuoted, elemBindings, depth + 1),
+        transformParams(elemArgs, elemTypes, elemQuoted, elemBindings, elemDepth),
         identity
       );
     };
@@ -250,7 +252,7 @@ const transformParams: (
               // bound argument node in the environment it was captured in, then recurse.
               const bound = bindings.get(name);
               if (bound) {
-                return transformOrThrow([args[idx]], [bound.node], quotedStrings, bound.env)[0];
+                return transformOrThrow([args[idx]], [bound.node], quotedStrings, bound.env, depth + 1)[0];
               }
               // Resolve a named alias and recurse, reusing the branches that already decode its body
               // (e.g. `TypeLiteral` for a struct). For a generic alias (`Maybe<bigint>`) each type
@@ -271,7 +273,7 @@ const transformParams: (
                     { node: typeArgs[typeParamIdx], env: bindings }
                   ])
                 );
-                return transformOrThrow([args[idx]], [aliasDecl.type], quotedStrings, aliasBindings)[0];
+                return transformOrThrow([args[idx]], [aliasDecl.type], quotedStrings, aliasBindings, depth + 1)[0];
               }
             }
           }

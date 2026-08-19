@@ -491,6 +491,29 @@ describe.sequential('CompiledContractReflection', () => {
       }).pipe(Effect.provide(testLayer)));
     });
 
+    it.each([25, 100])('should resolve %i levels of a recursive alias, which consume input', async (levels) => {
+      await Effect.runPromise(Effect.gen(function* () {
+        // Input-driven nesting must not share a budget with alias resolution.
+        let json = '{"value":0,"children":[]}';
+        for (let level = 1; level <= levels; level++) json = `{"value":${level},"children":[${json}]}`;
+
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Tree',
+          (_) => _.parseInitializationArgs([json]),
+          'export type Tree = { value: bigint; children: Tree[] };'
+        );
+
+        let node = parsedArgs[0];
+        let depth = 0;
+        while (node.children.length > 0) {
+          expect(node.value).toEqual(BigInt(levels - depth));
+          node = node.children[0];
+          depth++;
+        }
+        expect(depth).toEqual(levels);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
     it.each([
       ['a self-referential alias', 'a: Cycle', 'export type Cycle = Cycle;'],
       [
@@ -515,7 +538,7 @@ describe.sequential('CompiledContractReflection', () => {
         let cause: unknown = error;
         while (ContractRuntimeError.isRuntimeError(cause)) cause = cause.cause;
         expect(cause).toBeInstanceOf(SyntaxError);
-        expect((cause as SyntaxError).message).toMatch(/maximum type nesting depth/);
+        expect((cause as SyntaxError).message).toMatch(/maximum type alias resolution depth/);
       }).pipe(Effect.provide(testLayer)));
     });
 
