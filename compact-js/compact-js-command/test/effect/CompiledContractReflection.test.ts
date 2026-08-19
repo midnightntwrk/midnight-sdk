@@ -469,6 +469,57 @@ describe.sequential('CompiledContractReflection', () => {
       }).pipe(Effect.provide(testLayer)));
     });
 
+    it('should apply a type-parameter default when the argument is omitted', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Maybe',
+          (_) => _.parseInitializationArgs(['{"is_some":true,"value":7}']),
+          'export type Maybe<T = bigint> = { is_some: boolean; value: T };'
+        );
+
+        expect(parsedArgs[0]).toStrictEqual({ is_some: true, value: 7n });
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should prefer an explicit type argument over the default', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Maybe<string>',
+          (_) => _.parseInitializationArgs(['{"is_some":true,"value":"7"}']),
+          'export type Maybe<T = bigint> = { is_some: boolean; value: T };'
+        );
+
+        expect(parsedArgs[0]).toStrictEqual({ is_some: true, value: '7' });
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should resolve a default that references an earlier type parameter', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: Pair<bigint>',
+          (_) => _.parseInitializationArgs(['{"x":1,"y":2}']),
+          'export type Pair<A, B = A> = { x: A; y: B };'
+        );
+
+        expect(parsedArgs[0]).toStrictEqual({ x: 1n, y: 2n });
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should fail when more type arguments are given than the alias declares', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const error = yield* parseArgumentsTest(
+          'a: Maybe<bigint, string>',
+          (_) => _.parseInitializationArgs(['{"is_some":true,"value":7}']),
+          'export type Maybe<T = bigint> = { is_some: boolean; value: T };'
+        ).pipe(Effect.flip);
+
+        const cause = (error.cause as ContractRuntimeError.ContractRuntimeError).cause;
+        expect((cause as SyntaxError).message).toEqual(
+          'Cannot resolve Maybe<bigint, string>: expected 0 to 1 type argument(s), but got 2'
+        );
+      }).pipe(Effect.provide(testLayer)));
+    });
+
     it('should fail when a generic alias is used without its type argument', async () => {
       await Effect.runPromise(Effect.gen(function* () {
         const arg = '{"is_some":true,"value":1}';

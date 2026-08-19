@@ -262,17 +262,27 @@ const transformParams: (
               if (aliasDecl) {
                 const typeParams = aliasDecl.typeParameters ?? [];
                 const typeArgs = typeRef.typeArguments ?? [];
-                if (typeParams.length !== typeArgs.length) {
+                // Parameters with a default may be omitted, as in TypeScript. Defaults are a
+                // suffix of the parameter list, so an omitted argument is always a defaulted one.
+                const requiredCount = typeParams.filter((typeParam) => !typeParam.default).length;
+                if (typeArgs.length < requiredCount || typeArgs.length > typeParams.length) {
+                  const expected = requiredCount === typeParams.length
+                    ? `${typeParams.length}`
+                    : `${requiredCount} to ${typeParams.length}`;
                   throw new SyntaxError(
-                    `Cannot resolve ${typeNodeName(type!)}: expected ${typeParams.length} type argument(s), but got ${typeArgs.length}`
+                    `Cannot resolve ${typeNodeName(type!)}: expected ${expected} type argument(s), but got ${typeArgs.length}`
                   );
                 }
-                const aliasBindings: TypeBindings = new Map(
-                  typeParams.map((typeParam, typeParamIdx) => [
+                // A default is written in the alias's own scope, so it resolves against the
+                // bindings being built here; an explicit argument resolves in the caller's scope.
+                const aliasBindings = new Map<string, { node: TS.TypeNode; env: TypeBindings }>();
+                typeParams.forEach((typeParam, typeParamIdx) => {
+                  const typeArg = typeArgs[typeParamIdx];
+                  aliasBindings.set(
                     typeParam.name.escapedText.toString(),
-                    { node: typeArgs[typeParamIdx], env: bindings }
-                  ])
-                );
+                    typeArg ? { node: typeArg, env: bindings } : { node: typeParam.default!, env: aliasBindings }
+                  );
+                });
                 return transformOrThrow([args[idx]], [aliasDecl.type], quotedStrings, aliasBindings, depth + 1)[0];
               }
             }
