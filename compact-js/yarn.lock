@@ -305,16 +305,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@commitlint/config-conventional@npm:^21.2.0":
-  version: 21.2.0
-  resolution: "@commitlint/config-conventional@npm:21.2.0"
-  dependencies:
-    "@commitlint/types": "npm:^21.2.0"
-    conventional-changelog-conventionalcommits: "npm:^10.0.0"
-  checksum: 10/f00cab4f9f5f40460d8dc7167e1370385a2f9a300e7c5ad19c8e97ce290043c36efb9134f2107e419990ae9ea31fad1eda9ed820a8ecdc47e09e17e5092f369e
-  languageName: node
-  linkType: hard
-
 "@commitlint/config-conventional@npm:^21.2.2":
   version: 21.2.2
   resolution: "@commitlint/config-conventional@npm:21.2.2"
@@ -1034,7 +1024,7 @@ __metadata:
     "@changesets/changelog-github": "npm:^1.0.0"
     "@changesets/cli": "npm:^3.0.0"
     "@commitlint/cli": "npm:^21.2.2"
-    "@commitlint/config-conventional": "npm:^21.2.0"
+    "@commitlint/config-conventional": "npm:^21.2.2"
     "@effect/build-utils": "npm:^0.8.9"
     "@effect/cluster": "npm:^0.60.0"
     "@effect/experimental": "npm:^0.61.1"
