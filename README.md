@@ -94,7 +94,35 @@ The repo is organized into two workspaces — `compact-js/` and `platform-js/` �
 
 ## Development
 
-Prerequisites: Node.js >= 22, Yarn 4.
+### Prerequisites
+
+- **Node.js** >= 22 (this repo's `engines.node` field pins the minimum)
+- **Yarn 4** (Corepack-managed — see below)
+- **GitHub account with `read:packages` scope** — required because `@midnight-ntwrk/*` dependencies are published exclusively to GitHub Packages (`npm.pkg.github.com`), not the public npm registry. GitHub Packages requires authentication even for reading public packages.
+
+### One-time setup
+
+Enable Corepack so the bundled Yarn 4 release is used automatically (the repo ships its own `.yarn/releases/` directory):
+
+```bash
+corepack enable
+```
+
+Create a personal access token (classic) at <https://github.com/settings/tokens> with the `read:packages` scope, then add the following to your user-level `~/.npmrc`:
+
+```ini
+//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}
+```
+
+…and export the token in your shell:
+
+```bash
+export GITHUB_TOKEN=ghp_your_token_here
+```
+
+See [GitHub's "Authenticating to GitHub Packages" guide](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-npm-registry) for the full setup, including machine-specific `~/.netrc` alternatives.
+
+### Build and test
 
 ```bash
 # compact-js workspace
@@ -109,6 +137,8 @@ yarn install
 yarn build
 yarn test
 ```
+
+> **Note:** if `yarn install` fails with `YN0041 Invalid authentication (as an anonymous user)`, your `GITHUB_TOKEN` is not being picked up by Yarn. Double-check `~/.npmrc`, that `GITHUB_TOKEN` is exported in the current shell, and that the token has the `read:packages` scope.
 
 ## Contributing
 
