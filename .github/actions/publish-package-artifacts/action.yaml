@@ -1,14 +1,15 @@
 name: 'Publish Package Artifacts'
-description: 'Publishes packages to a package registry'
+description: 'Publishes packages to npmjs using Trusted Publishing (OIDC) with provenance'
+
+# No auth-token input: the calling job authenticates via npm Trusted Publishing
+# (OIDC), which requires `id-token: write` and NO token in the environment — a
+# configured NODE_AUTH_TOKEN or `always-auth` in .npmrc suppresses the exchange.
 
 inputs:
   working-directory:
     type: string
     required: true
   package-archive-name:
-    type: string
-    required: true
-  auth-token:
     type: string
     required: true
 
@@ -35,10 +36,70 @@ runs:
 
         echo "tag=${tag}" >> "$GITHUB_OUTPUT"
 
+    # Publishes each packed tarball to npmjs with a provenance attestation.
+    # Idempotent: npmjs rejects republishing an existing version outright (GitHub
+    # Packages tolerated it), so versions already on the registry are skipped.
+    # Mirrors compact-js/scripts/release.mjs. Unlike the previous
+    # `find -execdir npm publish` one-liner, a failed publish now fails the step
+    # instead of being swallowed by find's exit status.
     - name: Publish packages
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: find "./Packages ${{ inputs.package-archive-name }}" -type f -name '*.tgz' -execdir npm publish '{}' --tag ${{ steps.vars.outputs.tag }} --access public ';'
-      env:
-        GITHUB_TOKEN: ${{ inputs.auth-token }}
-        NODE_AUTH_TOKEN: ${{ inputs.auth-token }}
+      run: |
+        set -euo pipefail
+
+        tag='${{ steps.vars.outputs.tag }}'
+        archive="./Packages ${{ inputs.package-archive-name }}"
+
+        tarballs=()
+        while IFS= read -r found; do
+          tarballs+=("${found}")
+        done < <(find "${archive}" -type f -name '*.tgz' | sort)
+
+        if [ "${#tarballs[@]}" -eq 0 ]; then
+          echo "::error::no .tgz files found in '${archive}' — did the packaging step run on a release branch?" >&2
+          exit 1
+        fi
+
+        published=0
+        skipped=0
+        for tarball in "${tarballs[@]}"; do
+          # Identity comes from the tarball itself, not the working tree, so we
+          # publish exactly what was packed.
+          read -r name version < <(tar -xzOf "${tarball}" package/package.json | jq -r '.name + " " + .version')
+          if [ -z "${name}" ] || [ -z "${version}" ] || [ "${name}" = "null" ]; then
+            echo "::error::could not read name/version from ${tarball}" >&2
+            exit 1
+          fi
+
+          # Resolves against whatever registry the calling job configured for the
+          # scope (setup-node's registry-url + scope), so the check and the
+          # publish always target the same registry.
+          #
+          # `npm view` exits non-zero both for "not published yet" and for
+          # genuine errors (network, auth, wrong registry). Those must not be
+          # conflated: treating a transient failure as "not published" would turn
+          # a release into a confusing mid-run publish error, and treating it as
+          # "published" would silently skip a real release. Only a 404 means the
+          # version is absent; anything else fails the step.
+          set +e
+          view_output="$(npm view "${name}@${version}" version 2>&1)"
+          view_status=$?
+          set -e
+
+          if [ "${view_status}" -eq 0 ]; then
+            echo "skip ${name}@${version} — already published"
+            skipped=$((skipped + 1))
+            continue
+          elif ! grep -qiE 'E404|404 Not Found|is not in this registry|No match found' <<<"${view_output}"; then
+            echo "::error::cannot determine whether ${name}@${version} is already published" >&2
+            echo "${view_output}" >&2
+            exit 1
+          fi
+
+          echo "publishing ${name}@${version} (tag: ${tag})"
+          npm publish "${tarball}" --provenance --tag "${tag}" --access public
+          published=$((published + 1))
+        done
+
+        echo "${published} package(s) published, ${skipped} skipped" >> "$GITHUB_STEP_SUMMARY"

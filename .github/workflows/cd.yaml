@@ -8,15 +8,18 @@ on:
       workspace:
         type: choice
         description: The workspace to build and publish
-        options: 
+        options:
           - platform-js
           - compact-js
 
+# Workflow-level defaults for the build jobs. `packages: read` (not write): CD
+# publishes to npmjs, and only *reads* ghcr during the build. The two grants that
+# actually matter for a release — `id-token: write` for the OIDC exchange and
+# `contents: write` for the release tag — are scoped to their own jobs below.
 permissions:
-  contents: write
+  contents: read
   issues: read
-  id-token: write
-  packages: write
+  packages: read
   checks: write
   pull-requests: write
 
@@ -26,15 +29,109 @@ concurrency:
 
 jobs:
   cd-platformjs:
-    name: Build and Publish Platform.js
+    name: Build Platform.js
     with:
       should_run: ${{ inputs.workspace == 'platform-js' }}
     uses: ./.github/workflows/cd-platform-js.yaml
     secrets: inherit
 
   cd-compactjs:
-    name: Build and Publish Compact.js
+    name: Build Compact.js
     with:
       should_run: ${{ inputs.workspace == 'compact-js' }}
     uses: ./.github/workflows/cd-compact-js.yaml
     secrets: inherit
+
+  # Publishing MUST live in this workflow, not in the called cd-<workspace>.yaml
+  # files. npm allows exactly one Trusted Publisher per package, and its
+  # validation of reusable workflows is ambiguous about whether it matches the
+  # calling workflow or the one containing the publish job. Keeping the job here
+  # makes `workflow_ref` and `job_workflow_ref` both `cd.yaml`, so a single
+  # publisher config works for all four packages under either interpretation.
+  # See docs/npmjs-trusted-publishing.md.
+  publish:
+    needs: [cd-platformjs, cd-compactjs]
+    # Only the selected workspace's build actually runs; the other is skipped, so
+    # this must not require both to succeed — just that neither failed.
+    if: ${{ !cancelled() && !failure() }}
+    name: Publish Packages
+    runs-on: ubuntu-latest
+    # Human gate: configure required reviewers in
+    # Settings -> Environments -> npm-publish-stable. The npmjs Trusted Publisher
+    # for each package is scoped to this environment name.
+    environment: npm-publish-stable
+    permissions:
+      contents: read
+      id-token: write # npm Trusted Publishing (OIDC) + provenance
+      packages: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # ratchet:actions/checkout@v5
+
+      # No `always-auth` and no NODE_AUTH_TOKEN: either one writes token auth
+      # into .npmrc, which suppresses the OIDC token exchange.
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v4
+        with:
+          registry-url: https://registry.npmjs.org
+          scope: '@midnight-ntwrk'
+          node-version-file: .nvmrc
+
+      - name: Assert npm supports Trusted Publishing
+        run: |
+          set -euo pipefail
+          npm_version=$(npm --version)
+          echo "npm ${npm_version}"
+          if ! printf '%s\n%s\n' 11.5.1 "${npm_version}" | sort -V -C; then
+            echo "::error::npm >= 11.5.1 is required for Trusted Publishing (got ${npm_version}). Bump .nvmrc." >&2
+            exit 1
+          fi
+
+      - name: Publish Package Artifacts
+        uses: ./.github/actions/publish-package-artifacts
+        with:
+          package-archive-name: ${{ inputs.workspace }}
+          working-directory: ./${{ inputs.workspace }}
+
+  # compact-js tags and cuts a GitHub Release; platform-js only publishes.
+  release:
+    needs: publish
+    if: ${{ inputs.workspace == 'compact-js' }}
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the release tag
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # ratchet:actions/checkout@v5
+
+      - name: Extract version for release
+        id: extract_version
+        run: |
+          version=$(jq -r '.version' ./compact-js/compact-js/package.json)
+          base_version=$(echo "$version" | sed 's/-alpha.*//')
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "base_version=${base_version}" >> "$GITHUB_OUTPUT"
+
+      - name: Create git tag
+        run: |
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          base_version="${{ steps.extract_version.outputs.base_version }}"
+          git tag -a "compact-js-v${base_version}" -m "Release compact-js-v${base_version}"
+          git push origin "compact-js-v${base_version}"
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          # Extract the latest release notes from CHANGELOG.md (between first and second ## heading)
+          changelog=$(sed -n '/^## \[/,/^## \[/{/^## \[/!p;}' ./compact-js/CHANGELOG.md | head -n -1 | sed '/^$/d' | sed ':a;N;$!ba;s/\n/\\n/g')
+          echo "body=$changelog" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          base_version="${{ steps.extract_version.outputs.base_version }}"
+          gh release create "compact-js-v${base_version}" \
+            --title "compact-js v${base_version}" \
+            --notes "${{ steps.changelog.outputs.body }}" \
+            --repo "${{ github.repository }}"

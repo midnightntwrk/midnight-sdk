@@ -1063,7 +1063,7 @@ __metadata:
 
 "@midnight-ntwrk/compact-js@npm:2.5.5-rc.5":
   version: 2.5.5-rc.5
-  resolution: "@midnight-ntwrk/compact-js@npm:2.5.5-rc.5::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-js%2F2.5.5-rc.5%2Fbe73638adb10caf47b4152e8c24a81ee1c76c6ee"
+  resolution: "@midnight-ntwrk/compact-js@npm:2.5.5-rc.5"
   dependencies:
     "@effect/platform": "npm:^0.96.1"
     "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.0"
@@ -1092,7 +1092,7 @@ __metadata:
 
 "@midnight-ntwrk/compact-runtime@npm:0.18.0-rc.0":
   version: 0.18.0-rc.0
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.18.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.18.0-rc.0%2F27afe600c8093b8d02a99e94f32b7c9f445bdf52"
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.18.0-rc.0"
   dependencies:
     "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.2"
     "@noble/curves": "npm:^2.2.0"
@@ -1105,7 +1105,7 @@ __metadata:
 
 "@midnight-ntwrk/compact-runtime@npm:0.19.0-rc.0":
   version: 0.19.0-rc.0
-  resolution: "@midnight-ntwrk/compact-runtime@npm:0.19.0-rc.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fcompact-runtime%2F0.19.0-rc.0%2F66c304bb9671ea74287112d39f7b26f14cc806a9"
+  resolution: "@midnight-ntwrk/compact-runtime@npm:0.19.0-rc.0"
   dependencies:
     "@midnightntwrk/onchain-runtime-v4": "npm:^4.0.0-rc.3"
     "@noble/curves": "npm:^2.2.0"
@@ -1118,14 +1118,14 @@ __metadata:
 
 "@midnight-ntwrk/ledger-v8@npm:^8.0.2":
   version: 8.0.2
-  resolution: "@midnight-ntwrk/ledger-v8@npm:8.0.2::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fledger-v8%2F8.0.2%2F89f539aa03677c5d966c1adae48e4dfc89df292a"
+  resolution: "@midnight-ntwrk/ledger-v8@npm:8.0.2"
   checksum: 10/2c4b9a8cadbd22da8fc23652f598467b670a062b515a5a67de9a03ac09b597bf93ee36d1122f196933cf5c6897eca55d383e683959449d21fb9dd7f831bf3656
   languageName: node
   linkType: hard
 
 "@midnight-ntwrk/midnight-js-compact@npm:5.0.0-beta.3":
   version: 5.0.0-beta.3
-  resolution: "@midnight-ntwrk/midnight-js-compact@npm:5.0.0-beta.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fmidnight-js-compact%2F5.0.0-beta.3%2Fb3426f36b5e1f7f665a29e1f09a3f1c365854a46"
+  resolution: "@midnight-ntwrk/midnight-js-compact@npm:5.0.0-beta.3"
   dependencies:
     "@midnight-ntwrk/midnight-js-utils": "npm:5.0.0-beta.3"
   bin:
@@ -1137,14 +1137,14 @@ __metadata:
 
 "@midnight-ntwrk/midnight-js-network-id@npm:5.0.0-beta.3":
   version: 5.0.0-beta.3
-  resolution: "@midnight-ntwrk/midnight-js-network-id@npm:5.0.0-beta.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fmidnight-js-network-id%2F5.0.0-beta.3%2F1360e3afc4fa4d6f53e6a72ed785e50ac5b1ae20"
+  resolution: "@midnight-ntwrk/midnight-js-network-id@npm:5.0.0-beta.3"
   checksum: 10/c5e66e97a99f6b1296b6e67b81ccf90ff2bcedf262c4141be71b18680d6c2ac6fa3652611629a4f9c464c3b4732f8b3a26ff9ce7ec334b6b2be62e8f60d8208d
   languageName: node
   linkType: hard
 
 "@midnight-ntwrk/midnight-js-protocol@npm:5.0.0-beta.3":
   version: 5.0.0-beta.3
-  resolution: "@midnight-ntwrk/midnight-js-protocol@npm:5.0.0-beta.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fmidnight-js-protocol%2F5.0.0-beta.3%2F29c7a8e451395bcd44726d5b50e86ec4effe655f"
+  resolution: "@midnight-ntwrk/midnight-js-protocol@npm:5.0.0-beta.3"
   dependencies:
     "@midnight-ntwrk/compact-js": "npm:2.5.5-rc.5"
     "@midnight-ntwrk/compact-runtime": "npm:0.18.0-rc.0"
@@ -1157,7 +1157,7 @@ __metadata:
 
 "@midnight-ntwrk/midnight-js-utils@npm:5.0.0-beta.3":
   version: 5.0.0-beta.3
-  resolution: "@midnight-ntwrk/midnight-js-utils@npm:5.0.0-beta.3::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fmidnight-js-utils%2F5.0.0-beta.3%2F54a5c48d55cef881955e39ecce140061ce74abac"
+  resolution: "@midnight-ntwrk/midnight-js-utils@npm:5.0.0-beta.3"
   dependencies:
     "@midnight-ntwrk/midnight-js-network-id": "npm:5.0.0-beta.3"
     "@midnight-ntwrk/midnight-js-protocol": "npm:5.0.0-beta.3"
@@ -1169,7 +1169,7 @@ __metadata:
 
 "@midnight-ntwrk/platform-js@npm:3.0.0, @midnight-ntwrk/platform-js@npm:^3.0.0":
   version: 3.0.0
-  resolution: "@midnight-ntwrk/platform-js@npm:3.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fplatform-js%2F3.0.0%2Fb18da0d7b112c09f071e2569392aaf7b8f97eb8d"
+  resolution: "@midnight-ntwrk/platform-js@npm:3.0.0"
   dependencies:
     "@effect/platform": "npm:^0.96.1"
     effect: "npm:^3.21.0"
@@ -1180,7 +1180,7 @@ __metadata:
 
 "@midnight-ntwrk/wallet-sdk-address-format@npm:3.1.0":
   version: 3.1.0
-  resolution: "@midnight-ntwrk/wallet-sdk-address-format@npm:3.1.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fwallet-sdk-address-format%2F3.1.0%2F0c1e29ced1bd51c91376898aa2dfcf97a9503956"
+  resolution: "@midnight-ntwrk/wallet-sdk-address-format@npm:3.1.0"
   dependencies:
     "@midnight-ntwrk/ledger-v8": "npm:^8.0.2"
     "@scure/base": "npm:^2.0.0"

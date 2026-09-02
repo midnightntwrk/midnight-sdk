@@ -1,17 +1,18 @@
-name: Publish - Compact.js
+name: Build - Compact.js
 env:
   MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
 permissions:
-  contents: write
+  contents: read
   issues: read
-  id-token: write
-  packages: write
+  packages: read
   checks: write
   pull-requests: write
 
+# Called only from cd.yaml. Publishing deliberately does NOT live here: the npmjs
+# Trusted Publisher is bound to `cd.yaml`, and a called workflow would make the
+# OIDC workflow ref ambiguous. See docs/npmjs-trusted-publishing.md.
 on:
-  workflow_dispatch:
   workflow_call:
     inputs:
       should_run:
@@ -30,69 +31,3 @@ jobs:
       workspace: compact-js
       create-package-artifacts: true
     secrets: inherit
-
-  publish:
-    needs: ci
-    name: Publish Packages
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.extract_version.outputs.version }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # ratchet:actions/checkout@v5
-
-      - name: Set up Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v4
-        with:
-          always-auth: true
-          registry-url: https://npm.pkg.github.com/
-          scope: '@midnight-ntwrk'
-          node-version-file: .nvmrc
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Publish Package Artifacts
-        uses: ./.github/actions/publish-package-artifacts
-        with:
-          package-archive-name: 'compact-js'
-          working-directory: ./compact-js
-          auth-token: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
-
-      - name: Extract version for release
-        id: extract_version
-        run: |
-          version=$(jq -r '.version' ./compact-js/compact-js/package.json)
-          base_version=$(echo "$version" | sed 's/-alpha.*//')
-          echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "base_version=${base_version}" >> "$GITHUB_OUTPUT"
-
-  release:
-    needs: publish
-    name: Create GitHub Release
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # ratchet:actions/checkout@v5
-
-      - name: Create git tag
-        run: |
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git config user.name "github-actions[bot]"
-          base_version=$(echo "${{ needs.publish.outputs.version }}" | sed 's/-alpha.*//')
-          git tag -a "compact-js-v${base_version}" -m "Release compact-js-v${base_version}"
-          git push origin "compact-js-v${base_version}"
-
-      - name: Extract changelog
-        id: changelog
-        run: |
-          # Extract the latest release notes from CHANGELOG.md (between first and second ## heading)
-          changelog=$(sed -n '/^## \[/,/^## \[/{/^## \[/!p;}' ./compact-js/CHANGELOG.md | head -n -1 | sed '/^$/d' | sed ':a;N;$!ba;s/\n/\\n/g')
-          echo "body=$changelog" >> "$GITHUB_OUTPUT"
-
-      - name: Create GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          base_version=$(echo "${{ needs.publish.outputs.version }}" | sed 's/-alpha.*//')
-          gh release create "compact-js-v${base_version}" \
-            --title "compact-js v${base_version}" \
-            --notes "${{ steps.changelog.outputs.body }}" \
-            --repo "${{ github.repository }}"

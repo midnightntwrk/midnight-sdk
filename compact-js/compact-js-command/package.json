@@ -41,6 +41,9 @@
   "packageManager": "yarn@4.18.0",
   "author": "IOHK",
   "license": "Apache-2.0",
+  "publishConfig": {
+    "provenance": true
+  },
   "scripts": {
     "build": "yarn build-esm && build-utils pack-v3",
     "build-esm": "tsc -b tsconfig.build.json",
