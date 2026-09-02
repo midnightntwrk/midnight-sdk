@@ -28,19 +28,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Secrets are passed explicitly, not with `secrets: inherit`: the build chain
+  # needs exactly one secret (ghcr login + compactc GitHub-release downloads),
+  # and `inherit` would hand every repository secret to the called workflow.
   cd-platformjs:
     name: Build Platform.js
     with:
       should_run: ${{ inputs.workspace == 'platform-js' }}
     uses: ./.github/workflows/cd-platform-js.yaml
-    secrets: inherit
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
   cd-compactjs:
     name: Build Compact.js
     with:
       should_run: ${{ inputs.workspace == 'compact-js' }}
     uses: ./.github/workflows/cd-compact-js.yaml
-    secrets: inherit
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
   # Publishing MUST live in this workflow, not in the called cd-<workspace>.yaml
   # files. npm allows exactly one Trusted Publisher per package, and its
@@ -64,11 +69,21 @@ jobs:
       contents: read
       id-token: write # npm Trusted Publishing (OIDC) + provenance
       packages: read
+    # Surfaced so `release` can tag what was actually packed and published,
+    # rather than re-deriving a version from the committed manifests.
+    outputs:
+      published-count: ${{ steps.publish.outputs.published-count }}
+      skipped-count: ${{ steps.publish.outputs.skipped-count }}
+      versions: ${{ steps.publish.outputs.versions }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # ratchet:actions/checkout@v5
 
-      # No `always-auth` and no NODE_AUTH_TOKEN: either one writes token auth
-      # into .npmrc, which suppresses the OIDC token exchange.
+      # No `always-auth` and no NODE_AUTH_TOKEN, simply because Trusted
+      # Publishing needs no token. Note that a token would not *break* OIDC:
+      # `npm publish` attempts the exchange whenever `id-token: write` has put
+      # ACTIONS_ID_TOKEN_REQUEST_URL/_TOKEN in the environment, and on success
+      # overwrites the registry's `_authToken`. The `id-token` grant above is
+      # what actually gates the exchange.
       - name: Set up Node.js
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # ratchet:actions/setup-node@v4
         with:
@@ -87,12 +102,19 @@ jobs:
           fi
 
       - name: Publish Package Artifacts
+        id: publish
         uses: ./.github/actions/publish-package-artifacts
         with:
           package-archive-name: ${{ inputs.workspace }}
           working-directory: ./${{ inputs.workspace }}
 
   # compact-js tags and cuts a GitHub Release; platform-js only publishes.
+  #
+  # Every step here is idempotent, because `publish` is: re-running CD after a
+  # partial failure must converge, not fail on work a previous attempt finished.
+  # That also means a run in which every package was skipped (version.json was
+  # never bumped) does not manufacture a second tag or release — it finds them
+  # already there and no-ops.
   release:
     needs: publish
     if: ${{ inputs.workspace == 'compact-js' }}
@@ -103,35 +125,79 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # ratchet:actions/checkout@v5
 
-      - name: Extract version for release
-        id: extract_version
+      # The version comes from the `publish` job, which read it out of the
+      # packed tarball. Re-deriving it from the committed
+      # compact-js/compact-js/package.json would only agree by convention: the
+      # manifests are bumped on the runner and never pushed, so the committed
+      # value lags whenever version.json moves, and `-alpha` builds publish
+      # `<version>-alpha.<commit-height>` that no committed manifest carries.
+      - name: Resolve released version
+        id: version
+        env:
+          VERSIONS: ${{ needs.publish.outputs.versions }}
+          PACKAGE: '@midnight-ntwrk/compact-js'
         run: |
-          version=$(jq -r '.version' ./compact-js/compact-js/package.json)
-          base_version=$(echo "$version" | sed 's/-alpha.*//')
+          set -euo pipefail
+          versions="${VERSIONS}"
+          [ -n "${versions}" ] || versions='{}'
+          if ! version=$(jq -er --arg n "${PACKAGE}" '.[$n]' <<<"${versions}"); then
+            echo "::error::the publish job reported no version for ${PACKAGE} — nothing to tag" >&2
+            exit 1
+          fi
           echo "version=${version}" >> "$GITHUB_OUTPUT"
-          echo "base_version=${base_version}" >> "$GITHUB_OUTPUT"
+          echo "tag=compact-js-v${version}" >> "$GITHUB_OUTPUT"
 
       - name: Create git tag
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
+          set -euo pipefail
+          if [ -n "$(git ls-remote --tags origin "refs/tags/${TAG}")" ]; then
+            echo "tag ${TAG} already exists — leaving it as it is"
+            exit 0
+          fi
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-          base_version="${{ steps.extract_version.outputs.base_version }}"
-          git tag -a "compact-js-v${base_version}" -m "Release compact-js-v${base_version}"
-          git push origin "compact-js-v${base_version}"
+          git tag -a "${TAG}" -m "Release ${TAG}"
+          git push origin "${TAG}"
 
+      # CHANGELOG.md headings are `## <version> (<date>)` — take everything
+      # between the first heading and the next one, and write it to a file.
+      # `--notes-file` (not `--notes "${{ ... }}"`) keeps changelog text off the
+      # shell command line, where a stray quote, backtick or `$(...)` from a
+      # commit message would break the step or run in a job holding
+      # `contents: write`.
       - name: Extract changelog
-        id: changelog
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          # Extract the latest release notes from CHANGELOG.md (between first and second ## heading)
-          changelog=$(sed -n '/^## \[/,/^## \[/{/^## \[/!p;}' ./compact-js/CHANGELOG.md | head -n -1 | sed '/^$/d' | sed ':a;N;$!ba;s/\n/\\n/g')
-          echo "body=$changelog" >> "$GITHUB_OUTPUT"
+          set -euo pipefail
+          awk '/^## /{ if (seen++) exit; next } seen { print }' ./compact-js/CHANGELOG.md \
+            | sed -e '/./,$!d' > release-notes.md
+          if [ ! -s release-notes.md ]; then
+            printf 'Release %s\n' "${VERSION}" > release-notes.md
+          fi
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
         run: |
-          base_version="${{ steps.extract_version.outputs.base_version }}"
-          gh release create "compact-js-v${base_version}" \
-            --title "compact-js v${base_version}" \
-            --notes "${{ steps.changelog.outputs.body }}" \
-            --repo "${{ github.repository }}"
+          set -euo pipefail
+          if gh release view "${TAG}" --repo "${REPO}" >/dev/null 2>&1; then
+            echo "release ${TAG} already exists — leaving it as it is"
+            exit 0
+          fi
+          # A prerelease version must not become the repository's "Latest
+          # release"; `version.json` → `preRelease` decides which this is.
+          prerelease=()
+          case "${VERSION}" in
+            *-*) prerelease=(--prerelease) ;;
+          esac
+          gh release create "${TAG}" \
+            --title "compact-js v${VERSION}" \
+            --notes-file release-notes.md \
+            --repo "${REPO}" \
+            "${prerelease[@]}"

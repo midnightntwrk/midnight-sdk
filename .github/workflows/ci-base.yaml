@@ -29,6 +29,13 @@ on:
         description: A flag indicating whether the compiled packages should be created and attached to the build.
         required: false
         default: false
+    # Declared (rather than relying on `secrets: inherit`) so callers hand over
+    # only this one secret: the ghcr login below and the compactc
+    # GitHub-release downloads during build/test. Nothing here needs an npm
+    # token — every @midnight-ntwrk dependency is public on npmjs.
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE:
+        required: true
 
 jobs:
   ci:

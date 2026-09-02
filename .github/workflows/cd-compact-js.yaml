@@ -18,6 +18,11 @@ on:
       should_run:
         required: true
         type: string
+    # Declared (rather than relying on `secrets: inherit`) so this workflow
+    # receives only the one secret the build needs.
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE:
+        required: true
 
 concurrency:
   group: compact-js-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -30,4 +35,5 @@ jobs:
     with:
       workspace: compact-js
       create-package-artifacts: true
-    secrets: inherit
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

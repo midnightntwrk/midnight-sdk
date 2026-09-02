@@ -50,7 +50,8 @@ jobs:
     with:
       should_run: ${{ needs.ci.outputs.build_p_js }}
     uses: ./.github/workflows/ci-platform-js.yaml
-    secrets: inherit
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 
   ci-compactjs:
     needs: ci
@@ -58,4 +59,5 @@ jobs:
     with:
       should_run: ${{ needs.ci.outputs.build_c_js }}
     uses: ./.github/workflows/ci-compact-js.yaml
-    secrets: inherit
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}

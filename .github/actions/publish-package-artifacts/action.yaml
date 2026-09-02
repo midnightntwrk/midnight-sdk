@@ -2,8 +2,11 @@ name: 'Publish Package Artifacts'
 description: 'Publishes packages to npmjs using Trusted Publishing (OIDC) with provenance'
 
 # No auth-token input: the calling job authenticates via npm Trusted Publishing
-# (OIDC), which requires `id-token: write` and NO token in the environment — a
-# configured NODE_AUTH_TOKEN or `always-auth` in .npmrc suppresses the exchange.
+# (OIDC), which needs `id-token: write` on the job so that GitHub exposes
+# ACTIONS_ID_TOKEN_REQUEST_URL/_TOKEN. `npm publish` attempts the exchange
+# whenever those are present and, on success, overwrites whatever `_authToken`
+# is configured for the registry — so a stray token does not block OIDC. We
+# simply have no token to configure.
 
 inputs:
   working-directory:
@@ -12,6 +15,21 @@ inputs:
   package-archive-name:
     type: string
     required: true
+
+outputs:
+  published-count:
+    description: 'Number of packages published by this run (0 if every version was already on the registry)'
+    value: ${{ steps.publish.outputs.published-count }}
+  skipped-count:
+    description: 'Number of packages skipped because their version was already on the registry'
+    value: ${{ steps.publish.outputs.skipped-count }}
+  versions:
+    description: >-
+      JSON object mapping package name to the version read out of the packed
+      tarball, e.g. {"@midnight-ntwrk/compact-js":"2.5.5-rc.8"}. Covers both
+      published and skipped packages, so callers can tag the release from what
+      was actually packed rather than from a committed manifest.
+    value: ${{ steps.publish.outputs.versions }}
 
 runs:
   using: 'composite'
@@ -22,10 +40,15 @@ runs:
         pattern: Packages ${{ inputs.package-archive-name }}
         path: ${{ inputs.working-directory }}
 
+    # Interpolation of `inputs`/`steps` into `run:` is passed through `env:`
+    # rather than spliced into the script, so the value can never be parsed as
+    # shell. Same for every step below.
     - name: Extract packages archive
       shell: bash
       working-directory: ${{ inputs.working-directory }}
-      run: find "./Packages ${{ inputs.package-archive-name }}" -type f -name '*.zip' -execdir unzip '{}' ';'
+      env:
+        ARCHIVE_DIR: Packages ${{ inputs.package-archive-name }}
+      run: find "./${ARCHIVE_DIR}" -type f -name '*.zip' -execdir unzip '{}' ';'
 
     - name: Determine Tag
       id: vars
@@ -43,13 +66,16 @@ runs:
     # `find -execdir npm publish` one-liner, a failed publish now fails the step
     # instead of being swallowed by find's exit status.
     - name: Publish packages
+      id: publish
       shell: bash
       working-directory: ${{ inputs.working-directory }}
+      env:
+        ARCHIVE_DIR: Packages ${{ inputs.package-archive-name }}
+        DIST_TAG: ${{ steps.vars.outputs.tag }}
       run: |
         set -euo pipefail
 
-        tag='${{ steps.vars.outputs.tag }}'
-        archive="./Packages ${{ inputs.package-archive-name }}"
+        archive="./${ARCHIVE_DIR}"
 
         tarballs=()
         while IFS= read -r found; do
@@ -63,14 +89,27 @@ runs:
 
         published=0
         skipped=0
+        versions='{}'
         for tarball in "${tarballs[@]}"; do
           # Identity comes from the tarball itself, not the working tree, so we
           # publish exactly what was packed.
-          read -r name version < <(tar -xzOf "${tarball}" package/package.json | jq -r '.name + " " + .version')
-          if [ -z "${name}" ] || [ -z "${version}" ] || [ "${name}" = "null" ]; then
+          #
+          # Read into a variable first: `read -r ... < <(...)` returns non-zero
+          # when the substitution yields nothing, so under `set -e` the step
+          # would abort on the `read` and the diagnostic below would never
+          # print — the operator would just see a bare exit 1.
+          identity=$(tar -xzOf "${tarball}" package/package.json 2>/dev/null \
+            | jq -r '(.name // "") + " " + (.version // "")') || identity=''
+          read -r name version <<<"${identity}"
+          if [ -z "${name}" ] || [ -z "${version}" ]; then
             echo "::error::could not read name/version from ${tarball}" >&2
             exit 1
           fi
+
+          # Recorded for published *and* skipped packages: the caller tags the
+          # release from this, and a retry whose publishes were all skipped
+          # still needs the version it was asked to release.
+          versions=$(jq -cn --argjson v "${versions}" --arg n "${name}" --arg ver "${version}" '$v + {($n): $ver}')
 
           # Resolves against whatever registry the calling job configured for the
           # scope (setup-node's registry-url + scope), so the check and the
@@ -90,6 +129,31 @@ runs:
           if [ "${view_status}" -eq 0 ]; then
             echo "skip ${name}@${version} — already published"
             skipped=$((skipped + 1))
+
+            # A version already on the registry cannot be republished, so a
+            # change to `version.json` → `v_info.tag` alone (promoting an
+            # existing build from `rc` to `latest`, say) would otherwise be
+            # reported as a clean skip while the dist-tag never moved. It cannot
+            # be moved from here: the OIDC credential is minted inside
+            # `npm publish` and is not available to `npm dist-tag`. So say so
+            # loudly and hand the operator the command.
+            #
+            # A warning rather than a failure, because re-running CD for an
+            # older release legitimately finds the dist-tag on a newer version.
+            set +e
+            tags_output="$(npm view "${name}" dist-tags --json 2>/dev/null)"
+            tags_status=$?
+            set -e
+            # Only compare when the lookup succeeded: on failure `npm view
+            # --json` prints an error object on stdout, which would read as
+            # "tag unset" and warn about nothing.
+            if [ "${tags_status}" -eq 0 ]; then
+              current=$(jq -r --arg t "${DIST_TAG}" '.[$t] // ""' <<<"${tags_output}")
+              if [ "${current}" != "${version}" ]; then
+                echo "::warning::${name}: dist-tag '${DIST_TAG}' points at '${current:-<unset>}', not the packaged ${version}. Move it with: npm dist-tag add ${name}@${version} ${DIST_TAG}"
+                echo "- \`${name}\`: dist-tag \`${DIST_TAG}\` points at \`${current:-<unset>}\`, not \`${version}\` — run \`npm dist-tag add ${name}@${version} ${DIST_TAG}\`" >> "$GITHUB_STEP_SUMMARY"
+              fi
+            fi
             continue
           elif ! grep -qiE 'E404|404 Not Found|is not in this registry|No match found' <<<"${view_output}"; then
             echo "::error::cannot determine whether ${name}@${version} is already published" >&2
@@ -97,9 +161,15 @@ runs:
             exit 1
           fi
 
-          echo "publishing ${name}@${version} (tag: ${tag})"
-          npm publish "${tarball}" --provenance --tag "${tag}" --access public
+          echo "publishing ${name}@${version} (tag: ${DIST_TAG})"
+          npm publish "${tarball}" --provenance --tag "${DIST_TAG}" --access public
           published=$((published + 1))
         done
+
+        {
+          echo "published-count=${published}"
+          echo "skipped-count=${skipped}"
+          echo "versions=${versions}"
+        } >> "$GITHUB_OUTPUT"
 
         echo "${published} package(s) published, ${skipped} skipped" >> "$GITHUB_STEP_SUMMARY"

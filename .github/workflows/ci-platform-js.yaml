@@ -16,6 +16,11 @@ on:
       should_run:
         required: true
         type: string
+    # Declared (rather than relying on `secrets: inherit`) so this workflow
+    # receives only the one secret the build needs.
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE:
+        required: true
 
 concurrency:
   group: platform-js-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -29,5 +34,6 @@ jobs:
       workspace: platform-js
       coverage-files: |
         platform-js, ./platform-js/platform-js/coverage/coverage-summary.json
-    secrets: inherit
+    secrets:
+      MIDNIGHTCI_PACKAGES_WRITE: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
 

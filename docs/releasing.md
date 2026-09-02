@@ -23,9 +23,19 @@ The job only packages when run from a branch listed in that workspace's
 other branch and the packaging steps are skipped (the publish job then fails
 because there is no artifact to publish).
 
-Re-running CD on a version that is already on npmjs is a **no-op** — the publish
-step reads each tarball's name/version and skips anything already on the
-registry, so a partially failed release is safe to retry.
+Re-running CD on a version that is already released is a **no-op**, so a
+partially failed release is safe to retry:
+
+- the publish step reads each tarball's name/version and skips anything already
+  on the registry;
+- the `release` job skips the git tag and the GitHub Release if they already
+  exist, so it converges instead of failing on work a previous attempt finished.
+
+One thing a re-run cannot do for you: a version already on npmjs cannot be
+republished, so changing `version.json` → `tag` alone (to promote an existing
+build from `rc` to `latest`, say) does **not** move the dist-tag. CD warns and
+prints the `npm dist-tag add` command to run — see
+[npmjs-trusted-publishing.md](./npmjs-trusted-publishing.md).
 
 ## Versioning — `<workspace>/version.json`
 
@@ -52,11 +62,22 @@ The published version is derived from `version` + `preRelease`:
 to the computed version **on the runner only** (so the packed tarball is correct)
 — this commit is **not** pushed back to `main`, so branch protection is unaffected.
 
-## Git tags
+## Git tags and release notes
 
-- **compact-js** pushes a `compact-js-v<version>` git tag after a successful
-  publish.
+- **compact-js** pushes a `compact-js-v<version>` git tag and cuts a GitHub
+  Release after a successful publish. `<version>` is the version the `publish`
+  job actually put on npmjs — read out of the packed tarball, not out of a
+  committed `package.json` — so `-alpha` builds tag
+  `compact-js-v3.0.0-alpha.42`, not a bare `compact-js-v3.0.0` shared by every
+  alpha. A prerelease version is marked as a GitHub prerelease so it does not
+  displace the repo's "Latest release".
 - **platform-js** does **not** tag — it only publishes to the registry.
+
+Release notes come from the top section of `compact-js/CHANGELOG.md` (everything
+between the first `## <version> (<date>)` heading and the next one). **That file
+is maintained by hand** — nothing generates it — so update it in the same commit
+that bumps `version.json`. If the section is empty the release falls back to
+`Release <version>`.
 
 ## Verifying a release
 
