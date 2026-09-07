@@ -40,10 +40,5 @@ export default defineConfig({
     projects: [
       '*/vitest.config.ts'
     ]
-  },
-  resolve: {
-    alias: {
-      '@midnight-ntwrk/onchain-runtime': '@midnight-ntwrk/onchain-runtime-cjs'
-    }
   }
 });
