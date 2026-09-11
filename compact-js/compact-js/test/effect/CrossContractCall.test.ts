@@ -19,7 +19,13 @@ import { NodeContext } from '@effect/platform-node';
 import { beforeEach, describe, expect, it } from '@effect/vitest';
 import { CompiledContract, Contract, ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
-import { ChargedState, ContractState, type ContractStateProvider } from '@midnight-ntwrk/compact-runtime';
+import {
+  ChargedState,
+  type ContractModuleProvider,
+  ContractState,
+  type ContractStateProvider,
+  type Module
+} from '@midnight-ntwrk/compact-runtime';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import { ContractDeploy, ContractState as LedgerContractState, partitionTranscripts } from '@midnightntwrk/ledger-v9';
@@ -27,8 +33,9 @@ import { Cause, ConfigProvider, Effect, Exit, Layer, Option } from 'effect';
 import { vi } from 'vitest';
 
 import { CCCInnerContract, CCCMiddleContract, CCCOuterContract, CCCSelfContract } from '../contract';
-import { ledger as cccInnerLedger } from '../contract/managed/cccInner/contract';
-import { ledger as cccSelfLedger } from '../contract/managed/cccSelf/contract';
+import * as cccInnerModule from '../contract/managed/cccInner/contract';
+import * as cccMiddleModule from '../contract/managed/cccMiddle/contract';
+import * as cccSelfModule from '../contract/managed/cccSelf/contract';
 
 // Wrap `partitionTranscripts` so it delegates to the real implementation by default; individual
 // tests can override a single call (see the wrong-partition-count test below).
@@ -56,6 +63,14 @@ const asContractState = (state: LedgerContractState): ContractState =>
 // The on-chain deploy (and its address) derived from an `initialize` result's contract state.
 const deployOf = (result: { public: { contractState: ContractState } }): ContractDeploy =>
   new ContractDeploy(asLedgerContractState(result.public.contractState));
+
+/** A module provider over an in-memory address-to-module table. */
+const moduleProviderFor = (modules: ReadonlyMap<string, Module>): ContractModuleProvider => ({
+  resolve: (address) => {
+    const module = modules.get(address);
+    return module === undefined ? undefined : () => Promise.resolve(module);
+  }
+});
 
 // All fixtures share the same coin public key and ZK-asset-backed configuration; they differ only by
 // their compiled-assets path.
@@ -119,6 +134,7 @@ describe('cross-contract calls', () => {
   let innerDeploy: ContractDeploy;
   let middleDeploy: ContractDeploy;
   let chainStates: Map<string, ContractState>;
+  let chainModules: Map<string, Module>;
 
   beforeEach(async () => {
     inner = innerExecutable.pipe(ContractExecutable.provide(testLayer(CCC_INNER_ASSETS_PATH)));
@@ -130,6 +146,12 @@ describe('cross-contract calls', () => {
     middleDeploy = deployOf(middleResult);
 
     chainStates = new Map([[innerDeploy.address, asContractState(innerDeploy.initialState)]]);
+    // Which module implements the contract at each address. A deployment carries no code, so this is
+    // the table a chain-backed provider would keep; here the fixtures are already imported.
+    chainModules = new Map<string, Module>([
+      [innerDeploy.address, cccInnerModule],
+      [middleDeploy.address, cccMiddleModule]
+    ]);
   });
 
   const middleContext = (stateProvider: ContractStateProvider) => ({
@@ -137,7 +159,8 @@ describe('cross-contract calls', () => {
     contractState: asContractState(middleDeploy.initialState),
     privateState: undefined,
     parentBlockHash: ZERO_BLOCK_HASH,
-    stateProvider
+    stateProvider,
+    moduleProvider: moduleProviderFor(chainModules)
   });
 
   // A state provider backed by the in-memory `chainStates` map — resolves any callee deployed above.
@@ -182,6 +205,41 @@ describe('cross-contract calls', () => {
       for (const subCall of subCalls) {
         expect(Option.isSome(subCall.communicationCommitment)).toBe(true);
         expect(subCall.contractAddress).not.toBe(rootCall.contractAddress);
+      }
+    })
+  );
+
+  it.effect('every call exposes its own Zswap local state, keyed to its own contract', () =>
+    Effect.gen(function*() {
+      // Before LFDT-Minokawa/compact#658 the runtime blanked a callee's Zswap local state, so only
+      // the root had one and `CallResult` surfaced it alone. A callee that is sent a shielded coin
+      // has to claim the receive in the same transaction, so transaction assembly needs each
+      // call's coins separately, bound to the contract that moved them.
+      //
+      // These fixtures move no coins, so every state is empty — what is asserted here is the
+      // plumbing: the field is present on every call, carries the submitter's coin public key
+      // throughout, and is a distinct accumulator per call rather than the root's shared by
+      // reference. Coverage for coins actually crossing a call boundary is end-to-end.
+      const result = yield* middle.circuit(
+        Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
+        middleContext(resolveFromChain),
+        1n
+      );
+
+      expect(result.calls).toHaveLength(3);
+      for (const call of result.calls) {
+        expect(call.private.zswapLocalState).toBeDefined();
+        expect(call.private.zswapLocalState.inputs).toEqual([]);
+        expect(call.private.zswapLocalState.outputs).toEqual([]);
+        // One wallet pays for the whole transaction, so the submitter's key is shared even though
+        // the accumulators are not.
+        expect(call.private.zswapLocalState.coinPublicKey).toEqual(result.zswapLocalState.coinPublicKey);
+      }
+
+      // Sub-calls run in a different contract than the root and must not alias its state.
+      const rootCall = result.calls[result.calls.length - 1];
+      for (const subCall of result.calls.slice(0, -1)) {
+        expect(subCall.private.zswapLocalState).not.toBe(rootCall.private.zswapLocalState);
       }
     })
   );
@@ -280,8 +338,8 @@ describe('cross-contract calls', () => {
       const setVCall = result.calls.find((call) => call.circuitId === 'setV')!;
       // The read-only sub-call still sees the pre-update value; the write sub-call carries the
       // callee's post-execution state.
-      expect(cccInnerLedger(getVCall.public.contractState).v).toBe(0n);
-      expect(cccInnerLedger(setVCall.public.contractState).v).toBe(3n);
+      expect(cccInnerModule.ledger(getVCall.public.contractState).v).toBe(0n);
+      expect(cccInnerModule.ledger(setVCall.public.contractState).v).toBe(3n);
     })
   );
 
@@ -390,7 +448,8 @@ describe('cross-contract calls', () => {
           contractState: asContractState(outerDeploy.initialState),
           privateState: undefined,
           parentBlockHash: ZERO_BLOCK_HASH,
-          stateProvider: resolveFromChain
+          stateProvider: resolveFromChain,
+          moduleProvider: moduleProviderFor(chainModules)
         }
       );
 
@@ -431,9 +490,11 @@ describe('cross-contract calls', () => {
       );
       selfState.data = new ChargedState(setSelfResult.calls[0].public.contractState);
       // Sanity check: `self` now points at this contract's own address.
-      expect(Buffer.from(cccSelfLedger(setSelfResult.calls[0].public.contractState).self.bytes).toString('hex')).toBe(selfAddress);
+      expect(Buffer.from(cccSelfModule.ledger(setSelfResult.calls[0].public.contractState).self.bytes).toString('hex')).toBe(selfAddress);
 
       const chain = new Map([[selfAddress, selfState]]);
+      // Resolvable on purpose: the guard has to be what refuses the call, not a missing module.
+      const chainModule = new Map<string, Module>([[selfAddress, cccSelfModule]]);
       // `callSelfGet` calls `getV()` on its own address, re-entering the contract while it is still
       // executing on the call stack. Re-entrant cross-contract calls are not supported: the runtime's
       // re-entrancy guard rejects the call, surfaced here as a ContractRuntimeError.
@@ -445,7 +506,8 @@ describe('cross-contract calls', () => {
             contractState: selfState,
             privateState: undefined,
             parentBlockHash: ZERO_BLOCK_HASH,
-            stateProvider: { getContractState: async (_blockHash, address) => chain.get(address) }
+            stateProvider: { getContractState: async (_blockHash, address) => chain.get(address) },
+            moduleProvider: moduleProviderFor(chainModule)
           }
         )
       );
