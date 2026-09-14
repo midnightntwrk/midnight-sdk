@@ -26,6 +26,14 @@ the contract and its circuits more convenient, and TypeScript idiomatic.
 > distinct from the package `@midnight-ntwrk/compact-runtime`, which provides the utilities that each
 > of these JavaScript executables use.
 
+## Ledger eras
+
+The version suffix on an era-pinned entry names the **ledger era** it targets, not this package's
+own version: `@midnight-ntwrk/compact-js/v9` (and `/v9/effect`) targets **ledger 9**. Bind to an
+era-pinned entry when your code must keep speaking a specific ledger era — for example across a
+hardfork window; the unsuffixed entries (`.` and `./effect`) always track the package's current
+era (currently ledger 9). The bound era is inspectable at run time via `Ledger.era`.
+
 ## Contract log events
 
 Contracts emit typed log events via the Compact `emit` expression. Each circuit result

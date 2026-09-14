@@ -17,18 +17,10 @@ import { join } from 'node:path';
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { Contract, type ContractExecutable, ContractKeyLocation, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import { Contract, type ContractExecutable, ContractKeyLocation, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
 import { decodeZswapLocalState, type EncodedZswapLocalState,
   encodeZswapLocalState, type StateValue } from '@midnight-ntwrk/compact-runtime';
-import {
-  ChargedState as LedgerChargedState,
-  communicationCommitmentRandomness,
-  ContractCallPrototype,
-  type ContractState as LedgerContractState,
-  Intent,
-  StateValue as LedgerStateValue,
-} from '@midnightntwrk/ledger-v9';
 import { Array, type ConfigError, Console, Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -38,7 +30,6 @@ import * as InternalCommand from './command.js';
 import * as ContractState from './contractState.js';
 import { decodeZswapLocalStateObject, encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
 import { stringifyCircuitOutput } from './json.js';
-import * as LedgerParameters from './ledgerParameters.js';
 import * as InternalOptions from './options.js';
 
 /** @internal */
@@ -64,6 +55,7 @@ const PLACEHOLDER_BLOCK_HASH = '0'.repeat(64);
 
 /** @internal */
 export const Options = {
+  ledgerEra: InternalOptions.ledgerEra,
   inputFilePath: InternalOptions.inputFilePath,
   inputPrivateStateFilePath: InternalOptions.inputPrivateStateFilePath,
   inputZswapLocalStateFilePath: InternalOptions.inputZswapLocalStateFilePath,
@@ -122,7 +114,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const decodedLedgerParameters = Option.map(
       inputLedgerParamsFilePath,
       (filePath) => fs.readFile(filePath).pipe(
-        Effect.flatMap(LedgerParameters.asLedgerParameters)
+        Effect.flatMap(Ledger.parametersFromBytes)
       )
     );
 
@@ -168,12 +160,12 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const { intent, finalCalleeStates } = yield* Effect.reduce(
       result.calls,
       {
-        intent: Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))),
-        finalCalleeStates: new Map<string, { readonly ledgerState: LedgerContractState; readonly data: StateValue }>()
+        intent: Ledger.Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))),
+        finalCalleeStates: new Map<string, { readonly ledgerState: Ledger.ContractState; readonly data: StateValue }>()
       },
       (acc, call) =>
         Effect.gen(function* () {
-          let callLedgerState: LedgerContractState;
+          let callLedgerState: Ledger.ContractState;
           if (call.contractAddress === address) {
             callLedgerState = ledgerContractState;
           } else if (Option.isSome(inputContractStatesDirPath)) {
@@ -188,7 +180,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
             );
           }
           const callOperation = yield* ContractState.operationForCircuit(callLedgerState, call.circuitId, call.contractAddress);
-          const nextIntent = acc.intent.addCall(new ContractCallPrototype(
+          const nextIntent = acc.intent.addCall(new Ledger.ContractCallPrototype(
             call.contractAddress,
             call.circuitId,
             callOperation,
@@ -199,7 +191,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
             call.private.output,
             Option.match(call.communicationCommitment, {
               onSome: (c) => c.commCommRand,
-              onNone: () => communicationCommitmentRandomness()
+              onNone: () => Ledger.communicationCommitmentRandomness()
             }),
             // The canonical key location routes the proof for this call to the key material of the
             // specific deployed circuit (by contract address and verifier-key content), so that
@@ -232,8 +224,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
 
     // If the output public file path is provided, write the on-chain (public state) data to the specified file.
     if (Option.isSome(outputPublicFilePath)) {
-      ledgerContractState.data = new LedgerChargedState(
-        LedgerStateValue.decode(rootCall.public.contractState.encode())
+      ledgerContractState.data = new Ledger.ChargedState(
+        Ledger.fromRuntimeStateValue(rootCall.public.contractState)
       );
       yield* fs.writeFile(outputPublicFilePath.value, ledgerContractState.serialize());
     }
@@ -246,7 +238,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       const dir = outputContractStatesDirPath.value;
       yield* fs.makeDirectory(dir, { recursive: true });
       for (const [contractAddress, { ledgerState, data }] of finalCalleeStates) {
-        ledgerState.data = new LedgerChargedState(LedgerStateValue.decode(data.encode()));
+        ledgerState.data = new Ledger.ChargedState(Ledger.fromRuntimeStateValue(data));
         yield* fs.writeFile(join(dir, contractAddress), ledgerState.serialize());
       }
     }

@@ -15,8 +15,7 @@
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { Contract, type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { Intent } from '@midnightntwrk/ledger-v9';
+import { Contract, type ContractExecutable, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { type ConfigError, Duration, Effect, Option } from 'effect';
 
 import { type ConfigCompiler } from '../ConfigCompiler.js';
@@ -87,7 +86,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       ),
       onNone: () => removeCircuit(contractModule.contractExecutable, Contract.ProvableCircuitId(circuitId), contractContext)
     });
-    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
+    const intent = Ledger.Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
       .addMaintenanceUpdate(result.public.maintenanceUpdate);
     yield* fs.writeFile(outputFilePath, intent.serialize());
   }).pipe(

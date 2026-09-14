@@ -15,9 +15,8 @@
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractExecutable, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Intent } from '@midnightntwrk/ledger-v9';
 import { type ConfigError, Duration, Effect, Option } from 'effect';
 
 import { type ConfigCompiler } from '../ConfigCompiler.js';
@@ -66,7 +65,7 @@ export const handler: (
         contractState: yield* ContractState.asContractState(ledgerContractState)
       }
     );
-    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addMaintenanceUpdate(
+    const intent = Ledger.Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addMaintenanceUpdate(
       result.public.maintenanceUpdate
     );
     yield* fs.writeFile(outputFilePath, intent.serialize());

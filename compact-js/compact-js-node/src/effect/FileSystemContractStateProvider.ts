@@ -16,8 +16,8 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
+import { Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { ContractState, type ContractStateProvider } from '@midnight-ntwrk/compact-runtime';
-import { ContractState as LedgerContractState } from '@midnightntwrk/ledger-v9';
 
 /**
  * A {@link ContractStateProvider} that resolves contract states lazily from the file system.
@@ -63,7 +63,7 @@ export const make = (
 
     // Mirror the `circuit` command's `--input` deserialization: ledger-serialized bytes ->
     // ledger `ContractState` -> runtime `ContractState`.
-    const ledgerContractState = LedgerContractState.deserialize(bytes);
+    const ledgerContractState = Ledger.ContractState.deserialize(bytes);
     return ContractState.deserialize(ledgerContractState.serialize());
   }
 });

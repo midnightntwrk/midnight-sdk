@@ -15,12 +15,8 @@
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractExecutable, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import {
-  ContractDeploy,
-  Intent
-} from '@midnightntwrk/ledger-v9';
 import { type ConfigError, Duration, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -40,6 +36,7 @@ export const Args = { args: InternalArgs.contractArgs };
 export type Options = Command.Command.ParseConfig<typeof Options>;
 /** @internal */
 export const Options = {
+  ledgerEra: InternalOptions.ledgerEra,
   signingKey: InternalOptions.signingKey,
   outputFilePath: InternalOptions.outputFilePath,
   outputPublicFilePath: InternalOptions.outputPublicFilePath,
@@ -73,8 +70,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       ...(yield* argsParser.parseInitializationArgs(args))
     );
     const ledgerContractState = yield* ContractState.asLedgerContractState(result.public.contractState);
-    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addDeploy(
-      new ContractDeploy(ledgerContractState)
+    const intent = Ledger.Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addDeploy(
+      new Ledger.ContractDeploy(ledgerContractState)
     );
 
     // If the output public file path is provided, write the on-chain (public state) data to the specified file.
