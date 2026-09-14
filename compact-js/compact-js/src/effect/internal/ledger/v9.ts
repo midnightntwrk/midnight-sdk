@@ -52,10 +52,16 @@ export {
   VerifierKeyRemove
 } from '@midnightntwrk/ledger-v9';
 
-/** The ledger 9 {@link Era} descriptor. @internal */
+/**
+ * The contract operation (verifier key) version this era's ledger expects. Defined once so an era
+ * bump is a one-line edit; the era descriptor and both constructors below read it from here.
+ */
+const CONTRACT_OPERATION_VERSION = 'v3';
+
+/** The ledger 9 {@link Era} descriptor. @category era */
 export const era: Era = {
   ledger: 9,
-  contractOperationVersion: 'v3',
+  contractOperationVersion: CONTRACT_OPERATION_VERSION,
   cmaSignatureKinds: new Set(['schnorr', 'ecdsa'])
 };
 
@@ -63,15 +69,16 @@ export const era: Era = {
  * Creates the {@link ContractOperationVersion} for this era. The version literal lives here so it
  * cannot leak into era-neutral code.
  *
- * @internal
+ * @category constructors
  */
-export const makeContractOperationVersion = (): ContractOperationVersion => new ContractOperationVersion('v3');
+export const makeContractOperationVersion = (): ContractOperationVersion =>
+  new ContractOperationVersion(CONTRACT_OPERATION_VERSION);
 
 /**
  * Creates a {@link ContractOperationVersionedVerifierKey} for `verifierKey` at this era's
  * operation version.
  *
- * @internal
+ * @category constructors
  */
 export const makeVersionedVerifierKey = (verifierKey: Uint8Array): ContractOperationVersionedVerifierKey =>
-  new ContractOperationVersionedVerifierKey('v3', verifierKey);
+  new ContractOperationVersionedVerifierKey(CONTRACT_OPERATION_VERSION, verifierKey);

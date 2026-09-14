@@ -21,7 +21,10 @@ import { type SignatureKind } from '@midnight-ntwrk/platform-js/effect/SigningKe
  * alongside its re-exported ledger API; everything outside `internal/ledger` reads era-varying
  * values from here rather than assuming them.
  *
- * @internal
+ * Part of the public `Ledger` facade surface (re-exported as `Ledger.Era`), so it must survive
+ * `stripInternal` in the published typings.
+ *
+ * @category era
  */
 export interface Era {
   /** The ledger major this binding targets (e.g. `9` for `@midnightntwrk/ledger-v9`). */

@@ -13,17 +13,8 @@
  * limitations under the License.
  */
 
-import { ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
+import { ContractRuntimeError, type Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { Effect } from 'effect';
-
-/** @internal */
-export const asLedgerContractState = Ledger.fromRuntimeContractState;
-
-/** @internal */
-export const asLedgerContractStateFromBytes = Ledger.contractStateFromBytes;
-
-/** @internal */
-export const asContractState = Ledger.toRuntimeContractState;
 
 /**
  * Resolves the {@link Ledger.ContractOperation} for a circuit from a contract's ledger state, failing

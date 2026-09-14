@@ -17,6 +17,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState as RuntimeContractState } from '@midnight-ntwrk/compact-runtime';
 import { ContractOperation, ContractState as LedgerContractState } from '@midnightntwrk/ledger-v9';
@@ -110,14 +111,15 @@ describe('FileSystemContractStateProvider', () => {
     expect(serializedEqual(fromHashA!.serialize(), bytes)).toBe(true);
   });
 
-  it('rejects when the state file exists but contains invalid bytes', async () => {
+  it('rejects with a ContractRuntimeError when the state file exists but contains invalid bytes', async () => {
     const address = 'd'.repeat(64);
     // A present-but-corrupt file must fail loudly: only a *missing* file means "no state". The
     // provider catches solely ENOENT, so deserializing garbage rejects rather than resolving
-    // undefined — distinguishing "no state" from "unreadable state".
+    // undefined — distinguishing "no state" from "unreadable state". The rejection carries the
+    // Ledger facade's typed error, not a wrapped fiber failure.
     writeFileSync(join(baseDir, address), Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7]));
 
     await expect(FileSystemContractStateProvider.make(baseDir).getContractState(ZERO_BLOCK_HASH, address))
-      .rejects.toThrow();
+      .rejects.toSatisfy(ContractRuntimeError.isRuntimeError);
   });
 });

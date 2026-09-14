@@ -16,23 +16,18 @@
 import { resolve } from 'node:path';
 
 import { Command } from '@effect/cli';
-import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
-import { ConfigCompiler, maintainCommand } from '@midnight-ntwrk/compact-js-command/effect';
+import { maintainCommand } from '@midnight-ntwrk/compact-js-command/effect';
 import { sampleSigningKey } from '@midnightntwrk/ledger-v9';
-import { Console, Effect, Layer } from 'effect';
+import { Effect } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
 import * as MockConsole from './MockConsole.js';
+import { testLayer } from './testLayer.js';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 const COUNTER_STATE_FILEPATH = resolve(import.meta.dirname, '../contract/counter/state.bin');
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.bin');
-
-const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext> = Effect.gen(function* () {
-  const console = yield* MockConsole.make;
-  return Layer.mergeAll(Console.setConsole(console), ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer)));
-}).pipe(Layer.unwrapEffect);
 
 // Skipped. The current yarn workspace setup (with the root dependent on Ledger@4), means that Ledger@6 that
 // both `compact-js` and `compact-js-command` depended on are not being deduped on install. At runtime this

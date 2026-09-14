@@ -17,9 +17,8 @@ import { resolve } from 'node:path';
 
 import { Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
-import { circuitCommand, ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
+import { circuitCommand } from '@midnight-ntwrk/compact-js-command/effect';
 import {
   type ContractCall,
   Intent,
@@ -28,10 +27,11 @@ import {
   type PreProof,
   type SignatureEnabled
 } from '@midnightntwrk/ledger-v9';
-import { Console, Effect, Layer } from 'effect';
+import { Effect } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
 import * as MockConsole from './MockConsole.js';
+import { testLayer } from './testLayer.js';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 const COUNTER_STATE_FILEPATH = resolve(import.meta.dirname, '../contract/counter/state.bin');
@@ -42,15 +42,6 @@ const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/cou
 const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_zswap.json');
 const COUNTER_RESULT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/result.json');
 const COUNTER_OUTPUT_EVENTS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_events.json');
-
-const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext | FileSystem.FileSystem> =
-  Effect.gen(function* () {
-    const console = yield* MockConsole.make;
-    return Layer.mergeAll(
-      Console.setConsole(console),
-      ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer))
-    );
-  }).pipe(Layer.unwrapEffect);
 
 describe('Circuit Command', () => {
   it.effect(

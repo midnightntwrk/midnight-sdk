@@ -508,9 +508,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         Effect.gen(this, function* () {
           const { contractState } = contractContext;
           const [cma, signingKey] = yield* this.createMaintenanceAuthority(newSigningKey, contractState);
-          const ledger_cma = Ledger.ContractMaintenanceAuthority.deserialize(
-            cma.serialize()
-          ) as unknown as Ledger.ContractMaintenanceAuthority;
+          const ledger_cma = Ledger.ContractMaintenanceAuthority.deserialize(cma.serialize());
           const update = yield* this.createSignedMaintenanceUpdate(
             () => {
               return Either.right([new Ledger.ReplaceAuthority(ledger_cma)]);

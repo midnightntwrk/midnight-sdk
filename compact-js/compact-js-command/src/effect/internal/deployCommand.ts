@@ -23,7 +23,6 @@ import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import * as ContractState from './contractState.js';
 import { encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
 import * as InternalOptions from './options.js';
 
@@ -36,7 +35,7 @@ export const Args = { args: InternalArgs.contractArgs };
 export type Options = Command.Command.ParseConfig<typeof Options>;
 /** @internal */
 export const Options = {
-  ledgerEra: InternalOptions.ledgerEra,
+  ...InternalOptions.common,
   signingKey: InternalOptions.signingKey,
   outputFilePath: InternalOptions.outputFilePath,
   outputPublicFilePath: InternalOptions.outputPublicFilePath,
@@ -69,7 +68,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       contractModule.createInitialPrivateState(),
       ...(yield* argsParser.parseInitializationArgs(args))
     );
-    const ledgerContractState = yield* ContractState.asLedgerContractState(result.public.contractState);
+    const ledgerContractState = yield* Ledger.fromRuntimeContractState(result.public.contractState);
     const intent = Ledger.Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addDeploy(
       new Ledger.ContractDeploy(ledgerContractState)
     );

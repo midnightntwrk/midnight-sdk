@@ -68,14 +68,14 @@ compact-js/
 
 Each package has:
 - `src/` - Source code (exports main and `/effect` subpaths)
-- `src/**/*.test.ts` - Test files colocated with source
+- `test/` - Test files (`*.test.ts`) and shared test helpers
 - `vitest.config.ts` - Package-specific test config
 - `tsconfig.json` - Package-specific TypeScript config
 
 ## Testing
 
 - **Framework**: Vitest (globals enabled)
-- **Test location**: Alongside source as `*.test.ts`
+- **Test location**: Each package's `test/` directory as `*.test.ts` (e.g. `test/effect/`)
 - **Coverage reporting**: HTML, LCOV, JSON formats to `coverage/` directory
 - **Test timeout**: 180 seconds
 - **Environment**: Node.js
@@ -162,7 +162,7 @@ Compact.js commands operate on contracts compiled by `compactc`. The workflow re
 
 ## Notes for Contributors
 
-- Test files are excluded from build caching (`!src/**/*.test.ts` in inputs)
+- Test files live under `test/`, outside the build task's `src/**` inputs, so they don't invalidate build caching
 - Generated files in `managed/` directories are checked in as build outputs
-- Coverage excludes `src/test/**` helper files
+- Coverage excludes `test/**` (test files and helpers are not counted toward coverage)
 - New packages must follow the same structure and export pattern

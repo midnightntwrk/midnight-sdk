@@ -17,26 +17,19 @@ import { resolve } from 'node:path';
 
 import { Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
-import { circuitCommand, ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
-import { Console, Effect, Layer } from 'effect';
+import { circuitCommand } from '@midnight-ntwrk/compact-js-command/effect';
+import { Effect } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
 import * as MockConsole from './MockConsole.js';
+import { testLayer } from './testLayer.js';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 const COUNTER_STATE_FILEPATH = resolve(import.meta.dirname, '../contract/counter/state.bin');
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_era.json');
 
-const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext | FileSystem.FileSystem> =
-  Effect.gen(function* () {
-    const console = yield* MockConsole.make;
-    return Layer.mergeAll(
-      Console.setConsole(console),
-      ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer))
-    );
-  }).pipe(Layer.unwrapEffect);
+const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
 
 // The command args are era-agnostic boilerplate; only `--ledger-era` varies per test. The circuit
 // is deliberately unknown so an accepted era stops at the cheap, deterministic manifest error
@@ -66,7 +59,6 @@ describe('--ledger-era option', () => {
         const fs = yield* FileSystem.FileSystem;
         yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
 
-        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
         yield* cli(cliArgs('9'));
 
         // Reaching the manifest error proves era validation passed and the command proceeded.
@@ -80,16 +72,14 @@ describe('--ledger-era option', () => {
   it.effect(
     'rejects an era this build is not pinned to',
     () =>
+      // Rejection happens during option parsing, before the handler touches any file, so this
+      // test needs no filesystem setup.
       Effect.gen(function* () {
-        const fs = yield* FileSystem.FileSystem;
-        yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
-
-        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
         const exit = yield* Effect.exit(cli(cliArgs('8')));
 
         expect(exit._tag).toBe('Failure');
         expect(String(exit)).toMatch(/pinned to ledger era 9/);
-      }).pipe(Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)), Effect.provide(testLayer)),
+      }).pipe(Effect.provide(testLayer)),
     30_000
   );
 });

@@ -21,7 +21,6 @@ import { type ConfigError, Duration, Effect, Option } from 'effect';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import * as ContractState from './contractState.js';
 import * as InternalMaintainCommand from './maintainCommand.js';
 import * as InternalOptions from './options.js';
 
@@ -69,11 +68,11 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const fs = yield* FileSystem.FileSystem;
     const { module: { default: contractModule } } = moduleSpec;
     const ledgerContractState = yield* fs.readFile(inputFilePath).pipe(
-      Effect.flatMap(ContractState.asLedgerContractStateFromBytes)
+      Effect.flatMap(Ledger.contractStateFromBytes)
     );
     const contractContext: ContractExecutable.ContractExecutable.ContractContext = {
       address,
-      contractState: yield* ContractState.asContractState(ledgerContractState)
+      contractState: yield* Ledger.toRuntimeContractState(ledgerContractState)
     }
     const result = yield* Option.match(verifierKeyPath, {
       onSome: (filePath) => fs.readFile(filePath).pipe(

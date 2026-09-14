@@ -54,18 +54,21 @@ export const ledgerEra = Options.integer('ledger-era').pipe(
   Options.withDescription(
     `The ledger era to target. This build is pinned to ledger era ${Ledger.era.ledger}.`
   ),
-  Options.withSchema(
-    Schema.Number.pipe(
-      Schema.filter(
-        (era) =>
-          era === Ledger.era.ledger ||
-          `this build is pinned to ledger era ${Ledger.era.ledger}; ` +
-            `use a build pinned to era ${era} to target it`
-      )
-    ).annotations({ title: 'ledger-era' })
+  Options.filterMap(
+    (era) => (era === Ledger.era.ledger ? Option.some(era) : Option.none()),
+    `this build is pinned to ledger era ${Ledger.era.ledger}; use a build pinned to the requested era to target it`
   ),
   Options.withDefault(Ledger.era.ledger)
 );
+
+/**
+ * Options shared by every top-level command. Spread this into each command's `Options` record
+ * (`...InternalOptions.common`) rather than listing its members individually, so a new command
+ * cannot silently omit the era gate.
+ *
+ * @internal
+ */
+export const common = { ledgerEra };
 
 /** @internal */
 export const coinPublicKey = Options.text('coin-public').pipe(

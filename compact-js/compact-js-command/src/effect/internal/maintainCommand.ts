@@ -32,7 +32,7 @@ export const Args = {
 export type Options = Command.Command.ParseConfig<typeof Options>;
 /** @internal */
 export const Options = {
-  ledgerEra: InternalOptions.ledgerEra,
+  ...InternalOptions.common,
   inputFilePath: InternalOptions.inputFilePath,
   outputFilePath: InternalOptions.outputFilePath
 }

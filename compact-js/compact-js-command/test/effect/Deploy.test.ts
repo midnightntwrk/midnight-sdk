@@ -16,29 +16,19 @@
 import { resolve } from 'node:path';
 
 import { Command } from '@effect/cli';
-import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
 import { deployCommand } from '@midnight-ntwrk/compact-js-command/effect';
-import { ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
-import { Console,Effect, Layer } from 'effect';
+import { Effect } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
 import * as MockConsole from './MockConsole.js';
+import { testLayer } from './testLayer.js';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy.bin');
 const COUNTER_OUTPUT_OC_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_onchain.bin');
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy.json');
 const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_zswap.json');
-
-const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext> =
-  Effect.gen(function* () {
-    const console = yield* MockConsole.make;
-    return Layer.mergeAll(
-      Console.setConsole(console),
-      ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer)),
-    );
-  }).pipe(Layer.unwrapEffect);
 
 describe('Deploy Command', () => {
   it.effect('should report success with valid setup', () =>

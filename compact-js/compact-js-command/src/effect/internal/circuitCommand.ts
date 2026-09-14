@@ -55,7 +55,7 @@ const PLACEHOLDER_BLOCK_HASH = '0'.repeat(64);
 
 /** @internal */
 export const Options = {
-  ledgerEra: InternalOptions.ledgerEra,
+  ...InternalOptions.common,
   inputFilePath: InternalOptions.inputFilePath,
   inputPrivateStateFilePath: InternalOptions.inputPrivateStateFilePath,
   inputZswapLocalStateFilePath: InternalOptions.inputZswapLocalStateFilePath,
@@ -102,7 +102,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const contractReflector = yield* CompiledContractReflection.CompiledContractReflection;
     const argsParser = yield* contractReflector.createArgumentParser(contractModule.contractExecutable.compiledContract);
     const ledgerContractState = yield* fs.readFile(inputFilePath).pipe(
-      Effect.flatMap(ContractState.asLedgerContractStateFromBytes)
+      Effect.flatMap(Ledger.contractStateFromBytes)
     );
     const privateState = JSON.parse(yield* fs.readFileString(inputPrivateStateFilePath));
     const encodedZswapLocalState = Option.map(
@@ -126,7 +126,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
 
     const baseCircuitContext = {
       address,
-      contractState: yield* ContractState.asContractState(ledgerContractState),
+      contractState: yield* Ledger.toRuntimeContractState(ledgerContractState),
       privateState: privateState ?? contractModule.createInitialPrivateState(),
       zswapLocalState: Option.isSome(encodedZswapLocalState)
         ? decodeZswapLocalState((yield* encodedZswapLocalState.value) as EncodedZswapLocalState)
@@ -170,7 +170,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
             callLedgerState = ledgerContractState;
           } else if (Option.isSome(inputContractStatesDirPath)) {
             const bytes = yield* fs.readFile(join(inputContractStatesDirPath.value, call.contractAddress));
-            callLedgerState = yield* ContractState.asLedgerContractStateFromBytes(bytes);
+            callLedgerState = yield* Ledger.contractStateFromBytes(bytes);
           } else {
             // A sub-call can only occur when a state provider (i.e. a contract-states directory) was
             // supplied, so this branch is unreachable in practice; fail loudly if it is reached.
