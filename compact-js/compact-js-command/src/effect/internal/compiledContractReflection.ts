@@ -175,10 +175,25 @@ const transformParams: (
             return num;
           }
           if (type!.kind === TS.SyntaxKind.BigIntKeyword) {
-            if (args[idx].trim() === '') {
-              throw new SyntaxError(`Cannot convert ${args[idx]} to a BigInt`);
+            const input = quotedStrings ? parse(args[idx]) : args[idx];
+            if (typeof input === 'string') {
+              if (input.trim() === '') {
+                throw new SyntaxError(`Cannot convert ${args[idx]} to a BigInt`);
+              }
+              return BigInt(input);
             }
-            return BigInt(args[idx]);
+            if (typeof input === 'number') {
+              if (!Number.isInteger(input)) {
+                throw new SyntaxError(`Cannot convert ${args[idx]} to a BigInt`);
+              }
+              if (!Number.isSafeInteger(input)) {
+                throw new SyntaxError(
+                  'Unsafe JSON number; pass bigint values as quoted decimal strings'
+                );
+              }
+              return BigInt(input);
+            }
+            throw new SyntaxError(`Cannot convert ${args[idx]} to a BigInt`);
           }
           if (type!.kind === TS.SyntaxKind.StringKeyword) {
             return quotedStrings ? args[idx].replaceAll('\'', '') : args[idx];
