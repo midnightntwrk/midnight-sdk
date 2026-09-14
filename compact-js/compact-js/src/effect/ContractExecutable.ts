@@ -19,6 +19,7 @@ import {
   type CommunicationCommitmentData,
   CompactError,
   ContractMaintenanceAuthority,
+  type ContractModuleProvider,
   type ContractState,
   type ContractStateProvider,
   createCircuitContext,
@@ -167,13 +168,26 @@ export declare namespace ContractExecutable {
     readonly contractState: ContractState;
   };
 
+  /**
+   * Resolving a cross-contract callee needs its state, the module implementing it, and a block to
+   * read that state at, so the two providers arrive together and pin a block. A block hash on its own
+   * is still meaningful — it reaches the VM's block context whether or not anything is called.
+   */
   export type CircuitContext<PS> = ContractContext & {
     readonly privateState: PS;
     readonly zswapLocalState?: ZswapLocalState;
     readonly ledgerParameters?: LedgerParameters;
   } & (
-      | { readonly stateProvider?: undefined; readonly parentBlockHash?: undefined }
-      | { readonly stateProvider: ContractStateProvider; readonly parentBlockHash: string }
+      | {
+          readonly stateProvider?: undefined;
+          readonly moduleProvider?: undefined;
+          readonly parentBlockHash?: string;
+        }
+      | {
+          readonly stateProvider: ContractStateProvider;
+          readonly moduleProvider: ContractModuleProvider;
+          readonly parentBlockHash: string;
+        }
     );
 
   export type DeployResultPublic = {
@@ -199,6 +213,14 @@ export declare namespace ContractExecutable {
     readonly input: AlignedValue;
     readonly output: AlignedValue;
     readonly privateTranscriptOutputs: AlignedValue[];
+    /**
+     * The shielded coins this call consumed and produced. Recorded per call rather than only for
+     * the root, because a cross-contract callee can perform Zswap operations too — and must, since
+     * a coin addressed to a contract is only credited if that contract claims the receive in the
+     * same transaction. Transaction assembly uses the per-call address to bind each contract-owned
+     * input and output to the contract that actually made it.
+     */
+    readonly zswapLocalState: ZswapLocalState;
   };
 
   /**
@@ -226,7 +248,8 @@ export declare namespace ContractExecutable {
    * `callProofDataTrace` order — callees first, the root call last. The application-facing
    * `result`, `privateState`, and `zswapLocalState` belong to the root contract and are
    * statically typed for it; sub-calls expose only proof data (other contracts' types are not
-   * known here, and only the root holds private/zswap state).
+   * known here, and only the root holds private state). Each call carries its own Zswap local
+   * state on `calls[i].private.zswapLocalState` — the root's is repeated here for convenience.
    *
    * `events` is the single execution-wide log-event list across the whole call tree, in emission
    * order; each event is tagged with its emitting contract's address, so a per-contract view is a
@@ -463,18 +486,18 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             const zswapLocalState = circuitContext.zswapLocalState
               ? encodeZswapLocalState(circuitContext.zswapLocalState)
               : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey));
-            const runtimeContext = createCircuitContext(
-              provableCircuitId,
-              circuitContext.address,
-              zswapLocalState,
-              circuitContext.contractState,
-              circuitContext.privateState,
-              circuitContext.stateProvider,
-              undefined,
-              undefined,
-              undefined,
-              circuitContext.parentBlockHash
-            );
+            const runtimeContext = createCircuitContext({
+              circuitId: provableCircuitId,
+              contractAddress: circuitContext.address,
+              coinPublicKeyOrZswapState: zswapLocalState,
+              contractState: circuitContext.contractState,
+              privateState: circuitContext.privateState,
+              parentBlockHash: circuitContext.parentBlockHash,
+              crossContract:
+                circuitContext.stateProvider === undefined
+                  ? undefined
+                  : { stateProvider: circuitContext.stateProvider, moduleProvider: circuitContext.moduleProvider }
+            });
             return await circuit(runtimeContext, ...args);
           },
           catch: identity
@@ -516,6 +539,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                       partitionedTranscript
                     },
                     private: {
+                      zswapLocalState: decodeZswapLocalState(entry.zswapLocalState),
                       input: entry.input,
                       output: entry.output,
                       privateTranscriptOutputs: entry.privateTranscriptOutputs

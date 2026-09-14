@@ -18,7 +18,7 @@ import { join } from 'node:path';
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { Contract, type ContractExecutable, ContractKeyLocation, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
+import { FileSystemContractModuleProvider, FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
 import { decodeZswapLocalState, type EncodedZswapLocalState,
   encodeZswapLocalState, type StateValue } from '@midnight-ntwrk/compact-runtime';
 import {
@@ -69,6 +69,7 @@ export const Options = {
   inputZswapLocalStateFilePath: InternalOptions.inputZswapLocalStateFilePath,
   inputLedgerParamsFilePath: InternalOptions.inputLedgerParamsFilePath,
   inputContractStatesDirPath: InternalOptions.inputContractStatesDirPath,
+  inputContractModulesDirPath: InternalOptions.inputContractModulesDirPath,
   outputContractStatesDirPath: InternalOptions.outputContractStatesDirPath,
   outputFilePath: InternalOptions.outputFilePath,
   outputPublicFilePath: InternalOptions.outputPublicFilePath,
@@ -95,6 +96,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       inputZswapLocalStateFilePath,
       inputLedgerParamsFilePath,
       inputContractStatesDirPath,
+      inputContractModulesDirPath,
       outputContractStatesDirPath,
       outputFilePath,
       outputPublicFilePath,
@@ -126,10 +128,23 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       )
     );
 
-    // When a contract-states directory is supplied, the circuit may make cross-contract calls:
-    // their target states are resolved lazily, on demand, from the directory.
-    const contractStateProvider = Option.map(inputContractStatesDirPath, (dir) =>
-      FileSystemContractStateProvider.make(dir)
+    // A cross-contract call needs both the callee's state and the module implementing it, so the two
+    // directories are supplied together or not at all. Either one alone would surface much later, as
+    // a resolution failure that does not name the option that was left out.
+    if (Option.isSome(inputContractStatesDirPath) !== Option.isSome(inputContractModulesDirPath)) {
+      return yield* ContractRuntimeError.make(
+        '--contract-states-dir and --contract-modules-dir must be given together.'
+      );
+    }
+    // When both are supplied, the circuit may make cross-contract calls: each target's state and
+    // module are resolved lazily, on demand, from the directories.
+    const crossContract = Option.zipWith(
+      inputContractStatesDirPath,
+      inputContractModulesDirPath,
+      (statesDir, modulesDir) => ({
+        stateProvider: FileSystemContractStateProvider.make(statesDir),
+        moduleProvider: FileSystemContractModuleProvider.make(modulesDir)
+      })
     );
 
     const baseCircuitContext = {
@@ -146,8 +161,8 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
 
     const result = yield* contractModule.contractExecutable.circuit(
       Contract.ProvableCircuitId(circuitId),
-      Option.match(contractStateProvider, {
-        onSome: (stateProvider) => ({ ...baseCircuitContext, stateProvider, parentBlockHash: PLACEHOLDER_BLOCK_HASH }),
+      Option.match(crossContract, {
+        onSome: (providers) => ({ ...baseCircuitContext, ...providers, parentBlockHash: PLACEHOLDER_BLOCK_HASH }),
         onNone: () => baseCircuitContext
       }),
       ...(yield* argsParser.parseCircuitArgs(Contract.ProvableCircuitId(circuitId), args))
