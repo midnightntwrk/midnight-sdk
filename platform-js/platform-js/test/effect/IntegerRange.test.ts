@@ -18,6 +18,18 @@ import * as IntegerRange from '@midnight-ntwrk/platform-js/effect/IntegerRange';
 
 describe('IntegerRange', () => {
   describe('from', () => {
+    it.each<string>([
+      'abc..def', // Malformed bounds must not be silently coerced to 0.
+      '..',
+      'a..b',
+      '1..2.3',
+      '1...',
+      ' 1..2',
+      '1..2 '
+    ])('should reject malformed input %s', (input) => {
+      expect(() => IntegerRange.from(input as unknown as IntegerRange.IntegerRangeInput)).toThrow();
+    });
+
     it.each<IntegerRange.IntegerRangeInput>([
       [0, 10] as const,
       [10, 100] as const,
