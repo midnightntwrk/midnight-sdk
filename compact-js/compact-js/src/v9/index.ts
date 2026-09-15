@@ -18,5 +18,10 @@
  * era this entry targets — ledger 9 — not this package's own version. Consumers that must speak
  * a specific ledger era (e.g. across a hardfork window) bind to this path; the unsuffixed root
  * export remains an alias for the package's current era.
+ *
+ * Until the era-scoped build wiring lands (midnight-sdk#388), this entry aliases the package's
+ * *current* era binding — ledger 9 today — with `test/effect/LedgerEra.test.ts` guarding that the
+ * alias resolves era 9. When the current era advances, this entry must be rebound to a pinned
+ * ledger 9 binding rather than left following `current`.
  */
 export * from '../index.js';

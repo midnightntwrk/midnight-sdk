@@ -14,8 +14,22 @@
  */
 
 /**
- * The era currently bound to this build. This one-line indirection is the swap point for
- * era-scoped builds (midnight-sdk#387/#388): an era-pinned entry rebinds `Ledger` by pointing
- * this module at a different era binding, leaving every call site untouched.
+ * The era currently bound to this build. Every entry — suffixed and unsuffixed — resolves the
+ * `Ledger` facade through this one module, so changing the export below changes the era for ALL
+ * of them, `/v9` included. Giving each era-pinned entry its own binding is the outstanding work
+ * (midnight-sdk#388); the design and its trade-offs are recorded in
+ * `docs/adr/0001-ledger-era-seam.md`.
  */
 export * from './v9.js';
+
+import { type LedgerBinding } from './binding.js';
+import type * as Bound from './v9.js';
+
+// Compile-time proof that the bound module satisfies the binding contract, so an era swap that
+// misses a facade name fails the build HERE, naming the binding. Routed through a constrained
+// generic because a bare `A extends B ? true : never` conditional resolves silently and never
+// fails a build. `import type` keeps this file emit-free beyond the re-export, preserving the
+// single-WASM-instantiation property LedgerEra.test.ts guards.
+type Extends<A, B> = [A] extends [B] ? true : false;
+type Assert<_T extends true> = void;
+type _BindingIsComplete = Assert<Extends<typeof Bound, LedgerBinding>>;

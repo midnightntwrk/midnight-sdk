@@ -16,6 +16,16 @@
 import { type SignatureKind } from '@midnight-ntwrk/platform-js/effect/SigningKey';
 
 /**
+ * The ledger majors this codebase has an era binding for. Extend the union as bindings are added
+ * (e.g. `9 | 10`); keeping it a literal union means a binding declaring an era with no
+ * corresponding `@midnightntwrk/ledger-v<N>` package fails the build, and `Ledger.era.ledger`
+ * stays a literal at every use site.
+ *
+ * @category era
+ */
+export type LedgerMajor = 9;
+
+/**
  * Describes a ledger era: the facts about a ledger generation that vary between generations and
  * that compact-js code must not hard-code. An era binding (e.g. `v9.ts`) supplies one of these
  * alongside its re-exported ledger API; everything outside `internal/ledger` reads era-varying
@@ -28,19 +38,25 @@ import { type SignatureKind } from '@midnight-ntwrk/platform-js/effect/SigningKe
  */
 export interface Era {
   /** The ledger major this binding targets (e.g. `9` for `@midnightntwrk/ledger-v9`). */
-  readonly ledger: number;
+  readonly ledger: LedgerMajor;
   /**
-   * The contract operation (verifier key) version literal this era's ledger expects in
-   * maintenance updates. Informational; construction of versioned values goes through the
-   * binding's constructors so the literal never leaks into era-neutral code.
+   * Whether a signature scheme is verified to work through this era's ledger CMA path (`signData`
+   * and `signatureVerifyingKey`). Deliberately a predicate over a binding-private allowlist
+   * rather than an exported set: a `ReadonlySet` is only a compile-time view and could be cast
+   * back to `Set` and mutated, whereas the closure keeps the allowlist unreachable. The allowlist
+   * is NOT platform-js's `SignatureKinds`: the constraint is what the ledger primitives support,
+   * not what the type union happens to include.
    */
-  readonly contractOperationVersion: string;
+  readonly supportsCmaSignatureKind: (kind: SignatureKind) => boolean;
   /**
-   * The signature schemes verified to work through this era's ledger CMA path (`signData` and
-   * `signatureVerifyingKey`). This is deliberately an explicit allowlist, NOT platform-js's
-   * `SignatureKinds`: the constraint is what the ledger primitives support, not what the type
-   * union happens to include. A new scheme is added only once it is verified end-to-end against
-   * the ledger CMA path.
+   * A human-readable rendering of the CMA signature-scheme allowlist, for error messages (e.g.
+   * `'schnorr, ecdsa'`).
    */
-  readonly cmaSignatureKinds: ReadonlySet<SignatureKind>;
+  readonly cmaSignatureKindsDescription: string;
+  /**
+   * The scheme used when sampling a fresh CMA signing key for this era. Must satisfy
+   * {@link supportsCmaSignatureKind}, so a sampled key is never rejected by the era's own
+   * allowlist; era bindings assert this at module load.
+   */
+  readonly defaultCmaSignatureKind: SignatureKind;
 }

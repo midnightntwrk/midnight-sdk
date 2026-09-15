@@ -19,6 +19,7 @@
  * through the `Ledger` facade so that a future era binds by swapping `current.ts`, not by editing
  * call sites (midnight-sdk#387).
  */
+import { type SignatureKind } from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import {
   ContractOperationVersion,
   ContractOperationVersionedVerifierKey
@@ -33,8 +34,8 @@ export {
   ContractDeploy,
   ContractMaintenanceAuthority,
   type ContractOperation,
-  ContractOperationVersion,
-  ContractOperationVersionedVerifierKey,
+  type ContractOperationVersion,
+  type ContractOperationVersionedVerifierKey,
   ContractState,
   Intent,
   LedgerParameters,
@@ -54,16 +55,33 @@ export {
 
 /**
  * The contract operation (verifier key) version this era's ledger expects. Defined once so an era
- * bump is a one-line edit; the era descriptor and both constructors below read it from here.
+ * bump is a one-line edit; both constructors below read it from here.
  */
 const CONTRACT_OPERATION_VERSION = 'v3';
 
+/**
+ * The signature schemes verified end-to-end against the ledger 9 CMA path (`signData` and
+ * `signatureVerifyingKey`). Add a scheme here only once it has been verified end-to-end; an
+ * unlisted scheme is rejected loudly by the facade, never silently coerced. Module-local so the
+ * allowlist cannot be reached (or mutated) through the public `era` value.
+ */
+const CMA_SIGNATURE_KINDS: ReadonlySet<SignatureKind> = new Set(['schnorr', 'ecdsa']);
+
 /** The ledger 9 {@link Era} descriptor. @category era */
-export const era: Era = {
+export const era = {
   ledger: 9,
-  contractOperationVersion: CONTRACT_OPERATION_VERSION,
-  cmaSignatureKinds: new Set(['schnorr', 'ecdsa'])
-};
+  supportsCmaSignatureKind: (kind: SignatureKind) => CMA_SIGNATURE_KINDS.has(kind),
+  cmaSignatureKindsDescription: [...CMA_SIGNATURE_KINDS].join(', '),
+  defaultCmaSignatureKind: 'schnorr'
+} as const satisfies Era;
+
+// A half-built binding must fail at import, not at first CMA signing: the default sampling scheme
+// must be in its own verified allowlist (which therefore also cannot be empty).
+if (!era.supportsCmaSignatureKind(era.defaultCmaSignatureKind)) {
+  throw new Error(
+    `ledger ${era.ledger} era binding: default CMA signature kind '${era.defaultCmaSignatureKind}' is not in the era's allowlist`
+  );
+}
 
 /**
  * Creates the {@link ContractOperationVersion} for this era. The version literal lives here so it

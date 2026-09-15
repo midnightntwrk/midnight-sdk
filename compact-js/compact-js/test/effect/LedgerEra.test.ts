@@ -24,8 +24,10 @@ import { describe, expect, it } from 'vitest';
 describe('Ledger era seam', () => {
   it('describes the ledger 9 era', () => {
     expect(Ledger.era.ledger).toBe(9);
-    expect(Ledger.era.contractOperationVersion).toBe('v3');
-    expect([...Ledger.era.cmaSignatureKinds].sort()).toEqual(['ecdsa', 'schnorr']);
+    expect(Ledger.era.supportsCmaSignatureKind('schnorr')).toBe(true);
+    expect(Ledger.era.supportsCmaSignatureKind('ecdsa')).toBe(true);
+    expect(Ledger.era.defaultCmaSignatureKind).toBe('schnorr');
+    expect(Ledger.era.cmaSignatureKindsDescription).toBe('schnorr, ecdsa');
   });
 
   it('binds the seam to the ledger 9 package', () => {
@@ -36,11 +38,16 @@ describe('Ledger era seam', () => {
   });
 
   it('constructs era-versioned values without leaking the version literal', () => {
-    expect(Ledger.makeContractOperationVersion().version).toBe(Ledger.era.contractOperationVersion);
+    expect(Ledger.makeContractOperationVersion().version).toBe('v3');
   });
 });
 
 describe('era-pinned entries', () => {
+  // The two key-parity checks below cannot distinguish the entries: `/v9` currently IS the root
+  // module re-exported, so the key sets match by construction (and type-only exports are erased
+  // from `Object.keys` entirely). What they do prove is that the new `exports` subpaths exist,
+  // are spelled correctly, and resolve — a typo in the exports map is the regression they catch.
+  // Era pinning itself is asserted independently in the last test.
   it('`/v9` exposes the same API as the unsuffixed root', () => {
     expect(Object.keys(v9Entry).sort()).toEqual(Object.keys(rootEntry).sort());
   });

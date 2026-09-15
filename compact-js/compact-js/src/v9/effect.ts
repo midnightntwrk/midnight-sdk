@@ -16,6 +16,11 @@
 /**
  * The **ledger 9** era-pinned Effect entry (midnight-sdk#387/#388). The `v9` suffix names the
  * ledger era this entry targets — ledger 9 — not this package's own version. Same API as
- * `@midnight-ntwrk/compact-js/effect`, guaranteed to resolve ledger 9.
+ * `@midnight-ntwrk/compact-js/effect`.
+ *
+ * Until the era-scoped build wiring lands (midnight-sdk#388), this entry aliases the package's
+ * *current* era binding — ledger 9 today — and `test/effect/LedgerEra.test.ts` guards that the
+ * alias resolves era 9. When the current era advances, this entry must be rebound to a pinned
+ * ledger 9 binding rather than left following `current`.
  */
 export * from '../effect/index.js';

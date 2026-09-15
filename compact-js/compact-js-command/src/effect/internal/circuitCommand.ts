@@ -21,13 +21,12 @@ import { Contract, type ContractExecutable, ContractKeyLocation, ContractRuntime
 import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
 import { decodeZswapLocalState, type EncodedZswapLocalState,
   encodeZswapLocalState, type StateValue } from '@midnight-ntwrk/compact-runtime';
-import { Array, type ConfigError, Console, Duration, Effect, Option } from 'effect';
+import { Array, type ConfigError, Console, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import * as ContractState from './contractState.js';
 import { decodeZswapLocalStateObject, encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
 import { stringifyCircuitOutput } from './json.js';
 import * as InternalOptions from './options.js';
@@ -55,7 +54,6 @@ const PLACEHOLDER_BLOCK_HASH = '0'.repeat(64);
 
 /** @internal */
 export const Options = {
-  ...InternalOptions.common,
   inputFilePath: InternalOptions.inputFilePath,
   inputPrivateStateFilePath: InternalOptions.inputPrivateStateFilePath,
   inputZswapLocalStateFilePath: InternalOptions.inputZswapLocalStateFilePath,
@@ -160,7 +158,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const { intent, finalCalleeStates } = yield* Effect.reduce(
       result.calls,
       {
-        intent: Ledger.Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))),
+        intent: yield* InternalCommand.newIntent(),
         finalCalleeStates: new Map<string, { readonly ledgerState: Ledger.ContractState; readonly data: StateValue }>()
       },
       (acc, call) =>
@@ -169,8 +167,17 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
           if (call.contractAddress === address) {
             callLedgerState = ledgerContractState;
           } else if (Option.isSome(inputContractStatesDirPath)) {
-            const bytes = yield* fs.readFile(join(inputContractStatesDirPath.value, call.contractAddress));
-            callLedgerState = yield* Ledger.contractStateFromBytes(bytes);
+            const filePath = join(inputContractStatesDirPath.value, call.contractAddress);
+            const bytes = yield* fs.readFile(filePath);
+            callLedgerState = yield* Ledger.contractStateFromBytes(bytes).pipe(
+              Effect.mapError((err) =>
+                ContractRuntimeError.make(
+                  `Failed to read contract state for '${call.contractAddress}' from '${filePath}' ` +
+                    `(expected ledger era ${Ledger.era.ledger} encoding)`,
+                  err
+                )
+              )
+            );
           } else {
             // A sub-call can only occur when a state provider (i.e. a contract-states directory) was
             // supplied, so this branch is unreachable in practice; fail loudly if it is reached.
@@ -179,7 +186,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
               `no --contract-states-dir was provided.`
             );
           }
-          const callOperation = yield* ContractState.operationForCircuit(callLedgerState, call.circuitId, call.contractAddress);
+          const callOperation = yield* Ledger.operationForCircuit(callLedgerState, call.circuitId, call.contractAddress);
           const nextIntent = acc.intent.addCall(new Ledger.ContractCallPrototype(
             call.contractAddress,
             call.circuitId,
@@ -225,7 +232,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     // If the output public file path is provided, write the on-chain (public state) data to the specified file.
     if (Option.isSome(outputPublicFilePath)) {
       ledgerContractState.data = new Ledger.ChargedState(
-        Ledger.fromRuntimeStateValue(rootCall.public.contractState)
+        yield* Ledger.fromRuntimeStateValue(rootCall.public.contractState)
       );
       yield* fs.writeFile(outputPublicFilePath.value, ledgerContractState.serialize());
     }
@@ -238,7 +245,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       const dir = outputContractStatesDirPath.value;
       yield* fs.makeDirectory(dir, { recursive: true });
       for (const [contractAddress, { ledgerState, data }] of finalCalleeStates) {
-        ledgerState.data = new Ledger.ChargedState(Ledger.fromRuntimeStateValue(data));
+        ledgerState.data = new Ledger.ChargedState(yield* Ledger.fromRuntimeStateValue(data));
         yield* fs.writeFile(join(dir, contractAddress), ledgerState.serialize());
       }
     }

@@ -19,10 +19,10 @@ import { type PlatformError } from '@effect/platform/Error';
 import { NodeContext } from '@effect/platform-node';
 import * as Ansi from '@effect/printer-ansi/Ansi';
 import * as Doc from '@effect/printer-ansi/AnsiDoc';
-import { type ContractExecutable, ContractExecutableRuntime,type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractExecutable, ContractExecutableRuntime, Ledger, type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, type Duration, Effect, Layer } from 'effect';
+import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, Duration, Effect, Layer } from 'effect';
 
 import * as CommandConfigProvider from '../CommandConfigProvider.js';
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -39,6 +39,18 @@ import * as InternalOptions from './options.js';
  */
 export const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) => 
   DateTime.now.pipe(Effect.map((utcNow) => DateTime.toDate(DateTime.addDuration(utcNow, duration))));
+
+/**
+ * Creates an empty ledger `Intent` with the command-wide default TTL applied. Every command emits
+ * its result as an intent with the same TTL policy; single-sourcing it here keeps the default in
+ * one place.
+ *
+ * @param duration How far into the future the intent's TTL should be. Defaults to 10 minutes.
+ * @returns An `Effect` that yields a new `Intent` whose TTL is `duration` from now.
+ */
+export const newIntent: (duration?: Duration.Duration) => Effect.Effect<ReturnType<typeof Ledger.Intent.new>> = (
+  duration = Duration.minutes(10)
+) => ttl(duration).pipe(Effect.map((date) => Ledger.Intent.new(date)));
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const reportCausableError: (err: any) => Effect.Effect<void, never> =
@@ -165,7 +177,8 @@ export type GlobalOptions = Command.Command.ParseConfig<typeof GlobalOptions>;
 /** @internal */
 export const GlobalOptions = {
   config: InternalOptions.config,
-  coinPublicKey: InternalOptions.coinPublicKey
+  coinPublicKey: InternalOptions.coinPublicKey,
+  ledgerEra: InternalOptions.ledgerEra
 }
 
 /**

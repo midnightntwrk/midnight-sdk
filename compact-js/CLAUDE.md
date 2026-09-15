@@ -157,8 +157,30 @@ Compact.js commands operate on contracts compiled by `compactc`. The workflow re
 ## Internal Dependencies
 
 - Core Effect packages: `@effect/platform`, `@effect/platform-node`, `@effect/cli`
-- Midnight libraries: `@midnight-ntwrk/compact-runtime`, `@midnight-ntwrk/ledger-v8`, `@midnight-ntwrk/platform-js`
+- Midnight libraries: `@midnight-ntwrk/compact-runtime`, `@midnightntwrk/ledger-v9` (reached only through the `Ledger` facade), `@midnight-ntwrk/platform-js`
 - Dev: Vitest, TypeScript, ESLint, TypeScript-ESLint
+
+## Ledger Era Seam
+
+All ledger API is reached through the `Ledger` facade (`compact-js/src/effect/Ledger.ts`); only
+the era bindings under `compact-js/src/effect/internal/ledger/` may import a
+`@midnightntwrk/ledger-v<N>` package directly (ESLint enforces this; tests are exempt). Design
+rationale lives in `docs/adr/0001-ledger-era-seam.md` at the repo root.
+
+To add a new era binding (e.g. ledger 10):
+
+1. Create `internal/ledger/v10.ts` mirroring `v9.ts`: the curated re-export list, its own
+   `CONTRACT_OPERATION_VERSION`, and an `Era` descriptor with a **re-verified** CMA
+   signature-scheme allowlist (verify each scheme end-to-end before listing it).
+2. Extend the `LedgerMajor` union in `internal/ledger/era.ts`.
+3. Confirm the new binding satisfies `LedgerBinding` (`internal/ledger/binding.ts`) — repointing
+   `current.ts` fails the build if it doesn't.
+4. Repoint `internal/ledger/current.ts` at the new binding. **This changes the era for every
+   entry, including `/v9`** — the suffixed entries are aliases until era-scoped builds
+   (midnight-sdk#388) land, so `/v9` must first be rebound to a pinned ledger 9 binding.
+5. Add `./v10` and `./v10/effect` entries to `package.json` `exports`, mirror the `src/v10/`
+   entry files, and extend `LedgerEra.test.ts`.
+6. Update the CLI's accepted `--ledger-era` (it derives from `Ledger.era.ledger`) and its tests.
 
 ## Notes for Contributors
 

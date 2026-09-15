@@ -508,7 +508,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         Effect.gen(this, function* () {
           const { contractState } = contractContext;
           const [cma, signingKey] = yield* this.createMaintenanceAuthority(newSigningKey, contractState);
-          const ledger_cma = Ledger.ContractMaintenanceAuthority.deserialize(cma.serialize());
+          const ledger_cma = yield* Ledger.fromRuntimeMaintenanceAuthority(cma);
           const update = yield* this.createSignedMaintenanceUpdate(
             () => {
               return Either.right([new Ledger.ReplaceAuthority(ledger_cma)]);
@@ -630,7 +630,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
   > {
     const signingKey = Option.match(key, {
       onSome: identity,
-      onNone: () => SigningKey.make(sampleSigningKey('schnorr').value)
+      onNone: () => SigningKey.make(sampleSigningKey(Ledger.era.defaultCmaSignatureKind).value)
     });
     const ledgerSigningKey = Ledger.fromPlatformSigningKey(signingKey, contractState);
     if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);

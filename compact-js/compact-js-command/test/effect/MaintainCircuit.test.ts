@@ -29,15 +29,13 @@ const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counte
 const COUNTER_STATE_FILEPATH = resolve(import.meta.dirname, '../contract/counter/state.bin');
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.bin');
 
-// Skipped. The current yarn workspace setup (with the root dependent on Ledger@4), means that Ledger@6 that
-// both `compact-js` and `compact-js-command` depended on are not being deduped on install. At runtime this
-// means that two instances of the Ledger WASM is being loaded. `compact-js` creates an instance of
-// `MaintenanceUpdate` that is then added to an `Intent` created in `compact-js-command`, and since these two types
-// are originated from different instances of the Ledger WASM, the `Intent.addMaintenanceUpdate()` function
-// throws an `'expected instance of MaintenanceUpdate'` error. To fix this we need to properly segregate the
-// workspace. The Contract Maintenance Operations are tested (outside of the command) in the `compact-js` package.
+// These tests were long skipped because each package loaded its own ledger WASM instance: a
+// `MaintenanceUpdate` built in `compact-js` failed `Intent.addMaintenanceUpdate()` in
+// `compact-js-command` with 'expected instance of MaintenanceUpdate'. Both packages now reach one
+// ledger binding through the `Ledger` facade, and these tests are the behavioural regression
+// guard for exactly that dual-instance failure.
 // @seealso ./MaintainContract.test.ts
-describe.skip('Maintain Circuit Command', () => {
+describe('Maintain Circuit Command', () => {
   it.effect(
     'should report success with valid setup',
     () =>
@@ -47,10 +45,9 @@ describe.skip('Maintain Circuit Command', () => {
         yield* cli([
           'node',
           'maintain.ts',
-          'maintain',
           'circuit',
           '-s',
-          sampleSigningKey(),
+          sampleSigningKey().value,
           '-c',
           COUNTER_CONFIG_FILEPATH,
           '--input',

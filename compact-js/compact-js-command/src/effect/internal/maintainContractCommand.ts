@@ -17,7 +17,7 @@ import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { type ContractExecutable, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { type ConfigError, Duration, Effect, Option } from 'effect';
+import { type ConfigError, Effect, Option } from 'effect';
 
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
@@ -64,8 +64,6 @@ export const handler: (
         contractState: yield* Ledger.toRuntimeContractState(ledgerContractState)
       }
     );
-    const intent = Ledger.Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addMaintenanceUpdate(
-      result.public.maintenanceUpdate
-    );
+    const intent = (yield* InternalCommand.newIntent()).addMaintenanceUpdate(result.public.maintenanceUpdate);
     yield* fs.writeFile(outputFilePath, intent.serialize());
   }).pipe(Effect.mapError((err) => ContractRuntimeError.make('Failed to apply maintenance operation', err)));

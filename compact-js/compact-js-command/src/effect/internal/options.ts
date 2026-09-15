@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Command, Options } from '@effect/cli';
+import { type Command, HelpDoc, Options, ValidationError } from '@effect/cli';
 import { Path } from '@effect/platform';
 import { Ledger } from '@midnight-ntwrk/compact-js/effect';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
@@ -46,29 +46,32 @@ export const config = Options.file('config', { exists: 'either' }).pipe(
  * Selects the ledger era an invocation targets. This build is era-pinned, so the only accepted
  * value is the era it is bound to ({@link Ledger.era}); the option exists to make the era an
  * explicit, stable part of the CLI contract across the hardfork window — an invocation that needs
- * a different era fails fast here and must use a build pinned to that era (midnight-sdk#387).
+ * a different era fails fast here and must use a build pinned to that era.
+ *
+ * No handler reads the parsed value: the option exists purely so parsing rejects a mismatched
+ * era. Do not remove it as "unused" — `LedgerEraOption.test.ts` exercises the rejection through
+ * every command.
  *
  * @internal
  */
 export const ledgerEra = Options.integer('ledger-era').pipe(
   Options.withDescription(
-    `The ledger era to target. This build is pinned to ledger era ${Ledger.era.ledger}.`
+    `The ledger era to target. Only ${Ledger.era.ledger} is accepted; this build is pinned to it.`
   ),
-  Options.filterMap(
-    (era) => (era === Ledger.era.ledger ? Option.some(era) : Option.none()),
-    `this build is pinned to ledger era ${Ledger.era.ledger}; use a build pinned to the requested era to target it`
+  Options.mapEffect((era) =>
+    era === Ledger.era.ledger
+      ? Effect.succeed(era)
+      : Effect.fail(
+          ValidationError.invalidValue(
+            HelpDoc.p(
+              `ledger era ${era} is not supported by this build (pinned to ledger era ${Ledger.era.ledger}); ` +
+                `use a build pinned to era ${era} to target it`
+            )
+          )
+        )
   ),
   Options.withDefault(Ledger.era.ledger)
 );
-
-/**
- * Options shared by every top-level command. Spread this into each command's `Options` record
- * (`...InternalOptions.common`) rather than listing its members individually, so a new command
- * cannot silently omit the era gate.
- *
- * @internal
- */
-export const common = { ledgerEra };
 
 /** @internal */
 export const coinPublicKey = Options.text('coin-public').pipe(

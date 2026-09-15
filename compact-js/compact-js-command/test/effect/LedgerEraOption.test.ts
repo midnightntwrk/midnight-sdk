@@ -18,7 +18,8 @@ import { resolve } from 'node:path';
 import { Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { describe, it } from '@effect/vitest';
-import { circuitCommand } from '@midnight-ntwrk/compact-js-command/effect';
+import { circuitCommand, deployCommand, maintainCommand } from '@midnight-ntwrk/compact-js-command/effect';
+import { sampleSigningKey } from '@midnightntwrk/ledger-v9';
 import { Effect } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
@@ -28,13 +29,17 @@ import { testLayer } from './testLayer.js';
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 const COUNTER_STATE_FILEPATH = resolve(import.meta.dirname, '../contract/counter/state.bin');
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_era.json');
+const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_era.bin');
+const COUNTER_ADDRESS = '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a';
 
-const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+const circuitCli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+const deployCli = Command.run(deployCommand, { name: 'deploy', version: '0.0.0' });
+const maintainCli = Command.run(maintainCommand, { name: 'maintain', version: '0.0.0' });
 
 // The command args are era-agnostic boilerplate; only `--ledger-era` varies per test. The circuit
 // is deliberately unknown so an accepted era stops at the cheap, deterministic manifest error
 // instead of executing a full circuit.
-const cliArgs = (ledgerEra: string) => [
+const circuitCliArgs = (ledgerEra: string) => [
   'node',
   'circuit.ts',
   '--ledger-era',
@@ -47,9 +52,22 @@ const cliArgs = (ledgerEra: string) => [
   COUNTER_OUTPUT_PS_FILEPATH,
   '--output-ps',
   COUNTER_OUTPUT_PS_FILEPATH,
-  '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a',
+  COUNTER_ADDRESS,
   'unknown_circuit'
 ];
+
+// Asserts that `invocation` fails during option parsing with the era-pinned rejection. Rejection
+// happens before any handler runs, so these need no filesystem setup or cleanup.
+const expectEraRejected = <A, E, R>(invocation: Effect.Effect<A, E, R>): Effect.Effect<void, never, R> =>
+  Effect.gen(function* () {
+    const exit = yield* Effect.exit(invocation);
+
+    expect(exit._tag).toBe('Failure');
+    expect(String(exit)).toMatch(/pinned to ledger era 9/);
+    // The message names the era the CLI actually heard, so a user with several builds can tell
+    // which one they invoked.
+    expect(String(exit)).toMatch(/ledger era 8/);
+  });
 
 describe('--ledger-era option', () => {
   it.effect(
@@ -59,7 +77,7 @@ describe('--ledger-era option', () => {
         const fs = yield* FileSystem.FileSystem;
         yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
 
-        yield* cli(cliArgs('9'));
+        yield* circuitCli(circuitCliArgs('9'));
 
         // Reaching the manifest error proves era validation passed and the command proceeded.
         const lines = yield* MockConsole.getLines({ stripAnsi: true });
@@ -69,17 +87,70 @@ describe('--ledger-era option', () => {
     30_000
   );
 
+  // Every command carries the gate via `GlobalOptions`; each is exercised so a command that drops
+  // the spread fails here rather than silently accepting any era.
   it.effect(
-    'rejects an era this build is not pinned to',
-    () =>
-      // Rejection happens during option parsing, before the handler touches any file, so this
-      // test needs no filesystem setup.
-      Effect.gen(function* () {
-        const exit = yield* Effect.exit(cli(cliArgs('8')));
+    '`circuit` rejects an era this build is not pinned to',
+    () => expectEraRejected(circuitCli(circuitCliArgs('8'))).pipe(Effect.provide(testLayer)),
+    30_000
+  );
 
-        expect(exit._tag).toBe('Failure');
-        expect(String(exit)).toMatch(/pinned to ledger era 9/);
-      }).pipe(Effect.provide(testLayer)),
+  it.effect(
+    '`deploy` rejects an era this build is not pinned to',
+    () =>
+      expectEraRejected(
+        deployCli(['node', 'deploy.ts', '--ledger-era', '8', '-c', COUNTER_CONFIG_FILEPATH])
+      ).pipe(Effect.provide(testLayer)),
+    30_000
+  );
+
+  it.effect(
+    '`maintain contract` rejects an era this build is not pinned to',
+    () =>
+      expectEraRejected(
+        maintainCli([
+          'node',
+          'maintain.ts',
+          'contract',
+          '--ledger-era',
+          '8',
+          '-s',
+          sampleSigningKey().value,
+          '-c',
+          COUNTER_CONFIG_FILEPATH,
+          '--input',
+          COUNTER_STATE_FILEPATH,
+          '--output',
+          COUNTER_OUTPUT_FILEPATH,
+          COUNTER_ADDRESS,
+          sampleSigningKey().value
+        ])
+      ).pipe(Effect.provide(testLayer)),
+    30_000
+  );
+
+  it.effect(
+    '`maintain circuit` rejects an era this build is not pinned to',
+    () =>
+      expectEraRejected(
+        maintainCli([
+          'node',
+          'maintain.ts',
+          'circuit',
+          '--ledger-era',
+          '8',
+          '-s',
+          sampleSigningKey().value,
+          '-c',
+          COUNTER_CONFIG_FILEPATH,
+          '--input',
+          COUNTER_STATE_FILEPATH,
+          '--output',
+          COUNTER_OUTPUT_FILEPATH,
+          COUNTER_ADDRESS,
+          'increment'
+        ])
+      ).pipe(Effect.provide(testLayer)),
     30_000
   );
 });

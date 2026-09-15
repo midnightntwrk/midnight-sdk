@@ -17,7 +17,7 @@ import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { type ContractExecutable, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import { type ConfigError, Duration, Effect, Option } from 'effect';
+import { type ConfigError, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
@@ -35,7 +35,6 @@ export const Args = { args: InternalArgs.contractArgs };
 export type Options = Command.Command.ParseConfig<typeof Options>;
 /** @internal */
 export const Options = {
-  ...InternalOptions.common,
   signingKey: InternalOptions.signingKey,
   outputFilePath: InternalOptions.outputFilePath,
   outputPublicFilePath: InternalOptions.outputPublicFilePath,
@@ -69,7 +68,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       ...(yield* argsParser.parseInitializationArgs(args))
     );
     const ledgerContractState = yield* Ledger.fromRuntimeContractState(result.public.contractState);
-    const intent = Ledger.Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addDeploy(
+    const intent = (yield* InternalCommand.newIntent()).addDeploy(
       new Ledger.ContractDeploy(ledgerContractState)
     );
 
