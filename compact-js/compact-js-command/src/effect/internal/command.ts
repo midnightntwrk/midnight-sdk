@@ -44,6 +44,33 @@ const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) =>
   DateTime.now.pipe(Effect.map((utcNow) => DateTime.toDate(DateTime.addDuration(utcNow, duration))));
 
 /**
+ * Wraps a call across the ledger (WASM) boundary so that a rejection becomes a typed failure
+ * rather than a defect.
+ *
+ * @remarks
+ * Ledger bindings signal rejection by throwing — `Intent.addMaintenanceUpdate()` throws
+ * `'expected instance of MaintenanceUpdate'` when handed a value built against a different WASM
+ * instance, for example. A throw inside `Effect.gen` becomes a defect, and a defect escapes both
+ * the `Effect.mapError(...)` a command handler ends with *and*
+ * {@link invocationHandler}'s `Effect.catchAll(reportContractExecutionError)` — the user gets a raw
+ * fiber dump instead of the CLI's formatted report. Every ledger call made outside the `Ledger`
+ * facade (which wraps its own) goes through here.
+ *
+ * @param message A message describing the operation, used as the failure's message.
+ * @param evaluate A thunk that performs the ledger call.
+ * @returns An `Effect` that yields the result of `evaluate`, failing with a
+ * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects it.
+ */
+export const tryLedger: <A>(
+  message: string,
+  evaluate: () => A
+) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = (message, evaluate) =>
+  Effect.try({
+    try: evaluate,
+    catch: (err) => ContractRuntimeError.make(message, err)
+  });
+
+/**
  * Creates an empty ledger `Intent` with the command-wide TTL applied. Every command emits its
  * result as an intent with the same TTL policy; single-sourcing it here keeps the default in one
  * place.
@@ -56,12 +83,7 @@ export const newIntent: () => Effect.Effect<
   ContractRuntimeError.ContractRuntimeError
 > = () =>
   ttl(INTENT_TTL).pipe(
-    Effect.flatMap((date) =>
-      Effect.try({
-        try: () => Ledger.Intent.new(date),
-        catch: (err) => ContractRuntimeError.make('Failed to create intent', err)
-      })
-    )
+    Effect.flatMap((date) => tryLedger('Failed to create intent', () => Ledger.Intent.new(date)))
   );
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

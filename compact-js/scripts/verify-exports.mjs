@@ -45,6 +45,25 @@ for (const subpath of expectedSubpaths) {
   }
 }
 
+// The mirror of the check above: a subpath the source blocks with `null` (e.g. `./effect/internal/*`,
+// which keeps the ledger era binding private) must stay blocked. pack-v3 expands wildcards into one
+// entry per emitted module, so a change in how it decides which modules to emit could publish
+// `./effect/internal/ledger/current` as importable API with the build still green.
+const blockedSubpaths = Object.entries(sourceExports)
+  .filter(([, target]) => target === null)
+  .map(([subpath]) => subpath);
+
+const isBlockedBy = (subpath, blocked) =>
+  blocked.includes('*') ? subpath.startsWith(blocked.slice(0, blocked.indexOf('*'))) : subpath === blocked;
+
+for (const [subpath, target] of Object.entries(distExports)) {
+  if (target === null) continue; // Carried through as a blocker, not as a reachable subpath.
+  const blockedBy = blockedSubpaths.find((blocked) => isBlockedBy(subpath, blocked));
+  if (blockedBy !== undefined) {
+    problems.push(`packed exports expose "${subpath}", blocked by "${blockedBy}" in ${sourceManifestPath}`);
+  }
+}
+
 // Every packed target must exist: a stale or misgenerated entry resolves to nothing at install
 // time. Conditions nest arbitrarily (`{"import": {"types": …, "default": …}}`), so walk the tree
 // rather than only its first level.
@@ -52,7 +71,9 @@ const checkTargets = (subpath, condition, target) => {
   if (target === null) return;
   if (typeof target === 'string') {
     if (!existsSync(join(distDir, target))) {
-      problems.push(`packed export "${subpath}" (${condition}) points at missing file: ${target}`);
+      // A top-level string target has no condition to name (e.g. `"./package.json"`).
+      const via = condition ? ` (${condition})` : '';
+      problems.push(`packed export "${subpath}"${via} points at missing file: ${target}`);
     }
     return;
   }
@@ -71,4 +92,7 @@ if (problems.length > 0) {
   process.exit(1);
 }
 
-console.log(`verify-exports: ${expectedSubpaths.length} declared subpaths present in packed exports, all targets exist.`);
+console.log(
+  `verify-exports: ${expectedSubpaths.length} declared subpaths present in packed exports, ` +
+    `${blockedSubpaths.length} blocked, all targets exist.`
+);

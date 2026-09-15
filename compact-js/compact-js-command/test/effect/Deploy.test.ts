@@ -21,10 +21,17 @@ import { deployCommand } from '@midnight-ntwrk/compact-js-command/effect';
 import { Effect } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
+import { useConfigFixture } from './configFixture.js';
 import * as MockConsole from './MockConsole.js';
 import { testLayer } from './testLayer.js';
 
-const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
+// Test files run in parallel, so each owns a distinct path for every artefact it writes — the
+// config fixture (which is transpiled to a sibling `.js` before import) as much as the outputs
+// below: a shared name lets one file's cleanup delete another's artefact mid-read.
+const COUNTER_CONFIG_FILEPATH = useConfigFixture(
+  resolve(import.meta.dirname, '../contract/counter/contract.config.ts'),
+  'deploy'
+);
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy.bin');
 const COUNTER_OUTPUT_OC_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy_onchain.bin');
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy.json');
@@ -48,7 +55,6 @@ describe('Deploy Command', () => {
 
       expect(lines.length).toBe(0);
     }).pipe(
-      Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),

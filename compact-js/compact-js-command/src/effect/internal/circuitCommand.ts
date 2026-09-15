@@ -187,28 +187,31 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
             );
           }
           const callOperation = yield* Ledger.operationForCircuit(callLedgerState, call.circuitId, call.contractAddress);
-          const nextIntent = acc.intent.addCall(new Ledger.ContractCallPrototype(
-            call.contractAddress,
-            call.circuitId,
-            callOperation,
-            call.public.partitionedTranscript[0],
-            call.public.partitionedTranscript[1],
-            call.private.privateTranscriptOutputs,
-            call.private.input,
-            call.private.output,
-            Option.match(call.communicationCommitment, {
-              onSome: (c) => c.commCommRand,
-              onNone: () => Ledger.communicationCommitmentRandomness()
-            }),
-            // The canonical key location routes the proof for this call to the key material of the
-            // specific deployed circuit (by contract address and verifier-key content), so that
-            // identically named circuits across contracts in one transaction cannot collide.
-            ContractKeyLocation.encodeContractKeyLocation({
-              contractAddress: call.contractAddress,
-              circuitId: call.circuitId,
-              verifierKeyHash: ContractKeyLocation.hashVerifierKey(callOperation.verifierKey)
-            })
-          ));
+          const nextIntent = yield* InternalCommand.tryLedger(
+            `Failed to add the call to '${call.circuitId}' on '${call.contractAddress}' to the intent`,
+            () => acc.intent.addCall(new Ledger.ContractCallPrototype(
+              call.contractAddress,
+              call.circuitId,
+              callOperation,
+              call.public.partitionedTranscript[0],
+              call.public.partitionedTranscript[1],
+              call.private.privateTranscriptOutputs,
+              call.private.input,
+              call.private.output,
+              Option.match(call.communicationCommitment, {
+                onSome: (c) => c.commCommRand,
+                onNone: () => Ledger.communicationCommitmentRandomness()
+              }),
+              // The canonical key location routes the proof for this call to the key material of the
+              // specific deployed circuit (by contract address and verifier-key content), so that
+              // identically named circuits across contracts in one transaction cannot collide.
+              ContractKeyLocation.encodeContractKeyLocation({
+                contractAddress: call.contractAddress,
+                circuitId: call.circuitId,
+                verifierKeyHash: ContractKeyLocation.hashVerifierKey(callOperation.verifierKey)
+              })
+            ))
+          );
           // Record callee states only; the root's updated state is handled by `--output-oc`.
           const nextFinalCalleeStates = call.contractAddress === address
             ? acc.finalCalleeStates
@@ -231,10 +234,15 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
 
     // If the output public file path is provided, write the on-chain (public state) data to the specified file.
     if (Option.isSome(outputPublicFilePath)) {
-      ledgerContractState.data = new Ledger.ChargedState(
-        yield* Ledger.fromRuntimeStateValue(rootCall.public.contractState)
+      const rootState = yield* Ledger.fromRuntimeStateValue(rootCall.public.contractState);
+      const rootStateBytes = yield* InternalCommand.tryLedger(
+        `Failed to serialize the updated contract state for '${address}'`,
+        () => {
+          ledgerContractState.data = new Ledger.ChargedState(rootState);
+          return ledgerContractState.serialize();
+        }
       );
-      yield* fs.writeFile(outputPublicFilePath.value, ledgerContractState.serialize());
+      yield* fs.writeFile(outputPublicFilePath.value, rootStateBytes);
     }
 
     // If an output contract-states directory is provided, write the updated ledger state of each
@@ -245,12 +253,22 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       const dir = outputContractStatesDirPath.value;
       yield* fs.makeDirectory(dir, { recursive: true });
       for (const [contractAddress, { ledgerState, data }] of finalCalleeStates) {
-        ledgerState.data = new Ledger.ChargedState(yield* Ledger.fromRuntimeStateValue(data));
-        yield* fs.writeFile(join(dir, contractAddress), ledgerState.serialize());
+        const calleeState = yield* Ledger.fromRuntimeStateValue(data);
+        const calleeStateBytes = yield* InternalCommand.tryLedger(
+          `Failed to serialize the updated contract state for '${contractAddress}'`,
+          () => {
+            ledgerState.data = new Ledger.ChargedState(calleeState);
+            return ledgerState.serialize();
+          }
+        );
+        yield* fs.writeFile(join(dir, contractAddress), calleeStateBytes);
       }
     }
     yield* fs.writeFileString(outputResultFilePath, stringifyCircuitOutput(result.result));
-    yield* fs.writeFile(outputFilePath, intent.serialize());
+    yield* fs.writeFile(
+      outputFilePath,
+      yield* InternalCommand.tryLedger('Failed to serialize the intent', () => intent.serialize())
+    );
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.privateState));
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,

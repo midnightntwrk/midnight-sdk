@@ -35,10 +35,12 @@
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
-    "build": "yarn build-esm && build-utils pack-v3",
+    "build": "yarn build-esm && build-utils pack-v3 && yarn fix-exports && yarn verify-exports",
     "build-esm": "tsc -b tsconfig.build.json",
     "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
     "test": "vitest run --passWithNoTests",
+    "fix-exports": "node ../scripts/fix-esm-only-exports.mjs .",
+    "verify-exports": "node ../scripts/verify-exports.mjs .",
     "package": "shx rm -rf ./dist/src && node ../scripts/resolve-workspace-protocol.mjs ./dist/package.json && (cd ./dist; npm pack)"
   },
   "files": [

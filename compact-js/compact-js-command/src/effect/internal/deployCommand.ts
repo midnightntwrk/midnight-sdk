@@ -68,15 +68,26 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       ...(yield* argsParser.parseInitializationArgs(args))
     );
     const ledgerContractState = yield* Ledger.fromRuntimeContractState(result.public.contractState);
-    const intent = (yield* InternalCommand.newIntent()).addDeploy(
-      new Ledger.ContractDeploy(ledgerContractState)
+    const emptyIntent = yield* InternalCommand.newIntent();
+    const intent = yield* InternalCommand.tryLedger(
+      'Failed to add the contract deployment to the intent',
+      () => emptyIntent.addDeploy(new Ledger.ContractDeploy(ledgerContractState))
     );
 
     // If the output public file path is provided, write the on-chain (public state) data to the specified file.
     if (Option.isSome(outputPublicFilePath)) {
-      yield* fs.writeFile(Option.getOrThrow(outputPublicFilePath), ledgerContractState.serialize());
+      yield* fs.writeFile(
+        Option.getOrThrow(outputPublicFilePath),
+        yield* InternalCommand.tryLedger(
+          'Failed to serialize the initial contract state',
+          () => ledgerContractState.serialize()
+        )
+      );
     }
-    yield* fs.writeFile(outputFilePath, intent.serialize());
+    yield* fs.writeFile(
+      outputFilePath,
+      yield* InternalCommand.tryLedger('Failed to serialize the intent', () => intent.serialize())
+    );
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.private.privateState));
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,

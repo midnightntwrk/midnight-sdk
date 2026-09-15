@@ -85,8 +85,15 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       ),
       onNone: () => removeCircuit(contractModule.contractExecutable, Contract.ProvableCircuitId(circuitId), contractContext)
     });
-    const intent = (yield* InternalCommand.newIntent()).addMaintenanceUpdate(result.public.maintenanceUpdate);
-    yield* fs.writeFile(outputFilePath, intent.serialize());
+    const emptyIntent = yield* InternalCommand.newIntent();
+    const intent = yield* InternalCommand.tryLedger(
+      'Failed to add the maintenance update to the intent',
+      () => emptyIntent.addMaintenanceUpdate(result.public.maintenanceUpdate)
+    );
+    yield* fs.writeFile(
+      outputFilePath,
+      yield* InternalCommand.tryLedger('Failed to serialize the intent', () => intent.serialize())
+    );
   }).pipe(
     Effect.mapError(
       (err) => ContractRuntimeError.make('Failed to apply maintenance operation', err)
