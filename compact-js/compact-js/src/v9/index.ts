@@ -13,15 +13,14 @@
  * limitations under the License.
  */
 
-import { ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { LedgerParameters } from '@midnightntwrk/ledger-v9';
-import { Effect } from 'effect';
-
-/** @internal */
-export const asLedgerParameters: (
-  bytes: Uint8Array
-) => Effect.Effect<LedgerParameters, ContractRuntimeError.ContractRuntimeError> =
-  (bytes) => Effect.try({
-    try: () => LedgerParameters.deserialize(bytes),
-    catch: (err) => ContractRuntimeError.make('Unexpected error deserializing ledger parameters', err),
-  });
+/**
+ * The **ledger 9** era-pinned entry (midnight-sdk#387/#388). The `v9` suffix names the ledger
+ * era this entry targets — ledger 9 — not this package's own version. Binding to this path
+ * records an intent to speak a specific ledger era (e.g. across a hardfork window).
+ *
+ * Until the era-scoped build wiring lands (midnight-sdk#388), this entry aliases the package's
+ * *current* era binding — ledger 9 today — with `test/effect/LedgerEra.test.ts` guarding that the
+ * alias resolves era 9. When the current era advances, this entry must be rebound to a pinned
+ * ledger 9 binding rather than left following `current`.
+ */
+export * from '../index.js';

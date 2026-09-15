@@ -108,6 +108,38 @@ export default tseslint.config(
             {
               group: ['**/dist/**', './dist/**', '../dist/**'],
               message: 'Direct imports from dist folders are not allowed. Use source files instead.'
+            },
+            {
+              // Both scope spellings, and their subpaths: `*` does not cross `/`, and the
+              // hyphenated `@midnight-ntwrk/ledger-v8` is resolvable in this workspace via
+              // `@midnight-ntwrk/wallet-sdk-address-format`.
+              group: [
+                '@midnightntwrk/ledger-v*',
+                '@midnightntwrk/ledger-v*/**',
+                '@midnight-ntwrk/ledger-v*',
+                '@midnight-ntwrk/ledger-v*/**'
+              ],
+              message:
+                'Import ledger types through the `Ledger` facade (@midnight-ntwrk/compact-js/effect); ' +
+                'only compact-js/src/effect/internal/ledger/* may bind an era package directly.'
+            }
+          ]
+        }
+      ],
+    }
+  },
+  {
+    // The era bindings are the one place allowed to import a ledger package directly (the seam
+    // they implement), and tests may too — some must compare ledger module identity.
+    files: ['compact-js/src/effect/internal/ledger/*.ts', '**/test/**'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/dist/**', './dist/**', '../dist/**'],
+              message: 'Direct imports from dist folders are not allowed. Use source files instead.'
             }
           ]
         }

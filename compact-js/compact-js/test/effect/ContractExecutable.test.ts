@@ -20,7 +20,8 @@ import { beforeEach,describe, expect, it } from '@effect/vitest';
 import {
   CompiledContract,
   Contract,
-  ContractExecutable} from '@midnight-ntwrk/compact-js/effect';
+  ContractExecutable,
+  Ledger} from '@midnight-ntwrk/compact-js/effect';
 import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
@@ -231,6 +232,11 @@ describe('ContractExecutable', () => {
         expect(result.public.maintenanceUpdate).toBeDefined();
         expect(result.public.maintenanceUpdate.counter).toEqual(deployment.initialState.maintenanceAuthority.counter);
         expect((result.public.maintenanceUpdate.updates[0] as VerifierKeyRemove).operation).toEqual('increment');
+        // The era's operation version must reach the constructed update, not just the constructor:
+        // a removal at the wrong version silently targets a key the ledger does not hold.
+        expect((result.public.maintenanceUpdate.updates[0] as VerifierKeyRemove).version.version).toEqual(
+          Ledger.makeContractOperationVersion().version
+        );
         expect(result.private.signingKey).toEqual(SigningKey.make(VALID_SIGNING_KEY));
       })
     );
@@ -249,6 +255,11 @@ describe('ContractExecutable', () => {
         expect(result.public.maintenanceUpdate).toBeDefined();
         expect(result.public.maintenanceUpdate.counter).toEqual(deployment.initialState.maintenanceAuthority.counter);
         expect((result.public.maintenanceUpdate.updates[0] as VerifierKeyInsert).operation).toEqual('increment');
+        // The era's operation version must reach the constructed update, not just the constructor:
+        // an insert at the wrong version installs a key the ledger will not resolve for this era.
+        expect((result.public.maintenanceUpdate.updates[0] as VerifierKeyInsert).vk.version).toEqual(
+          Ledger.makeContractOperationVersion().version
+        );
         expect(result.private.signingKey).toEqual(SigningKey.make(VALID_SIGNING_KEY));
       })
     );

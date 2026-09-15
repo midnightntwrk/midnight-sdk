@@ -17,6 +17,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState as RuntimeContractState } from '@midnight-ntwrk/compact-runtime';
 import { ContractOperation, ContractState as LedgerContractState } from '@midnightntwrk/ledger-v9';
@@ -110,14 +111,28 @@ describe('FileSystemContractStateProvider', () => {
     expect(serializedEqual(fromHashA!.serialize(), bytes)).toBe(true);
   });
 
-  it('rejects when the state file exists but contains invalid bytes', async () => {
+  it('rejects with a ContractRuntimeError when the state file exists but contains invalid bytes', async () => {
     const address = 'd'.repeat(64);
     // A present-but-corrupt file must fail loudly: only a *missing* file means "no state". The
     // provider catches solely ENOENT, so deserializing garbage rejects rather than resolving
-    // undefined — distinguishing "no state" from "unreadable state".
+    // undefined — distinguishing "no state" from "unreadable state". The rejection carries the
+    // Ledger facade's typed error, not a wrapped fiber failure.
     writeFileSync(join(baseDir, address), Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7]));
 
-    await expect(FileSystemContractStateProvider.make(baseDir).getContractState(ZERO_BLOCK_HASH, address))
-      .rejects.toThrow();
+    const rejection = await FileSystemContractStateProvider.make(baseDir)
+      .getContractState(ZERO_BLOCK_HASH, address)
+      .then(
+        () => undefined,
+        (err: unknown) => err
+      );
+
+    expect(ContractRuntimeError.isRuntimeError(rejection)).toBe(true);
+    // The message content is the point of the error, not just its type: it must name the contract,
+    // the file, and the era whose encoding was expected, so a user can find the offending file in
+    // a directory of callee states without bisecting by hand.
+    const { message } = rejection as ContractRuntimeError.ContractRuntimeError;
+    expect(message).toContain(address);
+    expect(message).toContain(join(baseDir, address));
+    expect(message).toContain('expected ledger era 9 encoding');
   });
 });

@@ -13,8 +13,9 @@
  * limitations under the License.
  */
 
-import { type Command, Options } from '@effect/cli';
+import { type Command, HelpDoc, Options, ValidationError } from '@effect/cli';
 import { Path } from '@effect/platform';
+import { Ledger } from '@midnight-ntwrk/compact-js/effect';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { ConfigProvider, Effect, Option, Schema } from 'effect';
@@ -39,6 +40,37 @@ export const config = Options.file('config', { exists: 'either' }).pipe(
   Options.withAlias('c'),
   Options.withDefault('contract.config.ts'),
   Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
+);
+
+/**
+ * Selects the ledger era an invocation targets. This build is era-pinned, so the only accepted
+ * value is the era it is bound to ({@link Ledger.era}); the option exists to make the era an
+ * explicit, stable part of the CLI contract across the hardfork window — an invocation that needs
+ * a different era fails fast here and must use a build pinned to that era.
+ *
+ * No handler reads the parsed value: the option exists purely so parsing rejects a mismatched
+ * era. Do not remove it as "unused" — `LedgerEraOption.test.ts` exercises the rejection through
+ * every command.
+ *
+ * @internal
+ */
+export const ledgerEra = Options.integer('ledger-era').pipe(
+  Options.withDescription(
+    `The ledger era to target. Only ${Ledger.era.ledger} is accepted; this build is pinned to it.`
+  ),
+  Options.mapEffect((era) =>
+    era === Ledger.era.ledger
+      ? Effect.succeed(era)
+      : Effect.fail(
+          ValidationError.invalidValue(
+            HelpDoc.p(
+              `ledger era ${era} is not supported by this build (pinned to ledger era ${Ledger.era.ledger}); ` +
+                `use a build pinned to era ${era} to target it`
+            )
+          )
+        )
+  ),
+  Options.withDefault(Ledger.era.ledger)
 );
 
 /** @internal */
