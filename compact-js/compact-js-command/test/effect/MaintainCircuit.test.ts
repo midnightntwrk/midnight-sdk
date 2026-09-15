@@ -27,7 +27,9 @@ import { testLayer } from './testLayer.js';
 
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 const COUNTER_STATE_FILEPATH = resolve(import.meta.dirname, '../contract/counter/state.bin');
-const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.bin');
+// Test files run in parallel, so each owns a distinct output path: a shared name lets one file's
+// cleanup delete another's artefact mid-read.
+const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_maintain_circuit.bin');
 
 // These tests were long skipped because each package loaded its own ledger WASM instance: a
 // `MaintenanceUpdate` built in `compact-js` failed `Intent.addMaintenanceUpdate()` in

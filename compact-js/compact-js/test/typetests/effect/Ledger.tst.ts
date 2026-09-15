@@ -77,9 +77,11 @@ describe('Ledger facade type surface', () => {
 });
 
 describe('era-pinned entry type surface', () => {
-  it('`/v9/effect` exposes the same Ledger facade type as `/effect`', () => {
-    // Type-level counterpart to the run-time entry checks: catches an entry that resolves but
-    // exports a structurally different facade.
-    expect<typeof v9EffectEntry.Ledger.era>().type.toBe<typeof Ledger.era>();
+  it('`/v9/effect` exposes ledger 9\'s own types', () => {
+    // Anchored on the ledger-v9 package rather than on the unsuffixed entry: `/v9/effect`
+    // re-exports that entry, so comparing the two is a tautology. This goes red once `/v9/effect`
+    // resolves a different era's types.
+    expect<typeof v9EffectEntry.Ledger.era.ledger>().type.toBe<9>();
+    expect<v9EffectEntry.Ledger.ContractOperation>().type.toBe<LedgerContractOperation>();
   });
 });

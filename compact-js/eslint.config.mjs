@@ -110,7 +110,15 @@ export default tseslint.config(
               message: 'Direct imports from dist folders are not allowed. Use source files instead.'
             },
             {
-              group: ['@midnightntwrk/ledger-v*'],
+              // Both scope spellings, and their subpaths: `*` does not cross `/`, and the
+              // hyphenated `@midnight-ntwrk/ledger-v8` is resolvable in this workspace via
+              // `@midnight-ntwrk/wallet-sdk-address-format`.
+              group: [
+                '@midnightntwrk/ledger-v*',
+                '@midnightntwrk/ledger-v*/**',
+                '@midnight-ntwrk/ledger-v*',
+                '@midnight-ntwrk/ledger-v*/**'
+              ],
               message:
                 'Import ledger types through the `Ledger` facade (@midnight-ntwrk/compact-js/effect); ' +
                 'only compact-js/src/effect/internal/ledger/* may bind an era package directly.'

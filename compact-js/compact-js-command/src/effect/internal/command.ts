@@ -19,7 +19,7 @@ import { type PlatformError } from '@effect/platform/Error';
 import { NodeContext } from '@effect/platform-node';
 import * as Ansi from '@effect/printer-ansi/Ansi';
 import * as Doc from '@effect/printer-ansi/AnsiDoc';
-import { type ContractExecutable, ContractExecutableRuntime, Ledger, type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractExecutable, ContractExecutableRuntime, ContractRuntimeError, Ledger, type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, Duration, Effect, Layer } from 'effect';
@@ -31,26 +31,38 @@ import * as ConfigCompiler from '../ConfigCompiler.js';
 import type * as ConfigError from '../ConfigError.js';
 import * as InternalOptions from './options.js';
 
+/** How far into the future a generated intent's TTL is set. */
+const INTENT_TTL = Duration.minutes(10);
+
 /**
  * Applies a duration to the current date/time, returning a date/time that is in the future.
  *
  * @param duration A `Duration` describing how far into the future the returned date/time should be.
  * @returns An `Effect` that yields a `Date` that will be in the future from `duration`.
  */
-export const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) => 
+const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) =>
   DateTime.now.pipe(Effect.map((utcNow) => DateTime.toDate(DateTime.addDuration(utcNow, duration))));
 
 /**
- * Creates an empty ledger `Intent` with the command-wide default TTL applied. Every command emits
- * its result as an intent with the same TTL policy; single-sourcing it here keeps the default in
- * one place.
+ * Creates an empty ledger `Intent` with the command-wide TTL applied. Every command emits its
+ * result as an intent with the same TTL policy; single-sourcing it here keeps the default in one
+ * place.
  *
- * @param duration How far into the future the intent's TTL should be. Defaults to 10 minutes.
- * @returns An `Effect` that yields a new `Intent` whose TTL is `duration` from now.
+ * @returns An `Effect` that yields a new `Intent`, failing with a
+ * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects the construction.
  */
-export const newIntent: (duration?: Duration.Duration) => Effect.Effect<ReturnType<typeof Ledger.Intent.new>> = (
-  duration = Duration.minutes(10)
-) => ttl(duration).pipe(Effect.map((date) => Ledger.Intent.new(date)));
+export const newIntent: () => Effect.Effect<
+  ReturnType<typeof Ledger.Intent.new>,
+  ContractRuntimeError.ContractRuntimeError
+> = () =>
+  ttl(INTENT_TTL).pipe(
+    Effect.flatMap((date) =>
+      Effect.try({
+        try: () => Ledger.Intent.new(date),
+        catch: (err) => ContractRuntimeError.make('Failed to create intent', err)
+      })
+    )
+  );
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const reportCausableError: (err: any) => Effect.Effect<void, never> =

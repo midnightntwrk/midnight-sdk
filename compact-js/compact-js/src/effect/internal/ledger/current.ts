@@ -17,8 +17,7 @@
  * The era currently bound to this build. Every entry — suffixed and unsuffixed — resolves the
  * `Ledger` facade through this one module, so changing the export below changes the era for ALL
  * of them, `/v9` included. Giving each era-pinned entry its own binding is the outstanding work
- * (midnight-sdk#388); the design and its trade-offs are recorded in
- * `docs/adr/0001-ledger-era-seam.md`.
+ * (midnight-sdk#388).
  */
 export * from './v9.js';
 

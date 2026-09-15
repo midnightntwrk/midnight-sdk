@@ -23,8 +23,9 @@
  * (`internal/ledger/v9.ts`) rather than importing the ledger package around the seam. Tests may
  * import the ledger package directly where they must compare module identity.
  *
- * The design rationale (why a module rather than an injected service, and the era-scoped entry
- * plan) is recorded in `docs/adr/0001-ledger-era-seam.md`.
+ * The seam is deliberately a module, not an injected service: which ledger era a build speaks is
+ * a packaging-level fact — one era per build artifact — not a runtime dependency to vary per
+ * effect. Downstream multi-era consumers select between era-scoped entries instead.
  */
 import {
   type ContractMaintenanceAuthority as RuntimeContractMaintenanceAuthority,
@@ -137,8 +138,8 @@ export const operationForCircuit: (
     : Effect.succeed(operation);
 };
 
-// Total form of `fromRuntimeStateValue` for internal composition (`fromRuntimeQueryContext` is
-// itself total); an era-boundary decode failure here throws raw and is wrapped by the caller.
+// Unwrapped form of `fromRuntimeStateValue`, for composing inside another conversion's
+// `tryConvert`. It throws on an era-boundary decode failure, so every caller must be inside one.
 const decodeStateValue = (value: RuntimeStateValue): CurrentEra.StateValue =>
   CurrentEra.StateValue.decode(value.encode());
 
@@ -155,25 +156,31 @@ export const fromRuntimeStateValue: (
 
 /**
  * Converts a runtime {@link RuntimeQueryContext} to this era's ledger `QueryContext`, carrying
- * `state`, `address`, `block`, `effects`, and the commitment indices (`comIndices`, re-inserted
- * entry by entry since they are only carriable via `insertCommitment`).
+ * `state`, `address`, `block`, `effects`, and the commitment indices (`comIndices`).
+ *
+ * `comIndices` is declared `readonly` and is only *writable* via `insertCommitment`, but it is
+ * carried here by the `block` assignment: the commitment map is part of the block-level call
+ * context, so assigning `block` restores it. This is verified by `test/effect/Ledger.test.ts` —
+ * do not "fix" the apparent gap by re-inserting the entries, which would union two commitment
+ * sets at any call site that also supplies its own (see
+ * `ContractExecutable.partitionAllTranscripts`).
  *
  * @category conversions
  */
-export const fromRuntimeQueryContext = (queryContext: RuntimeQueryContext): CurrentEra.QueryContext => {
-  const ledgerQueryContext = Array.from(queryContext.comIndices).reduce(
-    (context, [commitment, index]) => context.insertCommitment(commitment, index),
-    new CurrentEra.QueryContext(
+export const fromRuntimeQueryContext: (
+  queryContext: RuntimeQueryContext
+) => Effect.Effect<CurrentEra.QueryContext, ContractRuntimeError.ContractRuntimeError> = (queryContext) =>
+  tryConvert('Unexpected error converting runtime query context', () => {
+    const ledgerQueryContext = new CurrentEra.QueryContext(
       new CurrentEra.ChargedState(decodeStateValue(queryContext.state.state)),
       queryContext.address
-    )
-  );
-  // The constructor only takes the state and address, and `comIndices` rides on `insertCommitment`
-  // above; the remaining settable properties are copied manually.
-  ledgerQueryContext.block = queryContext.block;
-  ledgerQueryContext.effects = queryContext.effects;
-  return ledgerQueryContext;
-};
+    );
+    // The constructor takes only the state and address; the remaining settable properties are
+    // copied manually. `block` also carries `comIndices` (see the note above).
+    ledgerQueryContext.block = queryContext.block;
+    ledgerQueryContext.effects = queryContext.effects;
+    return ledgerQueryContext;
+  });
 
 /**
  * Adapts a platform-js {@link SigningKey.SigningKey} to this era's ledger `SigningKey`, failing

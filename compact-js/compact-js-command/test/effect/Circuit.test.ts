@@ -36,10 +36,10 @@ import { testLayer } from './testLayer.js';
 const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
 const COUNTER_STATE_FILEPATH = resolve(import.meta.dirname, '../contract/counter/state.bin');
 const COUNTER_LEDGER_PARAMS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/ledger_parameters.bin');
-const COUNTER_OUTPUT_OC_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_onchain.bin');
+const COUNTER_OUTPUT_OC_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit_onchain.bin');
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.bin');
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.json');
-const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_zswap.json');
+const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit_zswap.json');
 const COUNTER_RESULT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/result.json');
 const COUNTER_OUTPUT_EVENTS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_events.json');
 

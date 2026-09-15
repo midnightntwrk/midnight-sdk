@@ -56,9 +56,13 @@ describe('era-pinned entries', () => {
     expect(Object.keys(v9EffectEntry).sort()).toEqual(Object.keys(effectEntry).sort());
   });
 
-  it('`/v9/effect` resolves the ledger 9 era', () => {
-    expect((v9EffectEntry as typeof effectEntry).Ledger.era.ledger).toBe(9);
-    // Same module instance while the current era is 9 — one WASM instantiation, not two.
-    expect((v9EffectEntry as typeof effectEntry).Ledger.ContractState).toBe(Ledger.ContractState);
+  it('`/v9/effect` resolves the ledger 9 package', () => {
+    // Anchored on the ledger-v9 package itself, not on the unsuffixed entry (which `/v9/effect`
+    // re-exports, making any comparison against it a tautology) and not on the literal `9` (whose
+    // obvious repair, when red, is to edit the number). This goes red the day `current.ts` is
+    // repointed at another era while `/v9` still claims era 9 — the regression this entry exists
+    // to catch.
+    expect((v9EffectEntry as typeof effectEntry).Ledger.ContractState).toBe(ContractState);
+    expect((v9EffectEntry as typeof effectEntry).Ledger.LedgerParameters).toBe(LedgerParameters);
   });
 });

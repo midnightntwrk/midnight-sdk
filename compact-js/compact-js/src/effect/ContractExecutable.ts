@@ -268,26 +268,37 @@ const DEFAULT_SIGNATURE_INDEX = 0n;
 const partitionAllTranscripts = (
   trace: readonly CallProofData[],
   ledgerParameters: Ledger.LedgerParameters | undefined
-): Either.Either<ContractExecutable.PartitionedTranscript[], Error> => {
-  const preTranscripts = trace.map(
-    (entry) =>
-      new Ledger.PreTranscript(
-        Array.from(entry.finalQueryContext.comIndices).reduce(
-          (queryContext, comEntry) => queryContext.insertCommitment(...comEntry),
-          Ledger.fromRuntimeQueryContext(entry.initialQueryContext)
-        ),
-        entry.publicTranscript,
-        entry.commCommData?.commComm
+): Effect.Effect<ContractExecutable.PartitionedTranscript[], ContractRuntimeError.ContractRuntimeError> =>
+  Effect.gen(function* () {
+    // Each pre-transcript is built from the *initial* context (whose own commitments arrive with
+    // its `block`), then given the *final* context's commitments on top — the set the partitioner
+    // matches callers to callees on.
+    const preTranscripts = yield* Effect.forEach(trace, (entry) =>
+      Ledger.fromRuntimeQueryContext(entry.initialQueryContext).pipe(
+        Effect.map(
+          (initialContext) =>
+            new Ledger.PreTranscript(
+              Array.from(entry.finalQueryContext.comIndices).reduce(
+                (queryContext, comEntry) => queryContext.insertCommitment(...comEntry),
+                initialContext
+              ),
+              entry.publicTranscript,
+              entry.commCommData?.commComm
+            )
+        )
       )
-  );
-  const partitioned = Ledger.partitionTranscripts(
-    preTranscripts,
-    ledgerParameters ?? Ledger.LedgerParameters.initialParameters()
-  );
-  return partitioned.length === trace.length
-    ? Either.right(partitioned)
-    : Either.left(new Error(`Expected ${trace.length} transcript partition pairs, received: ${partitioned.length}`));
-};
+    );
+    const partitioned = yield* Effect.try({
+      try: () =>
+        Ledger.partitionTranscripts(preTranscripts, ledgerParameters ?? Ledger.LedgerParameters.initialParameters()),
+      catch: (err) => ContractRuntimeError.make('Unexpected error partitioning call transcripts', err)
+    });
+    return partitioned.length === trace.length
+      ? partitioned
+      : yield* ContractRuntimeError.make(
+          `Expected ${trace.length} transcript partition pairs, received: ${partitioned.length}`
+        );
+  });
 
 class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implements ContractExecutable<C, PS, E, R> {
   compiledContract: CompiledContract<C, PS>;
@@ -630,7 +641,14 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
   > {
     const signingKey = Option.match(key, {
       onSome: identity,
-      onNone: () => SigningKey.make(sampleSigningKey(Ledger.era.defaultCmaSignatureKind).value)
+      // Tag the sampled key with the era's scheme too: `SigningKey.make` otherwise defaults the
+      // tag to platform-js's own constant, which would label an era's non-schnorr sample as
+      // schnorr and sign with the wrong scheme while still passing the allowlist check below.
+      onNone: () =>
+        SigningKey.make(
+          sampleSigningKey(Ledger.era.defaultCmaSignatureKind).value,
+          Ledger.era.defaultCmaSignatureKind
+        )
     });
     const ledgerSigningKey = Ledger.fromPlatformSigningKey(signingKey, contractState);
     if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);

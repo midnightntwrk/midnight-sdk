@@ -5,7 +5,13 @@
     "build": {
       "dependsOn": ["^build"],
       "outputLogs": "new-only",
-      "inputs": ["src/**/*.ts", "!src/**/*.test.ts", "src/**/*.compact"],
+      "inputs": [
+        "src/**/*.ts",
+        "!src/**/*.test.ts",
+        "src/**/*.compact",
+        "package.json",
+        "../scripts/verify-exports.mjs"
+      ],
       "outputs": ["dist/**", "build/**", "src/**/managed/**"]
     },
     "clean": {

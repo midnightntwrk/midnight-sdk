@@ -15,9 +15,10 @@
 
 /**
  * The ledger 9 era binding. This module (together with its peers under `internal/ledger`) is the
- * ONLY place allowed to import from a `@midnightntwrk/ledger-v<N>` package; everything else goes
- * through the `Ledger` facade so that a future era binds by swapping `current.ts`, not by editing
- * call sites (midnight-sdk#387).
+ * only place in `src/` that may import from a `@midnightntwrk/ledger-v<N>` package; everything
+ * else goes through the `Ledger` facade so that a future era binds by swapping `current.ts`, not
+ * by editing call sites (midnight-sdk#387). ESLint enforces this (`no-restricted-imports`); tests
+ * are exempt by design, since some must compare ledger module identity.
  */
 import { type SignatureKind } from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import {

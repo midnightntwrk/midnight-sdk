@@ -164,8 +164,7 @@ Compact.js commands operate on contracts compiled by `compactc`. The workflow re
 
 All ledger API is reached through the `Ledger` facade (`compact-js/src/effect/Ledger.ts`); only
 the era bindings under `compact-js/src/effect/internal/ledger/` may import a
-`@midnightntwrk/ledger-v<N>` package directly (ESLint enforces this; tests are exempt). Design
-rationale lives in `docs/adr/0001-ledger-era-seam.md` at the repo root.
+`@midnightntwrk/ledger-v<N>` package directly (ESLint enforces this; tests are exempt).
 
 To add a new era binding (e.g. ledger 10):
 

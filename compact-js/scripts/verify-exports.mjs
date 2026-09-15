@@ -45,15 +45,24 @@ for (const subpath of expectedSubpaths) {
   }
 }
 
-// Every packed target must exist: a stale or misgenerated entry resolves to nothing at install time.
-for (const [subpath, target] of Object.entries(distExports)) {
-  const targets = typeof target === 'string' ? { default: target } : (target ?? {});
-  for (const [condition, targetPath] of Object.entries(targets)) {
-    if (typeof targetPath !== 'string') continue;
-    if (!existsSync(join(distDir, targetPath))) {
-      problems.push(`packed export "${subpath}" (${condition}) points at missing file: ${targetPath}`);
+// Every packed target must exist: a stale or misgenerated entry resolves to nothing at install
+// time. Conditions nest arbitrarily (`{"import": {"types": …, "default": …}}`), so walk the tree
+// rather than only its first level.
+const checkTargets = (subpath, condition, target) => {
+  if (target === null) return;
+  if (typeof target === 'string') {
+    if (!existsSync(join(distDir, target))) {
+      problems.push(`packed export "${subpath}" (${condition}) points at missing file: ${target}`);
     }
+    return;
   }
+  for (const [nested, nestedTarget] of Object.entries(target)) {
+    checkTargets(subpath, condition ? `${condition}.${nested}` : nested, nestedTarget);
+  }
+};
+
+for (const [subpath, target] of Object.entries(distExports)) {
+  checkTargets(subpath, '', target);
 }
 
 if (problems.length > 0) {
