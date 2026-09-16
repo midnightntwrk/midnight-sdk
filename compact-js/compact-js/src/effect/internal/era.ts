@@ -26,10 +26,24 @@ import { type SignatureKind } from '@midnight-ntwrk/platform-js/effect/SigningKe
 export type LedgerMajor = 9;
 
 /**
+ * The `@midnight-ntwrk/compact-runtime` lines this codebase has a runtime binding for, as
+ * `'<major>.<minor>'` — the granularity at which the runtime is era-paired (0.16 with ledger 8,
+ * 0.19 with ledger 9), patch releases within a line being interchangeable. Extend the union as
+ * bindings are added, for the same reason {@link LedgerMajor} is one.
+ *
+ * @category era
+ */
+export type RuntimeLine = '0.19';
+
+/**
  * Describes a ledger era: the facts about a ledger generation that vary between generations and
  * that compact-js code must not hard-code. An era binding (e.g. `v9.ts`) supplies one of these
  * alongside its re-exported ledger API; everything outside `internal/ledger` reads era-varying
  * values from here rather than assuming them.
+ *
+ * This module sits above both seams rather than inside `internal/ledger/`, because an era is not
+ * only a ledger generation: the ledger package, the compact-runtime line, and the onchain-runtime
+ * WASM under it all move together, and `internal/runtime/` reads {@link RuntimeLine} from here too.
  *
  * Part of the public `Ledger` facade surface (re-exported as `Ledger.Era`), so it must survive
  * `stripInternal` in the published typings.
@@ -39,6 +53,14 @@ export type LedgerMajor = 9;
 export interface Era {
   /** The ledger major this binding targets (e.g. `9` for `@midnightntwrk/ledger-v9`). */
   readonly ledger: LedgerMajor;
+  /**
+   * The `@midnight-ntwrk/compact-runtime` line this era pairs with. Declared by the *ledger*
+   * binding because the pairing is a fact about the era, not about either package alone; that the
+   * bound runtime seam actually supplies this line is asserted by
+   * `test/effect/CompactRuntime.test.ts`, since the two seams are bound in separate `current.ts`
+   * files and nothing in the type system ties them together.
+   */
+  readonly runtime: RuntimeLine;
   /**
    * Whether a signature scheme is verified to work through this era's ledger CMA path (`signData`
    * and `signatureVerifyingKey`). Deliberately a predicate over a binding-private allowlist

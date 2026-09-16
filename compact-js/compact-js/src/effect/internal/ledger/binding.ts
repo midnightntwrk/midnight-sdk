@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type Era } from './era.js';
+import { type Era } from '../era.js';
 
 /**
  * The contract every era binding module (`v9.ts`, a future `v10.ts`, …) must satisfy. `current.ts`

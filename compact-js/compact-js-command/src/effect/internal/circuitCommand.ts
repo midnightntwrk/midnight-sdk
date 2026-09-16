@@ -17,10 +17,8 @@ import { join } from 'node:path';
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { Contract, type ContractExecutable, ContractKeyLocation, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
+import { CompactRuntime, Contract, type ContractExecutable, ContractKeyLocation, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
-import { decodeZswapLocalState, type EncodedZswapLocalState,
-  encodeZswapLocalState, type StateValue } from '@midnight-ntwrk/compact-runtime';
 import { Array, type ConfigError, Console, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -127,7 +125,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       contractState: yield* Ledger.toRuntimeContractState(ledgerContractState),
       privateState: privateState ?? contractModule.createInitialPrivateState(),
       zswapLocalState: Option.isSome(encodedZswapLocalState)
-        ? decodeZswapLocalState((yield* encodedZswapLocalState.value) as EncodedZswapLocalState)
+        ? CompactRuntime.decodeZswapLocalState((yield* encodedZswapLocalState.value) as CompactRuntime.EncodedZswapLocalState)
         : undefined,
       ledgerParameters: Option.isSome(decodedLedgerParameters)
         ? yield* decodedLedgerParameters.value
@@ -159,7 +157,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       result.calls,
       {
         intent: yield* InternalCommand.newIntent(),
-        finalCalleeStates: new Map<string, { readonly ledgerState: Ledger.ContractState; readonly data: StateValue }>()
+        finalCalleeStates: new Map<string, { readonly ledgerState: Ledger.ContractState; readonly data: CompactRuntime.StateValue }>()
       },
       (acc, call) =>
         Effect.gen(function* () {
@@ -273,7 +271,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,
       JSON.stringify(
-        yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.zswapLocalState))
+        yield* encodeZswapLocalStateObject(CompactRuntime.encodeZswapLocalState(result.zswapLocalState))
       )
     );
     // Contract log events (MIP-0002) are non-consensus output; only write them when a destination

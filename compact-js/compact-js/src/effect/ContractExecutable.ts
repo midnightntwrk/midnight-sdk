@@ -13,26 +13,6 @@
  * limitations under the License.
  */
 
-import {
-  type AlignedValue,
-  type CallProofData,
-  type CommunicationCommitmentData,
-  CompactError,
-  ContractMaintenanceAuthority,
-  type ContractState,
-  type ContractStateProvider,
-  createCircuitContext,
-  createConstructorContext,
-  decodeZswapLocalState,
-  emptyZswapLocalState,
-  encodeZswapLocalState,
-  type LogEvent,
-  type Op,
-  sampleSigningKey,
-  signatureVerifyingKey,
-  type StateValue,
-  type ZswapLocalState
-} from '@midnight-ntwrk/compact-runtime';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
@@ -41,6 +21,18 @@ import { Effect, Either, type Layer, Option } from 'effect';
 import { dual, identity } from 'effect/Function';
 import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 
+import * as CompactRuntime from './CompactRuntime.js';
+import {
+  type AlignedValue,
+  type CallProofData,
+  type CommunicationCommitmentData,
+  type ContractState,
+  type ContractStateProvider,
+  type LogEvent,
+  type Op,
+  type StateValue,
+  type ZswapLocalState
+} from './CompactRuntime.js';
 import { type CompiledContract } from './CompiledContract.js';
 import * as Contract from './Contract.js';
 import * as ContractConfigurationError from './ContractConfigurationError.js';
@@ -328,17 +320,17 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         Effect.tryPromise({
           try: async () => {
             const { currentContractState, currentPrivateState, currentZswapLocalState } = await contract.initialState(
-              createConstructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
+              CompactRuntime.createConstructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
               ...args
             );
             return {
               contractState: currentContractState,
               privateState: currentPrivateState,
-              zswapLocalState: decodeZswapLocalState(currentZswapLocalState)
+              zswapLocalState: CompactRuntime.decodeZswapLocalState(currentZswapLocalState)
             };
           },
           catch: (err: unknown) =>
-            err instanceof CompactError
+            err instanceof CompactRuntime.CompactError
               ? ContractRuntimeError.make('Failed to initialize contract', err)
               : ContractConfigurationError.make(
                   'Failed to configure constructor context with coin public key',
@@ -422,9 +414,9 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               throw new Error(`Circuit ${this.compiledContract.tag}#${provableCircuitId} could not be found.`);
             }
             const zswapLocalState = circuitContext.zswapLocalState
-              ? encodeZswapLocalState(circuitContext.zswapLocalState)
-              : emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey));
-            const runtimeContext = createCircuitContext(
+              ? CompactRuntime.encodeZswapLocalState(circuitContext.zswapLocalState)
+              : CompactRuntime.emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey));
+            const runtimeContext = CompactRuntime.createCircuitContext(
               provableCircuitId,
               circuitContext.address,
               zswapLocalState,
@@ -490,7 +482,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               return {
                 result,
                 privateState: context.callContext.currentPrivateState,
-                zswapLocalState: decodeZswapLocalState(zswapLocalState),
+                zswapLocalState: CompactRuntime.decodeZswapLocalState(zswapLocalState),
                 events: context.events,
                 calls
               };
@@ -636,7 +628,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     key: Option.Option<SigningKey.SigningKey>,
     contractState?: ContractState
   ): Either.Either<
-    [ContractMaintenanceAuthority, SigningKey.SigningKey],
+    [CompactRuntime.ContractMaintenanceAuthority, SigningKey.SigningKey],
     ContractConfigurationError.ContractConfigurationError
   > {
     const signingKey = Option.match(key, {
@@ -646,7 +638,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       // schnorr and sign with the wrong scheme while still passing the allowlist check below.
       onNone: () =>
         SigningKey.make(
-          sampleSigningKey(Ledger.era.defaultCmaSignatureKind).value,
+          CompactRuntime.sampleSigningKey(Ledger.era.defaultCmaSignatureKind).value,
           Ledger.era.defaultCmaSignatureKind
         )
     });
@@ -654,8 +646,8 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);
     try {
       return Either.right([
-        new ContractMaintenanceAuthority(
-          [signatureVerifyingKey(ledgerSigningKey.right)],
+        new CompactRuntime.ContractMaintenanceAuthority(
+          [CompactRuntime.signatureVerifyingKey(ledgerSigningKey.right)],
           DEFAULT_CMA_THRESHOLD,
           contractState ? contractState.maintenanceAuthority.counter + 1n : 0n
         ),

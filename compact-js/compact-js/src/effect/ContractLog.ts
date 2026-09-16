@@ -43,12 +43,13 @@
  *
  * @packageDocumentation
  */
-import type { LogEvent } from '@midnight-ntwrk/compact-runtime';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import { Option } from 'effect';
 import * as Schema from 'effect/Schema';
 
-export type { LogEvent } from '@midnight-ntwrk/compact-runtime';
+import type { LogEvent } from './CompactRuntime.js';
+
+export type { LogEvent } from './CompactRuntime.js';
 
 /**
  * Schema for the standard `LogEventType` discriminants emitted by Compact contracts — the single
