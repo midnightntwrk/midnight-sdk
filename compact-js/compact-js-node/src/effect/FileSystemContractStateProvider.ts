@@ -16,8 +16,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
-import { type ContractState, type ContractStateProvider } from '@midnight-ntwrk/compact-runtime';
+import { type CompactRuntime, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { Cause, Effect, Exit } from 'effect';
 
 /**
@@ -46,8 +45,8 @@ import { Cause, Effect, Exit } from 'effect';
 export const make = (
   baseFolderPath: string,
   fileNameForAddress: (address: string) => string = (address) => address
-): ContractStateProvider => ({
-  getContractState: async (_blockHash: string, address: string): Promise<ContractState | undefined> => {
+): CompactRuntime.ContractStateProvider => ({
+  getContractState: async (_blockHash: string, address: string): Promise<CompactRuntime.ContractState | undefined> => {
     const filePath = join(baseFolderPath, fileNameForAddress(address));
 
     let bytes: Uint8Array;

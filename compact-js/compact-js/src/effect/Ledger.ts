@@ -27,21 +27,24 @@
  * a packaging-level fact — one era per build artifact — not a runtime dependency to vary per
  * effect. Downstream multi-era consumers select between era-scoped entries instead.
  */
+import type * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
+import { Effect, Either } from 'effect';
+
+// The runtime side of every conversion below comes through the compact-runtime seam, not the
+// package: this module is where the two era-paired halves meet, so it is also where a mismatched
+// pair would first misbehave. Aliased `Runtime*` to keep each conversion's direction readable.
 import {
   type ContractMaintenanceAuthority as RuntimeContractMaintenanceAuthority,
   ContractState as RuntimeContractState,
   type QueryContext as RuntimeQueryContext,
   type StateValue as RuntimeStateValue
-} from '@midnight-ntwrk/compact-runtime';
-import type * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Effect, Either } from 'effect';
-
+} from './CompactRuntime.js';
 import * as ContractConfigurationError from './ContractConfigurationError.js';
 import * as ContractRuntimeError from './ContractRuntimeError.js';
 import * as CurrentEra from './internal/ledger/current.js';
 
+export { type Era } from './internal/era.js';
 export * from './internal/ledger/current.js';
-export { type Era } from './internal/ledger/era.js';
 
 // Every conversion below is a WASM-boundary (de)serialization that can throw; this wraps the
 // thunk so a failure surfaces as a typed `ContractRuntimeError` with a conversion-specific message.

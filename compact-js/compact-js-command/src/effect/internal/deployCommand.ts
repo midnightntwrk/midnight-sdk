@@ -15,8 +15,7 @@
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { type ContractExecutable, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
-import { encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { CompactRuntime, type ContractExecutable, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { type ConfigError, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -92,7 +91,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,
       JSON.stringify(
-        yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.private.zswapLocalState))
+        yield* encodeZswapLocalStateObject(CompactRuntime.encodeZswapLocalState(result.private.zswapLocalState))
       )
     );
   }).pipe(

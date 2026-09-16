@@ -34,6 +34,7 @@ describe('Ledger facade type surface', () => {
   it('re-exports the Era descriptor type', () => {
     expect<Ledger.Era>().type.toBeAssignableFrom<{
       readonly ledger: 9;
+      readonly runtime: '0.19';
       readonly supportsCmaSignatureKind: (kind: 'schnorr' | 'ecdsa') => boolean;
       readonly cmaSignatureKindsDescription: string;
       readonly defaultCmaSignatureKind: 'schnorr';
@@ -44,6 +45,12 @@ describe('Ledger facade type surface', () => {
     // `as const satisfies Era` in the binding keeps this a literal, so downstream code can branch
     // on the era at compile time and a typo'd era fails the build rather than a test.
     expect(Ledger.era.ledger).type.toBe<9>();
+  });
+
+  it('exposes the paired compact-runtime line as a literal too', () => {
+    // Same reason as the era major above: the pairing is a compile-time fact, so a binding that
+    // declares a line with no corresponding runtime binding fails the build.
+    expect(Ledger.era.runtime).type.toBe<'0.19'>();
   });
 
   it('re-exports ledger type-only names as the ledger package\'s own types', () => {

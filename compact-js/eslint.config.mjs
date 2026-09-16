@@ -122,6 +122,15 @@ export default tseslint.config(
               message:
                 'Import ledger types through the `Ledger` facade (@midnight-ntwrk/compact-js/effect); ' +
                 'only compact-js/src/effect/internal/ledger/* may bind an era package directly.'
+            },
+            {
+              // The compact-runtime line is era-paired with the ledger (0.19 with ledger 9, over
+              // onchain-runtime-v4), so it needs the same seam: a second era entry has to resolve
+              // a different runtime line, which it cannot do while call sites name the package.
+              group: ['@midnight-ntwrk/compact-runtime', '@midnight-ntwrk/compact-runtime/**'],
+              message:
+                'Import runtime types through the `CompactRuntime` facade (@midnight-ntwrk/compact-js/effect); ' +
+                'only compact-js/src/effect/internal/runtime/* may bind a runtime line directly.'
             }
           ]
         }
@@ -129,9 +138,13 @@ export default tseslint.config(
     }
   },
   {
-    // The era bindings are the one place allowed to import a ledger package directly (the seam
-    // they implement), and tests may too — some must compare ledger module identity.
-    files: ['compact-js/src/effect/internal/ledger/*.ts', '**/test/**'],
+    // The era bindings are the one place allowed to import their package directly (the seam they
+    // implement), and tests may too — some must compare module identity.
+    files: [
+      'compact-js/src/effect/internal/ledger/*.ts',
+      'compact-js/src/effect/internal/runtime/*.ts',
+      '**/test/**'
+    ],
     rules: {
       'no-restricted-imports': [
         'error',

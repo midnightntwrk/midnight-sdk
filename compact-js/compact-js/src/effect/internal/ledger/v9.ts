@@ -26,7 +26,7 @@ import {
   ContractOperationVersionedVerifierKey
 } from '@midnightntwrk/ledger-v9';
 
-import { type Era } from './era.js';
+import { type Era } from '../era.js';
 
 export {
   ChargedState,
@@ -71,6 +71,10 @@ const CMA_SIGNATURE_KINDS: ReadonlySet<SignatureKind> = new Set(['schnorr', 'ecd
 /** The ledger 9 {@link Era} descriptor. @category era */
 export const era = {
   ledger: 9,
+  // Ledger 9 pairs with compact-runtime 0.19 (over onchain-runtime-v4). Stated here rather than
+  // read from the runtime seam so this binding stays the single description of the era, and so the
+  // two seams do not import each other; `CompactRuntime.test.ts` checks they agree.
+  runtime: '0.19',
   supportsCmaSignatureKind: (kind: SignatureKind) => CMA_SIGNATURE_KINDS.has(kind),
   cmaSignatureKindsDescription: [...CMA_SIGNATURE_KINDS].join(', '),
   defaultCmaSignatureKind: 'schnorr'
