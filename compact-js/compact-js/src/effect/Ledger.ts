@@ -46,12 +46,26 @@ import * as CurrentEra from './internal/ledger/current.js';
 export { type Era } from './internal/era.js';
 export * from './internal/ledger/current.js';
 
-// Every conversion below is a WASM-boundary (de)serialization that can throw; this wraps the
-// thunk so a failure surfaces as a typed `ContractRuntimeError` with a conversion-specific message.
-const tryConvert = <A>(
+/**
+ * Wraps a call across the ledger (WASM) boundary so that a rejection becomes a typed failure
+ * rather than a defect.
+ *
+ * @remarks
+ * Ledger bindings signal rejection by throwing — a throw inside `Effect.gen` or a bare
+ * `Effect.map` callback becomes a defect, which escapes the caller's typed error handling.
+ * Every conversion below goes through this wrapper; any other ledger call made outside this
+ * facade should too, so there is exactly one copy of the boundary handling.
+ *
+ * @param message A message describing the operation, used as the failure's message.
+ * @param evaluate A thunk that performs the ledger call.
+ * @returns An `Effect` that yields the result of `evaluate`, failing with a
+ * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects it.
+ * @category combinators
+ */
+export const tryConvert: <A>(
   message: string,
   evaluate: () => A
-): Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> =>
+) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = (message, evaluate) =>
   Effect.try({
     try: evaluate,
     catch: (err) => ContractRuntimeError.make(message, err)

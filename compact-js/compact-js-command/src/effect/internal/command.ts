@@ -19,7 +19,7 @@ import { type PlatformError } from '@effect/platform/Error';
 import { NodeContext } from '@effect/platform-node';
 import * as Ansi from '@effect/printer-ansi/Ansi';
 import * as Doc from '@effect/printer-ansi/AnsiDoc';
-import { type ContractExecutable, ContractExecutableRuntime, ContractRuntimeError, Ledger, type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractExecutable, ContractExecutableRuntime, type ContractRuntimeError, Ledger, type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, Duration, Effect, Layer } from 'effect';
@@ -54,21 +54,31 @@ const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) =>
  * the `Effect.mapError(...)` a command handler ends with *and*
  * {@link invocationHandler}'s `Effect.catchAll(reportContractExecutionError)` — the user gets a raw
  * fiber dump instead of the CLI's formatted report. Every ledger call made outside the `Ledger`
- * facade (which wraps its own) goes through here.
- *
- * @param message A message describing the operation, used as the failure's message.
- * @param evaluate A thunk that performs the ledger call.
- * @returns An `Effect` that yields the result of `evaluate`, failing with a
- * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects it.
+ * facade (which wraps its own) goes through here. This is the facade's own
+ * {@link Ledger.tryConvert} under the name command handlers know it by, so there is exactly one
+ * copy of the boundary handling.
  */
 export const tryLedger: <A>(
   message: string,
   evaluate: () => A
-) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = (message, evaluate) =>
-  Effect.try({
-    try: evaluate,
-    catch: (err) => ContractRuntimeError.make(message, err)
-  });
+) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = Ledger.tryConvert;
+
+/**
+ * Serializes a ledger `Intent`, ready for writing to a command's output file.
+ *
+ * @remarks
+ * Every command emits its result as a serialized intent; single-sourcing the wrapper (and its
+ * failure message) here keeps the handlers identical, the same way {@link newIntent} does for
+ * construction.
+ *
+ * @param intent The intent to serialize.
+ * @returns An `Effect` that yields the serialized bytes, failing with a
+ * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects the serialization.
+ */
+export const serializeIntent: (intent: {
+  readonly serialize: () => Uint8Array;
+}) => Effect.Effect<Uint8Array, ContractRuntimeError.ContractRuntimeError> = (intent) =>
+  tryLedger('Failed to serialize the intent', () => intent.serialize());
 
 /**
  * Creates an empty ledger `Intent` with the command-wide TTL applied. Every command emits its
