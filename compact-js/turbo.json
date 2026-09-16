@@ -28,7 +28,7 @@
     "test": {
       "outputLogs": "new-only",
       "dependsOn": ["^build"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts", "compose.yml"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "compose.yml", "tstyche.json", "vitest.config.ts"],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
     },
     "package": {
