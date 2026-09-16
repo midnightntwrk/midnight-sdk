@@ -160,26 +160,48 @@ Compact.js commands operate on contracts compiled by `compactc`. The workflow re
 - Midnight libraries: `@midnight-ntwrk/compact-runtime`, `@midnightntwrk/ledger-v9` (reached only through the `Ledger` facade), `@midnight-ntwrk/platform-js`
 - Dev: Vitest, TypeScript, ESLint, TypeScript-ESLint
 
-## Ledger Era Seam
+## Era Seams (Ledger + Compact Runtime)
 
-All ledger API is reached through the `Ledger` facade (`compact-js/src/effect/Ledger.ts`); only
-the era bindings under `compact-js/src/effect/internal/ledger/` may import a
-`@midnightntwrk/ledger-v<N>` package directly (ESLint enforces this; tests are exempt).
+An era is a ledger generation *and* the compact-runtime line paired with it — they bump together
+(ledger 9 ↔ runtime 0.19 ↔ onchain-runtime-v4). Each half has its own seam, and a swap always
+touches both:
 
-To add a new era binding (e.g. ledger 10):
+- **Ledger**: all ledger API is reached through the `Ledger` facade
+  (`compact-js/src/effect/Ledger.ts`); only the era bindings under
+  `compact-js/src/effect/internal/ledger/` may import a `@midnightntwrk/ledger-v<N>` package
+  directly.
+- **Runtime**: all compact-runtime API is reached through the `CompactRuntime` facade
+  (`compact-js/src/effect/CompactRuntime.ts`); only the bindings under
+  `compact-js/src/effect/internal/runtime/` may import `@midnight-ntwrk/compact-runtime`
+  directly.
 
-1. Create `internal/ledger/v10.ts` mirroring `v9.ts`: the curated re-export list, its own
-   `CONTRACT_OPERATION_VERSION`, and an `Era` descriptor with a **re-verified** CMA
-   signature-scheme allowlist (verify each scheme end-to-end before listing it).
-2. Extend the `LedgerMajor` union in `internal/ledger/era.ts`.
-3. Confirm the new binding satisfies `LedgerBinding` (`internal/ledger/binding.ts`) — repointing
-   `current.ts` fails the build if it doesn't.
-4. Repoint `internal/ledger/current.ts` at the new binding. **This changes the era for every
-   entry, including `/v9`** — the suffixed entries are aliases until era-scoped builds
-   (midnight-sdk#388) land, so `/v9` must first be rebound to a pinned ledger 9 binding.
-5. Add `./v10` and `./v10/effect` entries to `package.json` `exports`, mirror the `src/v10/`
+ESLint (`no-restricted-imports`) enforces both restrictions; tests are exempt. The shared era
+model (`LedgerMajor`, `RuntimeLine`, the `Era` descriptor) lives above both seams in
+`compact-js/src/effect/internal/era.ts`. Ledger calls that cross the WASM boundary go through
+`Ledger.tryConvert` (aliased as `tryLedger` in the CLI's `internal/command.ts`) so a rejection
+surfaces as a typed `ContractRuntimeError` rather than a defect.
+
+To add a new era (e.g. ledger 10 paired with runtime 0.20):
+
+1. Extend the `LedgerMajor` and `RuntimeLine` unions in `internal/era.ts`.
+2. Create `internal/ledger/v10.ts` mirroring `v9.ts`: the curated re-export list, its own
+   `CONTRACT_OPERATION_VERSION`, and an `Era` descriptor — declaring the paired
+   `runtime: '0.20'` — with a **re-verified** CMA signature-scheme allowlist (verify each scheme
+   end-to-end before listing it).
+3. Create `internal/runtime/v0_20.ts` mirroring `v0_19.ts`: the curated re-export list and its
+   `line`.
+4. Confirm the new bindings satisfy `LedgerBinding` (`internal/ledger/binding.ts`) and
+   `RuntimeBinding` (`internal/runtime/binding.ts`) — repointing either `current.ts` fails the
+   build if they don't.
+5. Repoint **both** `internal/ledger/current.ts` and `internal/runtime/current.ts` at the new
+   bindings. `CompactRuntime.test.ts` fails a half-completed swap: it checks the
+   `Ledger.era.runtime` ↔ `CompactRuntime.line` pairing and anchors `line` to the installed
+   package's `versionString`. **This changes the era for every entry, including `/v9`** — the
+   suffixed entries are aliases until era-scoped builds (midnight-sdk#388) land, so `/v9` must
+   first be rebound to a pinned ledger 9 binding.
+6. Add `./v10` and `./v10/effect` entries to `package.json` `exports`, mirror the `src/v10/`
    entry files, and extend `LedgerEra.test.ts`.
-6. Update the CLI's accepted `--ledger-era` (it derives from `Ledger.era.ledger`) and its tests.
+7. Update the CLI's accepted `--ledger-era` (it derives from `Ledger.era.ledger`) and its tests.
 
 ## Notes for Contributors
 
