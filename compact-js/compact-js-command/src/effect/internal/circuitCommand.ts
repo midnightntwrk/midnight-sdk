@@ -265,7 +265,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     yield* fs.writeFileString(outputResultFilePath, stringifyCircuitOutput(result.result));
     yield* fs.writeFile(
       outputFilePath,
-      yield* InternalCommand.tryLedger('Failed to serialize the intent', () => intent.serialize())
+      yield* InternalCommand.serializeIntent(intent)
     );
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.privateState));
     yield* fs.writeFileString(

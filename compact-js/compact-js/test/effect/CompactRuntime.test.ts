@@ -14,12 +14,20 @@
  */
 
 import { CompactRuntime, Ledger } from '@midnight-ntwrk/compact-js/effect';
-import { ContractState, encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { ContractState, encodeZswapLocalState, versionString } from '@midnight-ntwrk/compact-runtime';
 import { describe, expect, it } from 'vitest';
 
 describe('compact-runtime seam', () => {
   it('names the runtime line it binds', () => {
     expect(CompactRuntime.line).toBe('0.19');
+  });
+
+  it('names the runtime line of the installed compact-runtime package', () => {
+    // `line` is a repo-authored literal, so on its own the era-pairing check below compares two
+    // constants that a dependency bump moves neither of. Anchoring `line` to the installed
+    // package's own `versionString` grounds the whole chain: a bump to 0.20.x fails here until
+    // the runtime binding (and its ledger pair) are swapped together.
+    expect(versionString.startsWith(`${CompactRuntime.line}.`)).toBe(true);
   });
 
   it('binds the seam to the compact-runtime package', () => {

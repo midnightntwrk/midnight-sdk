@@ -267,8 +267,8 @@ const partitionAllTranscripts = (
     // matches callers to callees on.
     const preTranscripts = yield* Effect.forEach(trace, (entry) =>
       Ledger.fromRuntimeQueryContext(entry.initialQueryContext).pipe(
-        Effect.map(
-          (initialContext) =>
+        Effect.flatMap((initialContext) =>
+          Ledger.tryConvert('Unexpected error building call pre-transcript', () =>
             new Ledger.PreTranscript(
               Array.from(entry.finalQueryContext.comIndices).reduce(
                 (queryContext, comEntry) => queryContext.insertCommitment(...comEntry),
@@ -277,14 +277,13 @@ const partitionAllTranscripts = (
               entry.publicTranscript,
               entry.commCommData?.commComm
             )
+          )
         )
       )
     );
-    const partitioned = yield* Effect.try({
-      try: () =>
-        Ledger.partitionTranscripts(preTranscripts, ledgerParameters ?? Ledger.LedgerParameters.initialParameters()),
-      catch: (err) => ContractRuntimeError.make('Unexpected error partitioning call transcripts', err)
-    });
+    const partitioned = yield* Ledger.tryConvert('Unexpected error partitioning call transcripts', () =>
+      Ledger.partitionTranscripts(preTranscripts, ledgerParameters ?? Ledger.LedgerParameters.initialParameters())
+    );
     return partitioned.length === trace.length
       ? partitioned
       : yield* ContractRuntimeError.make(
