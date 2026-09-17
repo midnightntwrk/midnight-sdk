@@ -91,7 +91,14 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,
       JSON.stringify(
-        yield* encodeZswapLocalStateObject(CompactRuntime.encodeZswapLocalState(result.private.zswapLocalState))
+        yield* encodeZswapLocalStateObject(
+          // As in `circuitCommand`: the intent file is already written above, so an unwrapped throw
+          // would be a defect leaving a partially-written output directory and reporting nothing.
+          yield* CompactRuntime.tryRuntime(
+            'Failed to encode the initial zswap local state',
+            () => CompactRuntime.encodeZswapLocalState(result.private.zswapLocalState)
+          )
+        )
       )
     );
   }).pipe(

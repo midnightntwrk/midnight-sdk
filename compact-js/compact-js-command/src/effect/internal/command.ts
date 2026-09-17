@@ -57,6 +57,9 @@ const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) =>
  * facade (which wraps its own) goes through here. This is the facade's own
  * {@link Ledger.tryConvert} under the name command handlers know it by, so there is exactly one
  * copy of the boundary handling.
+ *
+ * The compact-runtime seam has the same hazard and the same wrapper: reach for
+ * `CompactRuntime.tryRuntime` at a runtime call site rather than adding a third alias here.
  */
 export const tryLedger: <A>(
   message: string,
@@ -71,13 +74,21 @@ export const tryLedger: <A>(
  * failure message) here keeps the handlers identical, the same way {@link newIntent} does for
  * construction.
  *
+ * Takes the intent type {@link newIntent} produces rather than a `{ serialize(): Uint8Array }`
+ * duck type: ledger contract states are serialized through {@link tryLedger} with the identical
+ * shape elsewhere in this package, so a structural parameter would accept one, write a contract
+ * state into the intent output file, and still report 'Failed to serialize the intent' — with
+ * nothing catching it until the file is deserialized as an `Intent` at submission. In a seam built
+ * to make era and type mismatches loud, this is the one signature that would let a wrong type
+ * through quietly.
+ *
  * @param intent The intent to serialize.
  * @returns An `Effect` that yields the serialized bytes, failing with a
  * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects the serialization.
  */
-export const serializeIntent: (intent: {
-  readonly serialize: () => Uint8Array;
-}) => Effect.Effect<Uint8Array, ContractRuntimeError.ContractRuntimeError> = (intent) =>
+export const serializeIntent: (
+  intent: ReturnType<typeof Ledger.Intent.new>
+) => Effect.Effect<Uint8Array, ContractRuntimeError.ContractRuntimeError> = (intent) =>
   tryLedger('Failed to serialize the intent', () => intent.serialize());
 
 /**

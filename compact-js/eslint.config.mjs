@@ -7,6 +7,42 @@ import importPlugin from 'eslint-plugin-import-x';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import unusedImports from 'eslint-plugin-unused-imports';
 
+// The era seams' import restrictions, hoisted so each override block can re-state the seams it is
+// *not* the binding for. In flat config a later `rules` entry for the same rule replaces the
+// earlier options wholesale rather than merging them, so an override that lists only the `dist`
+// pattern silently drops both seam restrictions for every file it matches.
+const DIST_IMPORT_PATTERN = {
+  group: ['**/dist/**', './dist/**', '../dist/**'],
+  message: 'Direct imports from dist folders are not allowed. Use source files instead.'
+};
+
+const LEDGER_SEAM_PATTERN = {
+  // Both scope spellings, and their subpaths: `*` does not cross `/`, and the
+  // hyphenated `@midnight-ntwrk/ledger-v8` is resolvable in this workspace via
+  // `@midnight-ntwrk/wallet-sdk-address-format`.
+  group: [
+    '@midnightntwrk/ledger-v*',
+    '@midnightntwrk/ledger-v*/**',
+    '@midnight-ntwrk/ledger-v*',
+    '@midnight-ntwrk/ledger-v*/**'
+  ],
+  message:
+    'Import ledger types through the `Ledger` facade (@midnight-ntwrk/compact-js/effect); ' +
+    'only compact-js/src/effect/internal/ledger/* may bind an era package directly.'
+};
+
+const RUNTIME_SEAM_PATTERN = {
+  // The compact-runtime line is era-paired with the ledger (0.19 with ledger 9, over
+  // onchain-runtime-v4), so it needs the same seam: a second era entry has to resolve a different
+  // runtime line, which it cannot do while call sites name the package. Only the hyphenated scope
+  // is listed because, unlike the ledger packages above, no `@midnightntwrk/compact-runtime` is
+  // published — add the second spelling here if one ever is.
+  group: ['@midnight-ntwrk/compact-runtime', '@midnight-ntwrk/compact-runtime/**'],
+  message:
+    'Import runtime types through the `CompactRuntime` facade (@midnight-ntwrk/compact-js/effect); ' +
+    'only compact-js/src/effect/internal/runtime/* may bind a runtime line directly.'
+};
+
 export default tseslint.config(
   {
     ignores: [
@@ -103,60 +139,35 @@ export default tseslint.config(
       'lines-between-class-members': 'off',
       'no-restricted-imports': [
         'error',
-        {
-          patterns: [
-            {
-              group: ['**/dist/**', './dist/**', '../dist/**'],
-              message: 'Direct imports from dist folders are not allowed. Use source files instead.'
-            },
-            {
-              // Both scope spellings, and their subpaths: `*` does not cross `/`, and the
-              // hyphenated `@midnight-ntwrk/ledger-v8` is resolvable in this workspace via
-              // `@midnight-ntwrk/wallet-sdk-address-format`.
-              group: [
-                '@midnightntwrk/ledger-v*',
-                '@midnightntwrk/ledger-v*/**',
-                '@midnight-ntwrk/ledger-v*',
-                '@midnight-ntwrk/ledger-v*/**'
-              ],
-              message:
-                'Import ledger types through the `Ledger` facade (@midnight-ntwrk/compact-js/effect); ' +
-                'only compact-js/src/effect/internal/ledger/* may bind an era package directly.'
-            },
-            {
-              // The compact-runtime line is era-paired with the ledger (0.19 with ledger 9, over
-              // onchain-runtime-v4), so it needs the same seam: a second era entry has to resolve
-              // a different runtime line, which it cannot do while call sites name the package.
-              group: ['@midnight-ntwrk/compact-runtime', '@midnight-ntwrk/compact-runtime/**'],
-              message:
-                'Import runtime types through the `CompactRuntime` facade (@midnight-ntwrk/compact-js/effect); ' +
-                'only compact-js/src/effect/internal/runtime/* may bind a runtime line directly.'
-            }
-          ]
-        }
+        { patterns: [DIST_IMPORT_PATTERN, LEDGER_SEAM_PATTERN, RUNTIME_SEAM_PATTERN] }
       ],
     }
   },
   {
-    // The era bindings are the one place allowed to import their package directly (the seam they
-    // implement), and tests may too — some must compare module identity.
-    files: [
-      'compact-js/src/effect/internal/ledger/*.ts',
-      'compact-js/src/effect/internal/runtime/*.ts',
-      '**/test/**'
-    ],
+    // A ledger binding is the one place allowed to import its own era package — but it is not a
+    // runtime binding, so the compact-runtime restriction still applies. Exempting both seams here
+    // would give the runtime seam a second binding point, and an era swap that repointed only
+    // `internal/runtime/current.ts` would leave this file speaking the old line. `CompactRuntime.test.ts`
+    // could not catch that: it compares one `current.ts` against the other.
+    files: ['compact-js/src/effect/internal/ledger/*.ts'],
     rules: {
-      'no-restricted-imports': [
-        'error',
-        {
-          patterns: [
-            {
-              group: ['**/dist/**', './dist/**', '../dist/**'],
-              message: 'Direct imports from dist folders are not allowed. Use source files instead.'
-            }
-          ]
-        }
-      ],
+      'no-restricted-imports': ['error', { patterns: [DIST_IMPORT_PATTERN, RUNTIME_SEAM_PATTERN] }],
+    }
+  },
+  {
+    // The mirror of the block above: a runtime binding may name its own compact-runtime line and
+    // nothing else across either seam.
+    files: ['compact-js/src/effect/internal/runtime/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [DIST_IMPORT_PATTERN, LEDGER_SEAM_PATTERN] }],
+    }
+  },
+  {
+    // Tests may reach past both seams — some must compare module identity, and others mock the
+    // underlying package to force a boundary rejection.
+    files: ['**/test/**'],
+    rules: {
+      'no-restricted-imports': ['error', { patterns: [DIST_IMPORT_PATTERN] }],
     }
   },
   {

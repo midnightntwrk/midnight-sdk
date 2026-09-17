@@ -104,8 +104,19 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const encodedZswapLocalState = Option.map(
       inputZswapLocalStateFilePath,
       (filePath) => fs.readFileString(filePath).pipe(
-        Effect.flatMap((str) => decodeZswapLocalStateObject(JSON.parse(str))
-      ))
+        Effect.flatMap((str) => decodeZswapLocalStateObject(JSON.parse(str))),
+        // `EncodedZswapLocalStateSchema` validates shape only — no length constraint on the key or
+        // the coin nonces/colours, and `value` is any bigint — so a hand-edited or cross-network
+        // file passes it and is rejected by the runtime instead. The decode belongs here, where
+        // `filePath` is in scope to name in the failure; left unwrapped in the `Effect.gen` body
+        // below it would be a defect, and the CLI would exit non-zero printing nothing at all.
+        Effect.flatMap((encoded) =>
+          CompactRuntime.tryRuntime(
+            `Failed to decode the zswap local state read from '${filePath}'`,
+            () => CompactRuntime.decodeZswapLocalState(encoded)
+          )
+        )
+      )
     );
     const decodedLedgerParameters = Option.map(
       inputLedgerParamsFilePath,
@@ -125,7 +136,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       contractState: yield* Ledger.toRuntimeContractState(ledgerContractState),
       privateState: privateState ?? contractModule.createInitialPrivateState(),
       zswapLocalState: Option.isSome(encodedZswapLocalState)
-        ? CompactRuntime.decodeZswapLocalState((yield* encodedZswapLocalState.value) as CompactRuntime.EncodedZswapLocalState)
+        ? yield* encodedZswapLocalState.value
         : undefined,
       ledgerParameters: Option.isSome(decodedLedgerParameters)
         ? yield* decodedLedgerParameters.value
@@ -271,7 +282,14 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,
       JSON.stringify(
-        yield* encodeZswapLocalStateObject(CompactRuntime.encodeZswapLocalState(result.zswapLocalState))
+        yield* encodeZswapLocalStateObject(
+          // The intent file is already written at this point, so an unwrapped throw here would be
+          // a defect that leaves a partially-written output directory and reports nothing at all.
+          yield* CompactRuntime.tryRuntime(
+            'Failed to encode the zswap local state produced by the circuit',
+            () => CompactRuntime.encodeZswapLocalState(result.zswapLocalState)
+          )
+        )
       )
     );
     // Contract log events (MIP-0002) are non-consensus output; only write them when a destination

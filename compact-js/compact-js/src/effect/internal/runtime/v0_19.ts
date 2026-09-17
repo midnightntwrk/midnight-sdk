@@ -57,6 +57,12 @@ export {
  * The compact-runtime line this binding targets. Read by the era-pairing check rather than
  * hard-coded at any call site, so a runtime swap is a one-line edit here plus `current.ts`.
  *
+ * `as const satisfies` rather than a `: RuntimeLine` annotation, matching the ledger twin
+ * (`internal/ledger/v9.ts`): an annotation widens `typeof CompactRuntime.line` to the whole union
+ * at every consumer and in the emitted `.d.ts`, which forecloses any compile-time use of the
+ * pairing. The two coincide while the union is a singleton and stop coinciding the moment a second
+ * line is bound.
+ *
  * @category era
  */
-export const line: RuntimeLine = '0.19';
+export const line = '0.19' as const satisfies RuntimeLine;

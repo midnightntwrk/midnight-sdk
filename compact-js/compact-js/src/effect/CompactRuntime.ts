@@ -46,5 +46,37 @@
  * const encoded = CompactRuntime.encodeZswapLocalState(zswapLocalState);
  * ```
  */
+import { type Effect } from 'effect';
+
+import type * as ContractRuntimeError from './ContractRuntimeError.js';
+import * as boundary from './internal/boundary.js';
+
 export { type RuntimeLine } from './internal/era.js';
 export * from './internal/runtime/current.js';
+
+/**
+ * Wraps a call across the compact-runtime (WASM) boundary so that a rejection becomes a typed
+ * failure rather than a defect.
+ *
+ * @remarks
+ * Routing a call through this facade makes it *look* protected without making it so: the seam only
+ * changes where the binding is resolved, and compact-runtime still signals rejection by throwing.
+ * A throw evaluated in an `Effect.gen` body is a defect, which escapes the caller's declared error
+ * channel — `ContractExecutable.circuit`'s `ContractExecutionError` becomes unsound at that point,
+ * and the CLI (which runs with `disableErrorReporting`) exits non-zero printing nothing at all.
+ * Every runtime call made outside an `Effect.try`/`Effect.tryPromise` callback goes through here.
+ *
+ * This is the ledger seam's {@link Ledger.tryConvert} under the name the runtime side knows it by
+ * — one copy of the boundary handling, shared (see `internal/boundary.ts` for why it lives above
+ * both facades rather than in either).
+ *
+ * @param message A message describing the operation, used as the failure's message.
+ * @param evaluate A thunk that performs the runtime call.
+ * @returns An `Effect` that yields the result of `evaluate`, failing with a
+ * {@link ContractRuntimeError.ContractRuntimeError} if the runtime rejects it.
+ * @category combinators
+ */
+export const tryRuntime: <A>(
+  message: string,
+  evaluate: () => A
+) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = boundary.tryBoundary;
