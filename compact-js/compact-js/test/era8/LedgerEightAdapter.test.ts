@@ -156,6 +156,10 @@ describeWithFixture('ledger 8 execution adapter', () => {
     // The dangerous failure mode: silently dropping the provider would make a cross-contract call
     // look like it succeeded against stale state. 0.16 has no `crossContractCall` at all, so this
     // has to fail loudly at context construction.
+    //
+    // The cast is the point, not a workaround: this binding types its `stateProvider` slot as
+    // `never`, so a typed caller cannot even express this. The run-time guard exists for callers
+    // that reach the seam from JavaScript or through an `any`, and that is what is exercised here.
     expect(() =>
       V0_16.createExecutionContext({
         circuitId: CIRCUIT_ID,
@@ -163,7 +167,7 @@ describeWithFixture('ledger 8 execution adapter', () => {
         zswapLocalState: V0_16.emptyZswapLocalState('0'.repeat(64)),
         contractState: new V0_16.ContractState(),
         privateState: { count: 0 },
-        stateProvider: { getContractState: async () => undefined }
+        stateProvider: { getContractState: async () => undefined } as never
       })
     ).toThrow(/cross-contract/i);
   });
