@@ -1094,7 +1094,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:0.19.0-rc.0"
     "@midnight-ntwrk/platform-js": "npm:^3.0.0"
     "@midnightntwrk/ledger-v9": "npm:^1.0.0-rc.4"
-    "@noble/hashes": "npm:^2.3.0"
+    "@noble/hashes": "npm:^2.4.0"
     effect: "npm:^3.22.1"
     tslib: "npm:^2.8.1"
   languageName: unknown
@@ -1319,10 +1319,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/hashes@npm:^2.3.0":
-  version: 2.3.0
-  resolution: "@noble/hashes@npm:2.3.0"
-  checksum: 10/2a980fa3257269d0f2f0c65ad30033a395121a523cb207bd5e481054cabf21af3cce87a8d657a3d7409924ec28f7fcaaf3fb01150813ac3c9e16964a95ae0ab7
+"@noble/hashes@npm:^2.4.0":
+  version: 2.4.0
+  resolution: "@noble/hashes@npm:2.4.0"
+  checksum: 10/88d4cdd6cef00f412a39f65bda1d24cba2264c6cacdd1c6c48d7ed66fd9be865ffb7231024fb81177975c684b8a463879b89c5ae6960370b05a546c0fd8afa2c
   languageName: node
   linkType: hard
 
