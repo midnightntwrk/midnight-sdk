@@ -22,7 +22,7 @@ import {
   QueryContext as RuntimeQueryContext,
   StateValue as RuntimeStateValue
 } from '@midnight-ntwrk/compact-runtime';
-import { Cause, Effect, Exit } from 'effect';
+import { Cause, Effect, Exit, Option } from 'effect';
 
 const ADDRESS = '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a';
 // A 32-byte coin commitment, hex encoded — the key type of `QueryContext.comIndices`.
@@ -61,6 +61,31 @@ describe('Ledger.operationForCircuit', () => {
     expect(ContractRuntimeError.isRuntimeError(error)).toBe(true);
     expect((error as ContractRuntimeError.ContractRuntimeError).message).toContain('not_a_circuit');
     expect((error as ContractRuntimeError.ContractRuntimeError).message).toContain(ADDRESS);
+  });
+
+  it('fails in the error channel, not as a defect, when the ledger rejects the state', () => {
+    // A state built against a different WASM instantiation fails `_assertClass` by *throwing*
+    // ('expected instance of ContractState'), which this function's docblock promises not to let
+    // surface as an opaque native fault. The call is evaluated while the caller's `Effect.gen`
+    // body runs, so an unwrapped throw is a defect: it escapes both the handler's terminating
+    // `mapError` and the CLI's `catchAll`. `Cause.failureOption` is the assertion that separates
+    // the two — a `Die` yields `None` here even though the exit is still a failure.
+    const foreignState = {
+      operation: () => {
+        throw new Error('expected instance of ContractState');
+      }
+    } as unknown as Ledger.ContractState;
+
+    const exit = Effect.runSyncExit(
+      Effect.gen(function* () {
+        return yield* Ledger.operationForCircuit(foreignState, 'increment', ADDRESS);
+      })
+    );
+
+    expect(Exit.isFailure(exit)).toBe(true);
+    const failure = Exit.isFailure(exit) ? Option.getOrUndefined(Cause.failureOption(exit.cause)) : undefined;
+    expect(ContractRuntimeError.isRuntimeError(failure)).toBe(true);
+    expect((failure as ContractRuntimeError.ContractRuntimeError).message).toContain('increment');
   });
 });
 

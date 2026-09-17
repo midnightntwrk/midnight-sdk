@@ -41,6 +41,7 @@ import {
 } from './CompactRuntime.js';
 import * as ContractConfigurationError from './ContractConfigurationError.js';
 import * as ContractRuntimeError from './ContractRuntimeError.js';
+import * as boundary from './internal/boundary.js';
 import * as CurrentEra from './internal/ledger/current.js';
 
 export { type Era } from './internal/era.js';
@@ -54,7 +55,11 @@ export * from './internal/ledger/current.js';
  * Ledger bindings signal rejection by throwing — a throw inside `Effect.gen` or a bare
  * `Effect.map` callback becomes a defect, which escapes the caller's typed error handling.
  * Every conversion below goes through this wrapper; any other ledger call made outside this
- * facade should too, so there is exactly one copy of the boundary handling.
+ * facade should too.
+ *
+ * This is `internal/boundary.ts`'s `tryBoundary` under the name the ledger side knows it by; the
+ * compact-runtime seam re-exports the same function as `CompactRuntime.tryRuntime`, so there is
+ * exactly one copy of the boundary handling across both seams.
  *
  * @param message A message describing the operation, used as the failure's message.
  * @param evaluate A thunk that performs the ledger call.
@@ -65,11 +70,7 @@ export * from './internal/ledger/current.js';
 export const tryConvert: <A>(
   message: string,
   evaluate: () => A
-) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = (message, evaluate) =>
-  Effect.try({
-    try: evaluate,
-    catch: (err) => ContractRuntimeError.make(message, err)
-  });
+) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = boundary.tryBoundary;
 
 /**
  * Converts a runtime {@link RuntimeContractState} to this era's ledger `ContractState`.
@@ -138,6 +139,14 @@ export const fromRuntimeMaintenanceAuthority: (
  * requested circuit (e.g. a state file for the wrong contract) would otherwise be cast from
  * `undefined` and surface as an opaque native fault.
  *
+ * @remarks
+ * Both of the ways a bad state file fails here are held in the error channel. `operation()`
+ * returning `undefined` is the wrong-contract case; `operation()` *throwing* is the
+ * wrong-WASM-instance case (`expected instance of ContractState`), and since this function's
+ * result is built while the caller's `Effect.gen` body runs, an unwrapped throw would be a defect
+ * that escapes the caller's `catchAll` entirely — the opaque fault this function exists to
+ * prevent.
+ *
  * @category conversions
  */
 export const operationForCircuit: (
@@ -148,12 +157,18 @@ export const operationForCircuit: (
   state,
   circuitId,
   contractAddress
-) => {
-  const operation = state.operation(circuitId);
-  return operation === undefined
-    ? ContractRuntimeError.make(`Contract state for '${contractAddress}' has no operation for circuit '${circuitId}'.`)
-    : Effect.succeed(operation);
-};
+) =>
+  tryConvert(`Unexpected error resolving the operation for circuit '${circuitId}' on '${contractAddress}'`, () =>
+    state.operation(circuitId)
+  ).pipe(
+    Effect.flatMap((operation) =>
+      operation === undefined
+        ? ContractRuntimeError.make(
+            `Contract state for '${contractAddress}' has no operation for circuit '${circuitId}'.`
+          )
+        : Effect.succeed(operation)
+    )
+  );
 
 // Unwrapped form of `fromRuntimeStateValue`, for composing inside another conversion's
 // `tryConvert`. It throws on an era-boundary decode failure, so every caller must be inside one.

@@ -476,12 +476,21 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                   };
                 })
               );
+              // Unlike the runtime calls that build the context above, this one runs in the
+              // generator body rather than inside `Effect.tryPromise`'s callback, so it needs the
+              // seam's wrapper: an unwrapped throw here would be a defect, and the terminating
+              // `Effect.mapError` below maps the error channel only. That would make this method's
+              // declared `ContractExecutionError` channel unsound for consumers.
+              const decodedZswapLocalState = yield* CompactRuntime.tryRuntime(
+                `Failed to decode the zswap local state returned by circuit '${provableCircuitId}'`,
+                () => CompactRuntime.decodeZswapLocalState(zswapLocalState)
+              );
               // `result`, `privateState`, and `zswapLocalState` belong to the root contract;
               // `events` is the whole execution's log-event list (each tagged with its emitter).
               return {
                 result,
                 privateState: context.callContext.currentPrivateState,
-                zswapLocalState: CompactRuntime.decodeZswapLocalState(zswapLocalState),
+                zswapLocalState: decodedZswapLocalState,
                 events: context.events,
                 calls
               };
