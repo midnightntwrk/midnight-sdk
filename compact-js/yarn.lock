@@ -1063,7 +1063,7 @@ __metadata:
     eslint-plugin-unused-imports: "npm:^4.4.1"
     husky: "npm:^9.0.0"
     shx: "npm:^0.4.0"
-    tstyche: "npm:^7.2.2"
+    tstyche: "npm:^7.2.5"
     turbo: "npm:^2.10.10"
     typescript: "npm:^6.0.3"
     typescript-eslint: "npm:^8.67.0"
@@ -5361,9 +5361,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"tstyche@npm:^7.2.2":
-  version: 7.2.2
-  resolution: "tstyche@npm:7.2.2"
+"tstyche@npm:^7.2.5":
+  version: 7.2.5
+  resolution: "tstyche@npm:7.2.5"
   peerDependencies:
     typescript: ">=5.4"
   peerDependenciesMeta:
@@ -5371,7 +5371,7 @@ __metadata:
       optional: true
   bin:
     tstyche: ./dist/bin.js
-  checksum: 10/28a5a3d27b727ff62bfdfae6701d5450a7d7dad31a274e913d5402b7324ceb9dc513c7a4364fc0b0cffbb4d2b0b7fafe3f2a356197fede3f6f47808c129c6d9f
+  checksum: 10/450e9b98ab6f62dd5e2169b2d30ade4e4bed559a73df3c08c0d8587c972e4d71387c2daf1a0fc0097c1bfdc987ced266890a3c6dff6e996500abca4af2463078
   languageName: node
   linkType: hard
 
