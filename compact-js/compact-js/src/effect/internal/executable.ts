@@ -51,7 +51,7 @@ import { ZKConfiguration,type ZKConfiguration as ZKConfigurationService } from '
 import { type ZKConfigurationReadError } from '../ZKConfigurationReadError.js';
 import { tryBoundary } from './boundary.js';
 import * as CompactContextInternal from './compactContext.js';
-import { type Era } from './era.js';
+import { type Era, type RuntimeLine } from './era.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -103,6 +103,11 @@ export interface ExecutableLedger {
 
 /** The compact-runtime-binding members contract execution needs. See {@link ExecutableLedger}. */
 export interface ExecutableRuntime {
+  /**
+   * The compact-runtime line this binding targets. Present so {@link makeExecutable} can require it
+   * to be the line the *ledger* half's era pairs with — see its `R` constraint.
+   */
+  readonly line: RuntimeLine;
   readonly CompactError: abstract new (...args: never) => unknown;
   readonly ContractMaintenanceAuthority: new (committee: never, threshold: never, counter?: never) => unknown;
   readonly ContractState: abstract new (...args: never) => unknown;
@@ -338,7 +343,19 @@ const authorityCounterOf = (contractState: unknown): bigint =>
  * @param ledger The era's ledger facade (`internal/era/v8Ledger.ts`, `effect/Ledger.ts`, …).
  * @param runtime The compact-runtime facade that era pairs with.
  */
-export const makeExecutable = <L extends ExecutableLedger, R extends ExecutableRuntime>(ledger: L, runtime: R) => {
+export const makeExecutable = <
+  L extends ExecutableLedger,
+  // `R`'s line must be the one `L`'s era pairs with, so `makeExecutable(V8Ledger, V9Runtime)` does
+  // not compile. `makeConversions` has carried the identical constraint since the conversions were
+  // parameterised; this module — which builds circuit contexts, partitions transcripts and signs
+  // maintenance updates — was left claiming the guarantee in prose while accepting any pair. The
+  // two `current.ts` files are chosen independently, and `CompactRuntime.test.ts` compares only the
+  // *bound* pair at run time, so a mispaired era-pinned entry was caught nowhere.
+  R extends ExecutableRuntime & { readonly line: L['era']['runtime'] }
+>(
+  ledger: L,
+  runtime: R
+) => {
   type Types = ExecutableTypes<L, R>;
 
   // Partition the public transcripts of every call in the trace in a single batch.

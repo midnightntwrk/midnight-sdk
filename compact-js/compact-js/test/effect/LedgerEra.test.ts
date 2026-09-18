@@ -59,17 +59,32 @@ describe('Ledger era seam', () => {
 });
 
 describe('era-pinned entries', () => {
-  // These two key-parity checks cannot distinguish the entries — `/v9` is the current era, so its
-  // key set matches the root's by construction (and type-only exports are erased from
-  // `Object.keys` entirely). What they prove is that the `exports` subpaths exist, are spelled
-  // correctly, and resolve: a typo in the exports map is the regression they catch. Era pinning
-  // and the capability split are asserted independently below.
-  it('`/v9` exposes the same API as the unsuffixed root', () => {
-    expect(Object.keys(v9Entry).sort()).toEqual(Object.keys(rootEntry).sort());
+  it('`/v9` mirrors `/v9/effect`, not the unsuffixed root', () => {
+    // This asserted key-parity with the *root* entry, which could never go red: `/v9` was
+    // `export * from '../index.js'`, so the two sides were literally the same module. That alias
+    // is the regression the era-pinned entries exist to prevent — the root barrel resolves both
+    // seams' `current.ts`, so repointing it at ledger 10 would have made `/v9` a ledger 10 entry
+    // with nothing to catch it, while `/v9/effect` (already pinned) stayed on ledger 9. `/v8`
+    // states the intended shape: an era entry mirrors its own `/effect` twin.
+    expect(Object.keys(v9Entry).sort()).toEqual(Object.keys(v9EffectEntry).sort());
+    // Object identity, so re-aliasing this entry to the root fails here even while the bound era
+    // still happens to be 9 and every key-set comparison would agree.
+    expect(v9Entry.Ledger).toBe(v9EffectEntry.Ledger);
+    expect(v9Entry.Ledger).not.toBe(effectEntry.Ledger);
   });
 
   it('`/v9/effect` exposes the same API as `/effect`', () => {
     expect(Object.keys(v9EffectEntry).sort()).toEqual(Object.keys(effectEntry).sort());
+  });
+
+  it('the unsuffixed root follows the bound era, which is what it is for', () => {
+    // `/v9` no longer aliases the root, so this is what pins the distinction between them. The
+    // root is deliberately "whichever era this build bound" and must keep resolving through
+    // `current.ts`; an era entry must not. Asserted by object identity rather than by era number,
+    // because both say 9 today and will not the first time `current.ts` advances — which is the
+    // moment these two are supposed to diverge.
+    expect(rootEntry.ContractExecutable).toBe(effectEntry.ContractExecutable);
+    expect(v9Entry.ContractExecutable).not.toBe(effectEntry.ContractExecutable);
   });
 
   it('`/v9/effect` binds ledger 9 itself rather than following the build\'s bound era', () => {
