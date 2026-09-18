@@ -42,8 +42,17 @@
  * @example
  * ```ts
  * import { CompactRuntime } from '@midnight-ntwrk/compact-js/effect';
+ * import { Effect } from 'effect';
  *
- * const encoded = CompactRuntime.encodeZswapLocalState(zswapLocalState);
+ * // Through the wrapper, not bare: the facade resolves the binding, it does not make the call
+ * // safe — see `tryRuntime`.
+ * const program = Effect.gen(function* () {
+ *   const encoded = yield* CompactRuntime.tryRuntime(
+ *     'Failed to encode the zswap local state',
+ *     () => CompactRuntime.encodeZswapLocalState(zswapLocalState)
+ *   );
+ *   return encoded;
+ * });
  * ```
  */
 import { type Effect } from 'effect';
@@ -64,7 +73,11 @@ export * from './internal/runtime/current.js';
  * A throw evaluated in an `Effect.gen` body is a defect, which escapes the caller's declared error
  * channel — `ContractExecutable.circuit`'s `ContractExecutionError` becomes unsound at that point,
  * and the CLI (which runs with `disableErrorReporting`) exits non-zero printing nothing at all.
- * Every runtime call made outside an `Effect.try`/`Effect.tryPromise` callback goes through here.
+ * Every runtime call is held in the error channel one of three ways: inside an
+ * `Effect.try`/`Effect.tryPromise` callback, through this wrapper, or — in `ContractExecutable`'s
+ * synchronous `Either`-returning maintenance helpers, which have no `Effect` to wrap — inside a
+ * plain `try`/`catch` yielding a `ContractConfigurationError`. Reach for this one by default; the
+ * third applies only where the surrounding function is not an `Effect`.
  *
  * This is the ledger seam's {@link Ledger.tryConvert} under the name the runtime side knows it by
  * — one copy of the boundary handling, shared (see `internal/boundary.ts` for why it lives above
@@ -78,5 +91,5 @@ export * from './internal/runtime/current.js';
  */
 export const tryRuntime: <A>(
   message: string,
-  evaluate: () => A
+  evaluate: () => A extends PromiseLike<unknown> ? never : A
 ) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = boundary.tryBoundary;

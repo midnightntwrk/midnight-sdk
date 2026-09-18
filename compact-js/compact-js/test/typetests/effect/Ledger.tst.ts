@@ -52,6 +52,17 @@ describe('Ledger facade type surface', () => {
     expect<Ledger.Era['runtime']>().type.toBe<'0.19'>();
   });
 
+  // NOTE: there is deliberately no negative pairing test here, and adding one is a trap. A
+  // counterexample needs a descriptor whose `runtime` is a *valid* `RuntimeLine` but the wrong one
+  // for its `ledger` — and while one era is bound, `RuntimeLine` is the singleton `'0.19'`, so
+  // every wrong line is also not a `RuntimeLine`. Such a test passes whether `Era` is the union of
+  // per-major descriptors or a flat `{ ledger: LedgerMajor; runtime: RuntimeLine }`: it looks like
+  // a guard against that "simplification" while catching nothing. (Verified by mutation.)
+  //
+  // What actually protects the pairing today is `Ledger.ts`'s `_SeamsArePaired` assertion, which
+  // is a build error rather than a test. Write the negative case here when a second era lands —
+  // that is the point at which it can fail.
+
   it('exposes the bound era major as a literal, not a widened number', () => {
     // `as const satisfies Era` in the binding keeps this a literal, so downstream code can branch
     // on the era at compile time and a typo'd era fails the build rather than a test.

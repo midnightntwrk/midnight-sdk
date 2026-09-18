@@ -22,17 +22,6 @@ import { dual, identity } from 'effect/Function';
 import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 
 import * as CompactRuntime from './CompactRuntime.js';
-import {
-  type AlignedValue,
-  type CallProofData,
-  type CommunicationCommitmentData,
-  type ContractState,
-  type ContractStateProvider,
-  type LogEvent,
-  type Op,
-  type StateValue,
-  type ZswapLocalState
-} from './CompactRuntime.js';
 import { type CompiledContract } from './CompiledContract.js';
 import * as Contract from './Contract.js';
 import * as ContractConfigurationError from './ContractConfigurationError.js';
@@ -137,25 +126,25 @@ export declare namespace ContractExecutable {
 
   export type ContractContext = {
     readonly address: ContractAddress.ContractAddress;
-    readonly contractState: ContractState;
+    readonly contractState: CompactRuntime.ContractState;
   };
 
   export type CircuitContext<PS> = ContractContext & {
     readonly privateState: PS;
-    readonly zswapLocalState?: ZswapLocalState;
+    readonly zswapLocalState?: CompactRuntime.ZswapLocalState;
     readonly ledgerParameters?: Ledger.LedgerParameters;
   } & (
       | { readonly stateProvider?: undefined; readonly parentBlockHash?: undefined }
-      | { readonly stateProvider: ContractStateProvider; readonly parentBlockHash: string }
+      | { readonly stateProvider: CompactRuntime.ContractStateProvider; readonly parentBlockHash: string }
     );
 
   export type DeployResultPublic = {
-    readonly contractState: ContractState;
+    readonly contractState: CompactRuntime.ContractState;
   };
   export type DeployResultPrivate<PS> = {
     readonly signingKey: SigningKey.SigningKey;
     readonly privateState: PS;
-    readonly zswapLocalState: ZswapLocalState;
+    readonly zswapLocalState: CompactRuntime.ZswapLocalState;
   };
   export type DeployResult<PS> = {
     readonly public: DeployResultPublic;
@@ -163,18 +152,18 @@ export declare namespace ContractExecutable {
   };
 
   export type PartitionedTranscript = [
-    Ledger.Transcript<AlignedValue> | undefined,
-    Ledger.Transcript<AlignedValue> | undefined
+    Ledger.Transcript<CompactRuntime.AlignedValue> | undefined,
+    Ledger.Transcript<CompactRuntime.AlignedValue> | undefined
   ];
   export type ContractCallPublic = {
-    readonly contractState: StateValue;
-    readonly publicTranscript: Op<AlignedValue>[];
+    readonly contractState: CompactRuntime.StateValue;
+    readonly publicTranscript: CompactRuntime.Op<CompactRuntime.AlignedValue>[];
     readonly partitionedTranscript: PartitionedTranscript;
   };
   export type ContractCallPrivate = {
-    readonly input: AlignedValue;
-    readonly output: AlignedValue;
-    readonly privateTranscriptOutputs: AlignedValue[];
+    readonly input: CompactRuntime.AlignedValue;
+    readonly output: CompactRuntime.AlignedValue;
+    readonly privateTranscriptOutputs: CompactRuntime.AlignedValue[];
   };
 
   /**
@@ -192,7 +181,7 @@ export declare namespace ContractExecutable {
      * cross-contract sub-calls (callees); `Option.none` for the root call, which is no one's
      * callee.
      */
-    readonly communicationCommitment: Option.Option<CommunicationCommitmentData>;
+    readonly communicationCommitment: Option.Option<CompactRuntime.CommunicationCommitmentData>;
   };
 
   /**
@@ -216,8 +205,8 @@ export declare namespace ContractExecutable {
   export type CallResult<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
     readonly result: Contract.Contract.CircuitReturnType<C, K>;
     readonly privateState: PS | undefined;
-    readonly zswapLocalState: ZswapLocalState;
-    readonly events: LogEvent[];
+    readonly zswapLocalState: CompactRuntime.ZswapLocalState;
+    readonly events: CompactRuntime.LogEvent[];
     readonly calls: readonly ContractCall[];
   };
 
@@ -258,7 +247,7 @@ const DEFAULT_SIGNATURE_INDEX = 0n;
 // commitment rides on the *callee's* pre-transcript (`commCommData.commComm`); the root call has
 // no commitment and becomes the graph root. The returned array is in the same order as `trace`.
 const partitionAllTranscripts = (
-  trace: readonly CallProofData[],
+  trace: readonly CompactRuntime.CallProofData[],
   ledgerParameters: Ledger.LedgerParameters | undefined
 ): Effect.Effect<ContractExecutable.PartitionedTranscript[], ContractRuntimeError.ContractRuntimeError> =>
   Effect.gen(function* () {
@@ -351,7 +340,20 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                   );
                 }
 
-                const operation = contractState.operation(provableCircuitId);
+                // `operation()` crosses the runtime WASM boundary, so it throws on a state built
+                // against a second instantiation rather than returning `undefined`. Unguarded in
+                // this generator body that throw would be a defect, escaping the declared error
+                // channel — the `undefined` check below only covers the circuit-not-found case.
+                let operation: ReturnType<typeof contractState.operation>;
+                try {
+                  operation = contractState.operation(provableCircuitId);
+                } catch (err: unknown) {
+                  return yield* ContractConfigurationError.make(
+                    `Failed to read the operation for circuit '${provableCircuitId}' from the given contract state`,
+                    contractState,
+                    err
+                  );
+                }
 
                 if (!operation) {
                   return yield* ContractConfigurationError.make(
@@ -373,7 +375,19 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               }
 
               const [cma, signingKey] = yield* this.createMaintenanceAuthority(keyConfig.getSigningKey());
-              contractState.maintenanceAuthority = cma;
+
+              // A runtime WASM setter, and the one that reports `expected instance of
+              // ContractMaintenanceAuthority` when the state and the authority come from two
+              // copies of the runtime. Guarded for the same reason as `setOperation` above.
+              try {
+                contractState.maintenanceAuthority = cma;
+              } catch (err: unknown) {
+                return yield* ContractConfigurationError.make(
+                  'Failed to set the maintenance authority on the given contract state',
+                  contractState,
+                  err
+                );
+              }
 
               return {
                 public: {
@@ -603,16 +617,46 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     const signingKey = currentSigningKey.value;
     const ledgerSigningKey = Ledger.fromPlatformSigningKey(signingKey, contractState);
     if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);
-    const update = createUpdateFn();
-    if (Either.isLeft(update)) return Either.left(update.left);
-    const maintenanceUpdate = new Ledger.MaintenanceUpdate(
-      address,
-      update.right,
-      contractState.maintenanceAuthority.counter
-    );
-    let signature: ReturnType<typeof Ledger.signData>;
+    // `createUpdateFn` builds ledger `SingleUpdate`s, so it crosses the ledger boundary: a
+    // `VerifierKeyInsert` over a key the era rejects throws here. `Contract.VerifierKey` is
+    // `Brand.nominal` and validates nothing, so any file a caller reads reaches this line.
+    let update: Either.Either<Ledger.SingleUpdate[], ContractConfigurationError.ContractConfigurationError>;
     try {
-      signature = Ledger.signData(ledgerSigningKey.right, maintenanceUpdate.dataToSign);
+      update = createUpdateFn();
+    } catch (err: unknown) {
+      return Either.left(
+        ContractConfigurationError.make('Failed to build the contract maintenance update', contractState, err)
+      );
+    }
+    if (Either.isLeft(update)) return Either.left(update.left);
+
+    // The constructor validates `address` and the updates, and the counter read is a runtime WASM
+    // getter — all three reject by throwing.
+    let maintenanceUpdate: Ledger.MaintenanceUpdate;
+    try {
+      maintenanceUpdate = new Ledger.MaintenanceUpdate(address, update.right, contractState.maintenanceAuthority.counter);
+    } catch (err: unknown) {
+      return Either.left(
+        ContractConfigurationError.make(
+          `Failed to create a maintenance update for contract '${address}'`,
+          contractState,
+          err
+        )
+      );
+    }
+
+    // `addSignature` is inside this block with `signData`: it rejects a signature whose scheme the
+    // era's authority does not accept, which is the same failure surfaced one call later.
+    try {
+      const signature = Ledger.signData(ledgerSigningKey.right, maintenanceUpdate.dataToSign);
+      return Either.right({
+        public: {
+          maintenanceUpdate: maintenanceUpdate.addSignature(DEFAULT_SIGNATURE_INDEX, signature)
+        },
+        private: {
+          signingKey
+        }
+      });
     } catch (err: unknown) {
       return Either.left(
         ContractConfigurationError.make(
@@ -622,34 +666,40 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         )
       );
     }
-    return Either.right({
-      public: {
-        maintenanceUpdate: maintenanceUpdate.addSignature(DEFAULT_SIGNATURE_INDEX, signature)
-      },
-      private: {
-        signingKey
-      }
-    });
   }
 
   protected createMaintenanceAuthority(
     key: Option.Option<SigningKey.SigningKey>,
-    contractState?: ContractState
+    contractState?: CompactRuntime.ContractState
   ): Either.Either<
     [CompactRuntime.ContractMaintenanceAuthority, SigningKey.SigningKey],
     ContractConfigurationError.ContractConfigurationError
   > {
-    const signingKey = Option.match(key, {
-      onSome: identity,
-      // Tag the sampled key with the era's scheme too: `SigningKey.make` otherwise defaults the
-      // tag to platform-js's own constant, which would label an era's non-schnorr sample as
-      // schnorr and sign with the wrong scheme while still passing the allowlist check below.
-      onNone: () =>
-        SigningKey.make(
-          CompactRuntime.sampleSigningKey(Ledger.era.defaultCmaSignatureKind).value,
-          Ledger.era.defaultCmaSignatureKind
+    // `sampleSigningKey` crosses the runtime boundary and rejects a scheme the bound line cannot
+    // sample. Guarded here rather than in the `try` below, which starts after the key is already
+    // needed — an unguarded throw in this `Either`-returning helper is a defect at every caller.
+    let signingKey: SigningKey.SigningKey;
+    try {
+      signingKey = Option.match(key, {
+        onSome: identity,
+        // Tag the sampled key with the era's scheme too: `SigningKey.make` otherwise defaults the
+        // tag to platform-js's own constant, which would label an era's non-schnorr sample as
+        // schnorr and sign with the wrong scheme while still passing the allowlist check below.
+        onNone: () =>
+          SigningKey.make(
+            CompactRuntime.sampleSigningKey(Ledger.era.defaultCmaSignatureKind).value,
+            Ledger.era.defaultCmaSignatureKind
+          )
+      });
+    } catch (err: unknown) {
+      return Either.left(
+        ContractConfigurationError.make(
+          `Failed to sample a '${Ledger.era.defaultCmaSignatureKind}' contract maintenance authority signing key`,
+          contractState,
+          err
         )
-    });
+      );
+    }
     const ledgerSigningKey = Ledger.fromPlatformSigningKey(signingKey, contractState);
     if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);
     try {

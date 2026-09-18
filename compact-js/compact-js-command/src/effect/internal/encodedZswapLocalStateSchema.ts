@@ -70,5 +70,18 @@ type _PinnedToRuntime = AssertAssignable<
   CompactRuntime.EncodedZswapLocalState
 >;
 
+/**
+ * The same pin in the other direction, for the encode path. `--output-zswap` feeds a value that
+ * comes *from* the runtime into `encodeZswapLocalStateObject`, and `Schema.Struct` defaults to
+ * `onExcessProperty: 'ignore'` — it **strips** unknown fields rather than rejecting them. Without
+ * this, a field added to the runtime's `EncodedZswapLocalState` would be silently dropped from
+ * every written state file, with the build still green; the loss only surfaces much later, when
+ * the file is read back through `--input-zswap` and the coin set is wrong.
+ */
+type _RuntimePinnedToSchema = AssertAssignable<
+  CompactRuntime.EncodedZswapLocalState,
+  typeof EncodedZswapLocalStateSchema.Type
+>;
+
 export const encodeZswapLocalStateObject = Schema.encodeUnknown(EncodedZswapLocalStateSchema);
 export const decodeZswapLocalStateObject = Schema.decodeUnknown(EncodedZswapLocalStateSchema);

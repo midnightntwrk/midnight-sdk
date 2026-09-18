@@ -17,6 +17,7 @@ import { join } from 'node:path';
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
+import { type PlatformError } from '@effect/platform/Error';
 import { CompactRuntime, Contract, type ContractExecutable, ContractKeyLocation, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
 import { Array, type ConfigError, Console, Effect, Option } from 'effect';
@@ -37,6 +38,31 @@ export const Args = {
   circuitId: InternalArgs.circuitId,
   args: InternalArgs.contractArgs
 };
+
+/**
+ * Reads and parses a JSON input file, naming the file in the failure.
+ *
+ * @remarks
+ * `JSON.parse` throws, and both call sites below sit in an `Effect.gen` body or an `Effect.flatMap`
+ * callback where a throw is a *defect*: it escapes {@link InternalCommand.invocationHandler}'s
+ * `catchAll` and the CLI, running with `disableErrorReporting`, exits non-zero printing nothing.
+ * A truncated or empty input file is ordinary — this handler writes `--output-ps` *after*
+ * `--output`, so an interrupted run leaves exactly that state behind.
+ *
+ * @internal
+ */
+const readJsonFile = (
+  fs: FileSystem.FileSystem,
+  filePath: string
+): Effect.Effect<any, ContractRuntimeError.ContractRuntimeError | PlatformError> => // eslint-disable-line @typescript-eslint/no-explicit-any
+  fs.readFileString(filePath).pipe(
+    Effect.flatMap((str) =>
+      Effect.try({
+        try: () => JSON.parse(str),
+        catch: (err) => ContractRuntimeError.make(`'${filePath}' does not contain valid JSON`, err)
+      })
+    )
+  );
 
 /** @internal */
 export type Options = Command.Command.ParseConfig<typeof Options>;
@@ -100,11 +126,11 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const ledgerContractState = yield* fs.readFile(inputFilePath).pipe(
       Effect.flatMap(Ledger.contractStateFromBytes)
     );
-    const privateState = JSON.parse(yield* fs.readFileString(inputPrivateStateFilePath));
+    const privateState = yield* readJsonFile(fs, inputPrivateStateFilePath);
     const encodedZswapLocalState = Option.map(
       inputZswapLocalStateFilePath,
-      (filePath) => fs.readFileString(filePath).pipe(
-        Effect.flatMap((str) => decodeZswapLocalStateObject(JSON.parse(str))),
+      (filePath) => readJsonFile(fs, filePath).pipe(
+        Effect.flatMap(decodeZswapLocalStateObject),
         // `EncodedZswapLocalStateSchema` validates shape only — no length constraint on the key or
         // the coin nonces/colours, and `value` is any bigint — so a hand-edited or cross-network
         // file passes it and is rejected by the runtime instead. The decode belongs here, where

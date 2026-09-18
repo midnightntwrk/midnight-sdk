@@ -24,14 +24,13 @@
  */
 export * from './v0_19.js';
 
+import type { Assert, Extends } from '../typeAssertions.js';
 import { type RuntimeBinding } from './binding.js';
 import type * as Bound from './v0_19.js';
 
 // Compile-time proof that the bound module satisfies the binding contract, so a runtime swap that
-// misses a facade name fails the build HERE, naming the binding. Routed through a constrained
-// generic because a bare `A extends B ? true : never` conditional resolves silently and never
-// fails a build. `import type` keeps this file emit-free beyond the re-export, preserving the
-// single-WASM-instantiation property the era tests guard.
-type Extends<A, B> = [A] extends [B] ? true : false;
-type Assert<_T extends true> = void;
+// misses a facade name fails the build HERE, naming the binding. `import type` keeps this file
+// emit-free beyond the re-export, preserving the single-WASM-instantiation property the era tests
+// guard. `Assert`/`Extends` are shared with the other seam — see `internal/typeAssertions.ts` for
+// why the constrained generic is load-bearing.
 type _BindingIsComplete = Assert<Extends<typeof Bound, RuntimeBinding>>;

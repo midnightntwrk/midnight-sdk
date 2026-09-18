@@ -190,6 +190,73 @@ describe('Circuit Command', () => {
     30_000
   );
 
+  it.effect(
+    'reports a malformed --input-ps file instead of dying silently',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        // The state an interrupted run leaves behind: this handler writes `--output-ps` after
+        // `--output`, so a truncated private-state file is a reachable, not exotic, input.
+        yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, '{ "count": 10');
+
+        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+
+        yield* cli([
+          'node', 'circuit.ts',
+          '-c', COUNTER_CONFIG_FILEPATH,
+          '--input', COUNTER_STATE_FILEPATH,
+          '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output', COUNTER_OUTPUT_FILEPATH,
+          '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-result', COUNTER_RESULT_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.length).toBeGreaterThan(0);
+        expect(lines.join('\n')).toContain(COUNTER_OUTPUT_PS_FILEPATH);
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
+    30_000
+  );
+
+  it.effect(
+    'reports a malformed --input-zswap file instead of dying silently',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
+        yield* fs.writeFileString(COUNTER_INPUT_ZSWAP_FILEPATH, 'not json at all');
+
+        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+
+        yield* cli([
+          'node', 'circuit.ts',
+          '-c', COUNTER_CONFIG_FILEPATH,
+          '--input', COUNTER_STATE_FILEPATH,
+          '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--input-zswap', COUNTER_INPUT_ZSWAP_FILEPATH,
+          '--output', COUNTER_OUTPUT_FILEPATH,
+          '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-result', COUNTER_RESULT_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.length).toBeGreaterThan(0);
+        expect(lines.join('\n')).toContain(COUNTER_INPUT_ZSWAP_FILEPATH);
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_INPUT_ZSWAP_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
+    30_000
+  );
+
   it.effect('produces a valid single-call intent for a non-cross-contract circuit', () =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
