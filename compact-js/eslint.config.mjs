@@ -51,7 +51,11 @@ export default tseslint.config(
       '**/.rollup.cache/**',
       '**/gen/**',
       '**/generated/**',
+      // `managed/` is compactc's output for the bound era's fixtures; `managed-v<N>/` is the same
+      // output for an era-pinned fixture set (`managed-v8/`). Both are generated and checked in,
+      // so neither is ours to lint — the second pattern is not covered by the first.
       '**/managed/**',
+      '**/managed-v*/**',
       '**/*.d.ts',
       '**/node_modules/**',
       '**/.yarn/**',
