@@ -40,7 +40,11 @@
  * the artifact lives. No CLI option can influence that; it is a resolution-level fact about the
  * caller's project.
  *
- * @internal
+ * This docblock carries no internal-marker JSDoc tag. A module docblock attaches to the file's
+ * first statement, so under `stripInternal` the marker deletes it — here the imports every
+ * declaration below is written in terms of, leaving typings that name namespaces they no longer
+ * import. Privacy comes from `package.json` `exports` blocking `./effect/internal/*` instead. See
+ * `compact-js`'s `internal/boundary.ts` for why this note does not spell the tag out.
  */
 import { CompactRuntime, type Contract, type ContractExecutable, Ledger } from '@midnight-ntwrk/compact-js/v8/effect';
 

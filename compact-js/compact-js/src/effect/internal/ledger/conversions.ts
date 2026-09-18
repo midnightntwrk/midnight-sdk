@@ -43,7 +43,12 @@ import { type RuntimeLine } from '../era.js';
  * `current.ts` files were independent, and only `CompactRuntime.test.ts` checked at run time that
  * they agreed. A conversion here needs both halves, so a mismatched pair now fails to construct.
  *
- * @internal
+ * This docblock carries no internal-marker JSDoc tag. A module docblock attaches to the file's
+ * first declaration, so under `stripInternal` the marker deleted {@link ConversionLedger} from the
+ * emitted typings while `makeConversions`' own declaration went on naming it in its constraint —
+ * which is exactly the failure the note on that interface says the export exists to prevent.
+ * Privacy comes from `package.json` `exports` blocking `./effect/internal/*` instead. See
+ * `internal/boundary.ts` for why this note does not spell the tag out.
  */
 
 /** The ledger-binding members the conversions need. Narrow on purpose: this is not the whole binding. */

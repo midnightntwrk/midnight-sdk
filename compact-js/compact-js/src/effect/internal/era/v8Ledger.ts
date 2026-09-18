@@ -31,7 +31,13 @@
  * era binding differs. A type re-export cannot come from a factory, which is why there is a module
  * per era rather than one parameterised module.
  *
- * @internal
+ * This docblock carries no internal-marker JSDoc tag. A module docblock attaches to the file's
+ * first statement — here the `effect` import — so under `stripInternal` the marker deleted that
+ * import from the emitted typings while every conversion below went on returning an
+ * `Effect.Effect<…>`, leaving the published `.d.ts` naming a namespace it no longer imports.
+ * This is the `Ledger` of `/v8/effect`, so the damage landed on a headline entry. Privacy
+ * comes from `package.json` `exports` blocking `./effect/internal/*` instead. See
+ * `internal/boundary.ts` for why this note does not spell the tag out.
  */
 import { Effect } from 'effect';
 

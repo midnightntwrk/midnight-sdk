@@ -23,7 +23,11 @@
  * once, at the top of an invocation, and every ledger and compact-runtime call the handler makes
  * belongs to it.
  *
- * @internal
+ * This docblock carries no internal-marker JSDoc tag. A module docblock attaches to the file's
+ * first statement, so under `stripInternal` the marker deletes it — here the imports every
+ * declaration below is written in terms of, leaving typings that name namespaces they no longer
+ * import. Privacy comes from `package.json` `exports` blocking `./effect/internal/*` instead. See
+ * `compact-js`'s `internal/boundary.ts` for why this note does not spell the tag out.
  */
 import { type Ledger } from '@midnight-ntwrk/compact-js/effect';
 

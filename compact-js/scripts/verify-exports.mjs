@@ -165,6 +165,46 @@ while (queue.length > 0) {
   }
 }
 
+// Then typecheck those same typings as a consumer would.
+//
+// The value comparison above catches a stripped `export const`, because the ESM emit still has it
+// to compare against. It cannot see type-only damage — and that is where this bug class actually
+// lands, because `stripInternal` honours an internal-marker JSDoc tag on *any* leading comment,
+// including a module docblock, which attaches to whatever the file's first statement happens to be.
+// Four modules shipped typings that named `CallProofDataView`, `ConversionLedger` and the `Effect`
+// namespace after the marker had deleted them, and `CompiledContract` extended a variance witness
+// the same marker removed from its own namespace. None of it has an ESM counterpart, so all five
+// passed the check above while failing for any consumer not building with `skipLibCheck`.
+//
+// Compiling the reachable graph is strictly stronger than extending the name comparison: it does
+// not care *how* a declaration went missing, only that what a consumer compiles against resolves.
+// Diagnostics are filtered to files under `dist/` — the program necessarily pulls in third-party
+// typings, and those are not this package's problem.
+if (visited.size > 0) {
+  const { default: ts } = await import('typescript');
+  const program = ts.createProgram([...visited], {
+    noEmit: true,
+    strict: true,
+    skipLibCheck: false,
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler
+  });
+
+  for (const diagnostic of ts.getPreEmitDiagnostics(program)) {
+    const fileName = diagnostic.file?.fileName;
+    if (!fileName || !resolve(fileName).startsWith(distDir + sep)) continue;
+    const message = ts.flattenDiagnosticMessageText(diagnostic.messageText, ' ');
+    const { line } = diagnostic.file.getLineAndCharacterOfPosition(diagnostic.start ?? 0);
+    problems.push(
+      `typings for ${relative(distDir, fileName)}:${line + 1} do not compile: ${message} ` +
+        `(a consumer building without skipLibCheck sees this; an internal-marker JSDoc tag on the ` +
+        `declaration — or on a module docblock sitting above the first statement — removes it under ` +
+        `stripInternal)`
+    );
+  }
+}
+
 if (problems.length > 0) {
   console.error(`verify-exports: ${packageDir} packed exports are not consumable:`);
   for (const problem of problems) console.error(`  - ${problem}`);

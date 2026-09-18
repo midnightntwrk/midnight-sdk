@@ -36,7 +36,12 @@
  * instantiation is self-consistent. Deliberately structural — nothing here imports a runtime
  * package, so this module stays above both seams.
  *
- * @internal
+ * This docblock carries no internal-marker JSDoc tag. A module docblock attaches to the file's
+ * first declaration, so under `stripInternal` the marker deleted {@link CallProofDataView} from the
+ * emitted typings while `v0_16.d.ts` and `v0_19.d.ts` went on importing it — `.d.ts` files that
+ * only looked sound because most consumers build with `skipLibCheck`. Privacy comes from
+ * `package.json` `exports` blocking `./effect/internal/*` instead. See `internal/boundary.ts` for
+ * why this note does not spell the tag out.
  */
 
 /**

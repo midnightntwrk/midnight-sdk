@@ -112,6 +112,11 @@ export default tseslint.config(
       'import-x/resolver': {
         typescript: {
           alwaysTryTypes: false,
+          // One `tsconfig.json` per workspace, deliberately: each package resolves its own paths
+          // and there is no root project to reference them from. The resolver warns about the
+          // multi-project setup on every run, so silence it rather than let a permanent warning
+          // sit in the lint output.
+          noWarnOnMultipleProjects: true,
           project: ['tsconfig.json', '*/tsconfig.json']
         }
       }
