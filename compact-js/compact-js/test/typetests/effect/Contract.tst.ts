@@ -71,7 +71,17 @@ type Era9Contract = {
   ): Promise<Era9Runtime.ConstructorResult<PrivateState>>;
 };
 
-/** The same contract as `compactc` generates it for the ledger 8 / runtime 0.16 pair. */
+/**
+ * The same contract as `compactc` generates it for the ledger 8 / runtime 0.16 pair.
+ *
+ * @remarks
+ * **Synchronous**, and that is not a simplification — it is what compactc 0.31.1 emits. Compare
+ * `test/contract/managed-v8/counter/contract/index.d.ts` against its `managed/` twin: the whole
+ * difference between the two generated declarations is that 0.19's circuits and `initialState`
+ * return `Promise<…>` and 0.16's return the value. An earlier version of this file wrote the era 8
+ * shape with `Promise` wrappers, which made the suite agree with the spine about a contract nobody
+ * compiles, and missed the one difference that kept a real ledger 8 artifact from satisfying it.
+ */
 type Era8Contract = {
   witnesses: {
     localSecretKey(context: Era8Runtime.WitnessContext<unknown, PrivateState>): [PrivateState, Uint8Array];
@@ -80,18 +90,18 @@ type Era8Contract = {
     increment(
       context: Era8Runtime.CircuitContext<PrivateState>,
       amount: bigint
-    ): Promise<Era8Runtime.CircuitResults<PrivateState, bigint>>;
+    ): Era8Runtime.CircuitResults<PrivateState, bigint>;
   };
   provableCircuits: {
     increment(
       context: Era8Runtime.CircuitContext<PrivateState>,
       amount: bigint
-    ): Promise<Era8Runtime.CircuitResults<PrivateState, bigint>>;
+    ): Era8Runtime.CircuitResults<PrivateState, bigint>;
   };
   initialState(
     context: Era8Runtime.ConstructorContext<PrivateState>,
     seed: Uint8Array
-  ): Promise<Era8Runtime.ConstructorResult<PrivateState>>;
+  ): Era8Runtime.ConstructorResult<PrivateState>;
 };
 
 describe('the contract spine', () => {
@@ -101,7 +111,8 @@ describe('the contract spine', () => {
 
   it('accepts a contract compiled for the ledger 8 era', () => {
     // Red before the spine was era-free: 0.16's flat `CircuitContext` is not assignable to 0.19's
-    // call-tree one in either direction, and `CircuitResults.context` carries the same split.
+    // call-tree one in either direction, `CircuitResults.context` carries the same split, and the
+    // line is synchronous where 0.19 is not.
     expect<Era8Contract>().type.toBeAssignableTo<Contract.Contract<PrivateState>>();
   });
 

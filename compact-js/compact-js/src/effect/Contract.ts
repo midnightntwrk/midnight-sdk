@@ -83,13 +83,31 @@ export interface ConstructorResult<PS> {
   readonly currentPrivateState: PS;
 }
 
+/**
+ * A value, or a promise of one.
+ *
+ * @remarks
+ * The second thing about a compiled contract that varies by era, alongside the circuit context.
+ * compactc 0.31.1 (Compact 0.23, the ledger 8 / runtime 0.16 pairing) generates **synchronous**
+ * circuits and `initialState`; 0.34 generates `Promise`-returning ones. Diff the two `.d.ts` files
+ * a single `counter.compact` produces — `test/contract/managed-v8/counter/contract/index.d.ts`
+ * against `test/contract/managed/counter/contract/index.d.ts` — and that is the entire difference.
+ *
+ * So the spine says "settles to", not "resolves to". Naming `Promise` here is what previously kept
+ * a real ledger 8 artifact from satisfying `Contract<PS>` at all — `Witnesses<C>` collapsed to
+ * `never` and `CompiledContract.make` was uncallable — even after the era-varying *types* were
+ * removed. Reading a result through the union costs nothing: everything in compact-js that calls a
+ * circuit or the constructor already `await`s it, and `await` on a non-promise is the value.
+ */
+export type Awaitable<A> = A | Promise<A>;
+
 export type Witness<PS, U = any> = (context: WitnessContext<U, PS>, ...args: any[]) => [PS, U];
 export type Witnesses<PS> = Record<string, Witness<PS>>;
 
-export type Circuit<U = any> = (context: CircuitContext, ...args: any[]) => Promise<CircuitResults<U>>;
+export type Circuit<U = any> = (context: CircuitContext, ...args: any[]) => Awaitable<CircuitResults<U>>;
 export type Circuits = Record<string, Circuit>;
 
-export type ProvableCircuit<U = any> = (context: CircuitContext, ...args: any[]) => Promise<CircuitResults<U>>;
+export type ProvableCircuit<U = any> = (context: CircuitContext, ...args: any[]) => Awaitable<CircuitResults<U>>;
 export type ProvableCircuits = Record<string, ProvableCircuit>;
 
 export type VerifierKey = Uint8Array & Brand.Brand<'VerifierKey'>;
@@ -128,7 +146,7 @@ export interface Contract<PS, W extends Witnesses<PS> = Witnesses<PS>> {
   circuits: Circuits;
   provableCircuits: ProvableCircuits;
 
-  initialState(context: any, ...args: any[]): Promise<ConstructorResult<PS>>;
+  initialState(context: any, ...args: any[]): Awaitable<ConstructorResult<PS>>;
 }
 
 export declare namespace Contract {

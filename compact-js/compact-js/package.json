@@ -40,6 +40,7 @@
     "build-cjs": "tsc -b tsconfig.cjs.json",
     "build-compact": "shx --negate test -d ./test/contract/managed && yarn compact || shx test -d ./test/contract/managed",
     "build-compact-v8": "shx --negate test -d ./test/contract/managed-v8 && yarn compact-v8 || shx test -d ./test/contract/managed-v8",
+    "build-fixtures": "yarn build-compact && yarn build-compact-v8",
     "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage .tsbuildinfo",
     "test": "yarn build-compact && yarn build-compact-v8 && vitest run && vitest run --config vitest.era8.config.ts && tstyche",
     "package": "shx rm -rf ./dist/src && node ../scripts/resolve-workspace-protocol.mjs ./dist/package.json && (cd ./dist; npm pack)",

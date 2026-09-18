@@ -32,19 +32,26 @@ import { Cause, Effect, Exit } from 'effect';
  * by the new one — a mismatch that surfaces inside WASM, far from the decision that caused it
  * (midnight-sdk#387/#388).
  *
- * `S` is the era's runtime contract state, inferred from `toRuntimeContractState`, so the provider
- * this module returns is typed for the era it was given rather than for the bound one.
+ * `S` is the era's runtime contract state and `L` its *ledger* contract state — the value that
+ * exists only between the two calls below — both inferred from the facade that is passed, so the
+ * provider this module returns is typed for the era it was given rather than for the bound one.
+ *
+ * `L` is a parameter rather than `never`. Typing the intermediate `never` (as the first cut of this
+ * interface did) makes the contract unsatisfiable by any real facade — `contractStateFromBytes`
+ * would have to return `Effect<never>` — so the only way to supply an era was the `as unknown as`
+ * cast that still sits on the default below, and passing `{ ledger }` explicitly could not
+ * type-check at all. With `L` inferred, the two calls are checked against each other: a facade
+ * whose `toRuntimeContractState` does not accept what its own `contractStateFromBytes` produces is
+ * rejected here rather than inside WASM.
  */
-export interface ProviderLedger<S> {
+export interface ProviderLedger<S, L = unknown> {
   readonly era: { readonly ledger: number };
-  readonly contractStateFromBytes: (
-    bytes: Uint8Array
-  ) => Effect.Effect<never, ContractRuntimeError.ContractRuntimeError>;
-  readonly toRuntimeContractState: (contractState: never) => Effect.Effect<S, ContractRuntimeError.ContractRuntimeError>;
+  readonly contractStateFromBytes: (bytes: Uint8Array) => Effect.Effect<L, ContractRuntimeError.ContractRuntimeError>;
+  readonly toRuntimeContractState: (contractState: L) => Effect.Effect<S, ContractRuntimeError.ContractRuntimeError>;
 }
 
 /** Options for {@link make}. */
-export interface Options<S> {
+export interface Options<S, L = unknown> {
   /**
    * Maps a contract address to its file name within the base folder. Defaults to the address
    * itself; override this if the on-disk naming differs from the address string the runtime uses.
@@ -53,7 +60,7 @@ export interface Options<S> {
   /**
    * The era whose conversions decode the files. Defaults to the era this build binds.
    */
-  readonly ledger?: ProviderLedger<S>;
+  readonly ledger?: ProviderLedger<S, L>;
 }
 
 /**
@@ -79,11 +86,11 @@ export interface Options<S> {
  *
  * @category constructors
  */
-export const make = <S = CompactRuntime.ContractState>(
+export const make = <S = CompactRuntime.ContractState, L = unknown>(
   baseFolderPath: string,
-  options: Options<S> | ((address: string) => string) = {}
+  options: Options<S, L> | ((address: string) => string) = {}
 ): { getContractState: (blockHash: string, address: string) => Promise<S | undefined> } => {
-  const { fileNameForAddress = (address: string) => address, ledger = Ledger as unknown as ProviderLedger<S> } =
+  const { fileNameForAddress = (address: string) => address, ledger = Ledger as unknown as ProviderLedger<S, L> } =
     typeof options === 'function' ? { fileNameForAddress: options } : options;
 
   return {

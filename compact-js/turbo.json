@@ -25,9 +25,13 @@
         "build"
       ]
     },
+    "build-fixtures": {
+      "outputLogs": "new-only",
+      "cache": false
+    },
     "test": {
       "outputLogs": "new-only",
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "build-fixtures", "^build-fixtures"],
       "inputs": [
         "src/**/*.ts",
         "test/**/*.ts",
@@ -35,7 +39,8 @@
         "tstyche.json",
         "vitest.config.ts",
         "vitest.era8.config.ts",
-        "tsconfig*.json"
+        "tsconfig*.json",
+        "package.json"
       ],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
     },

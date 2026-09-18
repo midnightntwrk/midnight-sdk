@@ -12,7 +12,7 @@
 // Usage: node scripts/verify-exports.mjs <package-dir>
 
 import { existsSync, readFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 
 const packageDir = resolve(process.argv[2] ?? '.');
 const sourceManifestPath = join(packageDir, 'package.json');
@@ -84,6 +84,85 @@ const checkTargets = (subpath, condition, target) => {
 
 for (const [subpath, target] of Object.entries(distExports)) {
   checkTargets(subpath, '', target);
+}
+
+// Every value the ESM emit exports must also be declared in the sibling `.d.ts`. The two are
+// produced by separate `tsc` invocations with different options, so they can disagree — and one
+// option makes them disagree silently: `stripInternal` deletes any declaration whose *leading
+// comment* carries the internal marker tag. That includes a module docblock sitting on the file's
+// first `export` statement, a plain `//` comment that merely mentions the tag, and declarations a
+// public type still references. The JS keeps the export either way, so the package runs correctly
+// and fails to typecheck — which no test in the repo can see, because tests compile from `src/`,
+// where `stripInternal` does not apply.
+const exportedValues = (source) => {
+  const names = new Set();
+  for (const match of source.matchAll(/^export \* as (\w+) from/gm)) names.add(match[1]);
+  for (const match of source.matchAll(/^export (?:declare )?(?:const|let|var|function|class) (\w+)/gm))
+    names.add(match[1]);
+  for (const match of source.matchAll(/^export \{([^}]*)\}/gm)) {
+    for (const specifier of match[1].split(',')) {
+      const parts = specifier.trim().split(/\s+as\s+/);
+      const name = (parts[1] ?? parts[0]).trim();
+      // `export { type Era }` re-exports a type; it has no value to compare against.
+      if (name && !specifier.trim().startsWith('type ')) names.add(name);
+    }
+  }
+  return names;
+};
+
+// Declared in the typings but absent from the JS is legitimate — an interface or type alias has no
+// runtime counterpart — so this compares in one direction only. Type declarations are deliberately
+// *not* collected: a stripped `export const Foo` next to a surviving `export type Foo` (the
+// declaration-merged brand pattern this codebase uses) would otherwise look declared.
+const declaredValues = (source) => {
+  const names = exportedValues(source);
+  for (const match of source.matchAll(/^export (?:declare )?(?:namespace|enum) (\w+)/gm)) names.add(match[1]);
+  return names;
+};
+
+// Only typings a consumer can reach are compared: start from each packed entry's `types` target and
+// follow relative imports. A module outside that graph is free to be stripped — nothing names it —
+// while one inside it is, by construction, referenced by something a consumer compiles against.
+const typesTargets = (target, found = []) => {
+  if (typeof target === 'string') return found;
+  for (const [condition, nested] of Object.entries(target ?? {})) {
+    if (condition === 'types' && typeof nested === 'string') found.push(nested);
+    else typesTargets(nested, found);
+  }
+  return found;
+};
+
+const entryTypings = Object.values(distExports)
+  .flatMap((target) => typesTargets(target))
+  .map((target) => resolve(distDir, target))
+  .filter((path) => existsSync(path));
+
+const queue = [...entryTypings];
+const visited = new Set();
+while (queue.length > 0) {
+  const dtsPath = queue.shift();
+  if (visited.has(dtsPath) || !existsSync(dtsPath)) continue;
+  visited.add(dtsPath);
+
+  const dtsSource = readFileSync(dtsPath, 'utf8');
+  for (const match of dtsSource.matchAll(/from '(\.[^']*)'/g)) {
+    queue.push(resolve(dirname(dtsPath), match[1].replace(/\.js$/, '.d.ts')));
+  }
+
+  // `pack-v3` emits `dist/esm` and `dist/dts` as parallel trees, so the counterpart is positional.
+  const jsPath = dtsPath.replace(`${sep}dts${sep}`, `${sep}esm${sep}`).replace(/\.d\.ts$/, '.js');
+  if (!existsSync(jsPath)) continue; // A type-only module has no runtime counterpart to compare.
+
+  const declared = declaredValues(dtsSource);
+  const missing = [...exportedValues(readFileSync(jsPath, 'utf8'))].filter((name) => !declared.has(name));
+  if (missing.length > 0) {
+    problems.push(
+      `typings for ${relative(distDir, jsPath)} are missing ${missing.map((name) => `"${name}"`).join(', ')} ` +
+        `(present in the ESM emit, and this module is reachable from a packed entry's typings; an ` +
+        `internal-marker JSDoc tag on the declaration — or on a module docblock sitting above the ` +
+        `first export — removes it under stripInternal)`
+    );
+  }
 }
 
 if (problems.length > 0) {

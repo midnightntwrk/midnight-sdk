@@ -51,6 +51,7 @@ import { ZKConfiguration,type ZKConfiguration as ZKConfigurationService } from '
 import { type ZKConfigurationReadError } from '../ZKConfigurationReadError.js';
 import { tryBoundary } from './boundary.js';
 import * as CompactContextInternal from './compactContext.js';
+import { type Era } from './era.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -67,9 +68,17 @@ import * as CompactContextInternal from './compactContext.js';
  * open here.
  */
 export interface ExecutableLedger {
-  readonly era: {
-    readonly defaultCmaSignatureKind: SigningKey.SignatureKind;
-  };
+  /**
+   * The whole {@link Era} descriptor, not just the members the bodies below read.
+   *
+   * @remarks
+   * `defaultCmaSignatureKind` is the only one this module *calls*, but the descriptor is also
+   * republished on {@link ContractExecutable.era} so a host that selects an era independently — the
+   * CLI, whose `--ledger-era` picks its own era pair — can compare the era it selected against the
+   * era the executable it was handed was built for. Narrowing this to the one member used here
+   * would make that comparison impossible without a second declaration of the same fact.
+   */
+  readonly era: Era;
   readonly LedgerParameters: { initialParameters(): unknown };
   readonly MaintenanceUpdate: new (address: never, updates: never, counter: never) => unknown;
   readonly PreTranscript: new (context: never, program: never, commComm?: never) => unknown;
@@ -264,6 +273,21 @@ export interface ContractExecutable<
 > extends Pipeable {
   readonly compiledContract: CompiledContract<C, PS>;
 
+  /**
+   * The era this executable executes against — the `era` descriptor of the ledger binding it was
+   * built from.
+   *
+   * @remarks
+   * An executable's era is fixed when {@link makeExecutable} is applied, which happens at an
+   * *import*: a consumer picks it by importing `/v8/effect` or `/v9/effect`. A host that selects an
+   * era by some other route — `compact-js-command`'s `--ledger-era`, which chooses the era of the
+   * intents and state files it builds — therefore has two era choices to reconcile, and no way to
+   * see the second one without this. Comparing them turns a mismatch into a named failure at the
+   * start of the command, instead of a WASM rejection several conversions later whose message names
+   * neither era.
+   */
+  readonly era: L['era'];
+
   initialize(
     initialPrivateState: PS,
     ...args: Contract.Contract.InitializeParameters<C>
@@ -376,6 +400,9 @@ export const makeExecutable = <L extends ExecutableLedger, R extends ExecutableR
   {
     compiledContract: CompiledContract<C, PS>;
     transform: Transform<E, Rq>;
+    // Read off the binding this factory was applied to, so `provide`'s rebuilt instance carries the
+    // same era without it having to be threaded through the constructor.
+    readonly era: L['era'] = ledger.era;
 
     constructor(compiledContract: CompiledContract<C, PS, never>, transform: Transform<E, Rq> = identity) {
       this.compiledContract = compiledContract;
