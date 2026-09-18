@@ -25,13 +25,9 @@
         "build"
       ]
     },
-    "build-fixtures": {
-      "outputLogs": "new-only",
-      "cache": false
-    },
     "test": {
       "outputLogs": "new-only",
-      "dependsOn": ["^build", "build-fixtures", "^build-fixtures"],
+      "dependsOn": ["^build"],
       "inputs": [
         "src/**/*.ts",
         "test/**/*.ts",
