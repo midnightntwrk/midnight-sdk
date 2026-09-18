@@ -17,10 +17,9 @@ import { join } from 'node:path';
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { Contract, type ContractExecutable, ContractKeyLocation, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
+import { type PlatformError } from '@effect/platform/Error';
+import { CompactRuntime, Contract, type ContractExecutable, ContractKeyLocation, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
-import { decodeZswapLocalState, type EncodedZswapLocalState,
-  encodeZswapLocalState, type StateValue } from '@midnight-ntwrk/compact-runtime';
 import { Array, type ConfigError, Console, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -39,6 +38,31 @@ export const Args = {
   circuitId: InternalArgs.circuitId,
   args: InternalArgs.contractArgs
 };
+
+/**
+ * Reads and parses a JSON input file, naming the file in the failure.
+ *
+ * @remarks
+ * `JSON.parse` throws, and both call sites below sit in an `Effect.gen` body or an `Effect.flatMap`
+ * callback where a throw is a *defect*: it escapes {@link InternalCommand.invocationHandler}'s
+ * `catchAll` and the CLI, running with `disableErrorReporting`, exits non-zero printing nothing.
+ * A truncated or empty input file is ordinary — this handler writes `--output-ps` *after*
+ * `--output`, so an interrupted run leaves exactly that state behind.
+ *
+ * @internal
+ */
+const readJsonFile = (
+  fs: FileSystem.FileSystem,
+  filePath: string
+): Effect.Effect<any, ContractRuntimeError.ContractRuntimeError | PlatformError> => // eslint-disable-line @typescript-eslint/no-explicit-any
+  fs.readFileString(filePath).pipe(
+    Effect.flatMap((str) =>
+      Effect.try({
+        try: () => JSON.parse(str),
+        catch: (err) => ContractRuntimeError.make(`'${filePath}' does not contain valid JSON`, err)
+      })
+    )
+  );
 
 /** @internal */
 export type Options = Command.Command.ParseConfig<typeof Options>;
@@ -102,12 +126,23 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const ledgerContractState = yield* fs.readFile(inputFilePath).pipe(
       Effect.flatMap(Ledger.contractStateFromBytes)
     );
-    const privateState = JSON.parse(yield* fs.readFileString(inputPrivateStateFilePath));
+    const privateState = yield* readJsonFile(fs, inputPrivateStateFilePath);
     const encodedZswapLocalState = Option.map(
       inputZswapLocalStateFilePath,
-      (filePath) => fs.readFileString(filePath).pipe(
-        Effect.flatMap((str) => decodeZswapLocalStateObject(JSON.parse(str))
-      ))
+      (filePath) => readJsonFile(fs, filePath).pipe(
+        Effect.flatMap(decodeZswapLocalStateObject),
+        // `EncodedZswapLocalStateSchema` validates shape only — no length constraint on the key or
+        // the coin nonces/colours, and `value` is any bigint — so a hand-edited or cross-network
+        // file passes it and is rejected by the runtime instead. The decode belongs here, where
+        // `filePath` is in scope to name in the failure; left unwrapped in the `Effect.gen` body
+        // below it would be a defect, and the CLI would exit non-zero printing nothing at all.
+        Effect.flatMap((encoded) =>
+          CompactRuntime.tryRuntime(
+            `Failed to decode the zswap local state read from '${filePath}'`,
+            () => CompactRuntime.decodeZswapLocalState(encoded)
+          )
+        )
+      )
     );
     const decodedLedgerParameters = Option.map(
       inputLedgerParamsFilePath,
@@ -127,7 +162,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       contractState: yield* Ledger.toRuntimeContractState(ledgerContractState),
       privateState: privateState ?? contractModule.createInitialPrivateState(),
       zswapLocalState: Option.isSome(encodedZswapLocalState)
-        ? decodeZswapLocalState((yield* encodedZswapLocalState.value) as EncodedZswapLocalState)
+        ? yield* encodedZswapLocalState.value
         : undefined,
       ledgerParameters: Option.isSome(decodedLedgerParameters)
         ? yield* decodedLedgerParameters.value
@@ -159,7 +194,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       result.calls,
       {
         intent: yield* InternalCommand.newIntent(),
-        finalCalleeStates: new Map<string, { readonly ledgerState: Ledger.ContractState; readonly data: StateValue }>()
+        finalCalleeStates: new Map<string, { readonly ledgerState: Ledger.ContractState; readonly data: CompactRuntime.StateValue }>()
       },
       (acc, call) =>
         Effect.gen(function* () {
@@ -267,13 +302,20 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     yield* fs.writeFileString(outputResultFilePath, stringifyCircuitOutput(result.result));
     yield* fs.writeFile(
       outputFilePath,
-      yield* InternalCommand.tryLedger('Failed to serialize the intent', () => intent.serialize())
+      yield* InternalCommand.serializeIntent(intent)
     );
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.privateState));
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,
       JSON.stringify(
-        yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.zswapLocalState))
+        yield* encodeZswapLocalStateObject(
+          // The intent file is already written at this point, so an unwrapped throw here would be
+          // a defect that leaves a partially-written output directory and reports nothing at all.
+          yield* CompactRuntime.tryRuntime(
+            'Failed to encode the zswap local state produced by the circuit',
+            () => CompactRuntime.encodeZswapLocalState(result.zswapLocalState)
+          )
+        )
       )
     );
     // Contract log events (MIP-0002) are non-consensus output; only write them when a destination

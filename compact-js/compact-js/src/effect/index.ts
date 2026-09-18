@@ -14,6 +14,7 @@
  */
 
 export * as CompactContext from './CompactContext.js';
+export * as CompactRuntime from './CompactRuntime.js';
 export * as CompiledContract from './CompiledContract.js';
 export * as Contract from './Contract.js';
 export * as ContractConfigurationError from './ContractConfigurationError.js';

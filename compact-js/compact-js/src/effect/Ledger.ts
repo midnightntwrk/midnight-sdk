@@ -27,32 +27,62 @@
  * a packaging-level fact — one era per build artifact — not a runtime dependency to vary per
  * effect. Downstream multi-era consumers select between era-scoped entries instead.
  */
+import type * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
+import { Effect, Either } from 'effect';
+
+import type * as CompactRuntime from './CompactRuntime.js';
+// The runtime side of every conversion below comes through the compact-runtime seam, not the
+// package: this module is where the two era-paired halves meet, so it is also where a mismatched
+// pair would first misbehave. Aliased `Runtime*` to keep each conversion's direction readable.
 import {
   type ContractMaintenanceAuthority as RuntimeContractMaintenanceAuthority,
   ContractState as RuntimeContractState,
   type QueryContext as RuntimeQueryContext,
   type StateValue as RuntimeStateValue
-} from '@midnight-ntwrk/compact-runtime';
-import type * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Effect, Either } from 'effect';
-
+} from './CompactRuntime.js';
 import * as ContractConfigurationError from './ContractConfigurationError.js';
 import * as ContractRuntimeError from './ContractRuntimeError.js';
+import * as boundary from './internal/boundary.js';
+import { type EraPairing } from './internal/era.js';
 import * as CurrentEra from './internal/ledger/current.js';
+import type { Assert, Extends } from './internal/typeAssertions.js';
 
+export { type Era } from './internal/era.js';
 export * from './internal/ledger/current.js';
-export { type Era } from './internal/ledger/era.js';
 
-// Every conversion below is a WASM-boundary (de)serialization that can throw; this wraps the
-// thunk so a failure surfaces as a typed `ContractRuntimeError` with a conversion-specific message.
-const tryConvert = <A>(
+// Compile-time proof that the two seams are bound to the *same* era. The ledger and runtime
+// halves are chosen in separate `current.ts` files, and `EraPairing` makes a mispaired descriptor
+// unrepresentable *within* a binding but says nothing about which two bindings a build actually
+// wired together. This module already imports both facades, so the check costs no new edge, and
+// it fails closed: if either literal widens, the assertion errors rather than quietly passing.
+// `CompactRuntime.test.ts` asserts the same pairing at run time; this makes a half-completed era
+// swap a build failure instead, which is what step 5 of CLAUDE.md's checklist relies on.
+type _SeamsArePaired = Assert<Extends<typeof CompactRuntime.line, EraPairing[typeof CurrentEra.era.ledger]>>;
+
+/**
+ * Wraps a call across the ledger (WASM) boundary so that a rejection becomes a typed failure
+ * rather than a defect.
+ *
+ * @remarks
+ * Ledger bindings signal rejection by throwing — a throw inside `Effect.gen` or a bare
+ * `Effect.map` callback becomes a defect, which escapes the caller's typed error handling.
+ * Every conversion below goes through this wrapper; any other ledger call made outside this
+ * facade should too.
+ *
+ * This is `internal/boundary.ts`'s `tryBoundary` under the name the ledger side knows it by; the
+ * compact-runtime seam re-exports the same function as `CompactRuntime.tryRuntime`, so there is
+ * exactly one copy of the boundary handling across both seams.
+ *
+ * @param message A message describing the operation, used as the failure's message.
+ * @param evaluate A thunk that performs the ledger call.
+ * @returns An `Effect` that yields the result of `evaluate`, failing with a
+ * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects it.
+ * @category combinators
+ */
+export const tryConvert: <A>(
   message: string,
-  evaluate: () => A
-): Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> =>
-  Effect.try({
-    try: evaluate,
-    catch: (err) => ContractRuntimeError.make(message, err)
-  });
+  evaluate: () => A extends PromiseLike<unknown> ? never : A
+) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = boundary.tryBoundary;
 
 /**
  * Converts a runtime {@link RuntimeContractState} to this era's ledger `ContractState`.
@@ -121,6 +151,14 @@ export const fromRuntimeMaintenanceAuthority: (
  * requested circuit (e.g. a state file for the wrong contract) would otherwise be cast from
  * `undefined` and surface as an opaque native fault.
  *
+ * @remarks
+ * Both of the ways a bad state file fails here are held in the error channel. `operation()`
+ * returning `undefined` is the wrong-contract case; `operation()` *throwing* is the
+ * wrong-WASM-instance case (`expected instance of ContractState`), and since this function's
+ * result is built while the caller's `Effect.gen` body runs, an unwrapped throw would be a defect
+ * that escapes the caller's `catchAll` entirely — the opaque fault this function exists to
+ * prevent.
+ *
  * @category conversions
  */
 export const operationForCircuit: (
@@ -131,12 +169,18 @@ export const operationForCircuit: (
   state,
   circuitId,
   contractAddress
-) => {
-  const operation = state.operation(circuitId);
-  return operation === undefined
-    ? ContractRuntimeError.make(`Contract state for '${contractAddress}' has no operation for circuit '${circuitId}'.`)
-    : Effect.succeed(operation);
-};
+) =>
+  tryConvert(`Unexpected error resolving the operation for circuit '${circuitId}' on '${contractAddress}'`, () =>
+    state.operation(circuitId)
+  ).pipe(
+    Effect.flatMap((operation) =>
+      operation === undefined
+        ? ContractRuntimeError.make(
+            `Contract state for '${contractAddress}' has no operation for circuit '${circuitId}'.`
+          )
+        : Effect.succeed(operation)
+    )
+  );
 
 // Unwrapped form of `fromRuntimeStateValue`, for composing inside another conversion's
 // `tryConvert`. It throws on an era-boundary decode failure, so every caller must be inside one.

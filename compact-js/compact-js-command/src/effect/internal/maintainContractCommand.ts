@@ -71,6 +71,6 @@ export const handler: (
     );
     yield* fs.writeFile(
       outputFilePath,
-      yield* InternalCommand.tryLedger('Failed to serialize the intent', () => intent.serialize())
+      yield* InternalCommand.serializeIntent(intent)
     );
   }).pipe(Effect.mapError((err) => ContractRuntimeError.make('Failed to apply maintenance operation', err)));
