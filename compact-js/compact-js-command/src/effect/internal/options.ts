@@ -43,10 +43,17 @@ export const config = Options.file('config', { exists: 'either' }).pipe(
 );
 
 /**
- * Selects the ledger era an invocation targets. This build is era-pinned, so the only accepted
- * value is the era it is bound to ({@link Ledger.era}); the option exists to make the era an
- * explicit, stable part of the CLI contract across the hardfork window — an invocation that needs
- * a different era fails fast here and must use a build pinned to that era.
+ * Selects the ledger era an invocation targets. The **CLI** is era-pinned even though the library
+ * is not: `@midnight-ntwrk/compact-js` now ships an executable per era (`/v8/effect`, `/v9/effect`),
+ * but the command handlers still build intents, decode states and assemble cross-contract calls
+ * against the bound `Ledger` facade — roughly forty call sites across the command modules. Until
+ * those take their era as a parameter the way `internal/executable.ts` does, the only value this
+ * option can honestly accept is the era it is bound to ({@link Ledger.era}).
+ *
+ * That is why an unsupported era is *rejected* rather than accepted-and-ignored: quietly running a
+ * ledger 9 execution for `--ledger-era 8` is the mislabelling the era work exists to prevent. A
+ * consumer that needs another era today reaches for the library entry for that era, which does
+ * execute it (midnight-sdk#387/#388).
  *
  * No handler reads the parsed value: the option exists purely so parsing rejects a mismatched
  * era. Do not remove it as "unused" — `LedgerEraOption.test.ts` exercises the rejection through
@@ -64,8 +71,8 @@ export const ledgerEra = Options.integer('ledger-era').pipe(
       : Effect.fail(
           ValidationError.invalidValue(
             HelpDoc.p(
-              `ledger era ${era} is not supported by this build (pinned to ledger era ${Ledger.era.ledger}); ` +
-                `use a build pinned to era ${era} to target it`
+              `ledger era ${era} is not supported by this command (pinned to ledger era ${Ledger.era.ledger}); ` +
+                `import '@midnight-ntwrk/compact-js/v${era}/effect' to execute that era from a program`
             )
           )
         )

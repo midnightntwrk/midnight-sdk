@@ -24,11 +24,11 @@ import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, Duration, Effect, Layer } from 'effect';
 
-import * as CommandConfigProvider from '../CommandConfigProvider.js';
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import * as ConfigCompilationError from '../ConfigCompilationError.js';
 import * as ConfigCompiler from '../ConfigCompiler.js';
 import type * as ConfigError from '../ConfigError.js';
+import * as CommandConfigProvider from './commandConfigProvider.js';
 import * as InternalOptions from './options.js';
 
 /** How far into the future a generated intent's TTL is set. */

@@ -60,6 +60,7 @@ import {
   type AlignedValue,
   type CircuitContext,
   type CircuitResults,
+  ContractMaintenanceAuthority as RuntimeContractMaintenanceAuthority,
   type ContractState,
   createCircuitContext,
   type EncodedZswapLocalState,
@@ -67,6 +68,7 @@ import {
   type ProofData,
   type QueryContext,
   sampleSigningKey,
+  type SignatureVerifyingKey,
   type SigningKey
 } from 'compact-runtime-ledger8';
 
@@ -84,7 +86,6 @@ export {
   CompactError,
   type ConstructorContext,
   type ConstructorResult,
-  ContractMaintenanceAuthority,
   ContractState,
   createCircuitContext,
   createConstructorContext,
@@ -100,6 +101,41 @@ export {
   type WitnessContext,
   type ZswapLocalState
 } from 'compact-runtime-ledger8';
+
+/**
+ * This line's `ContractMaintenanceAuthority`, with `deserialize`'s return type repaired.
+ *
+ * @remarks
+ * onchain-runtime-v3 declares `static deserialize(raw: Uint8Array): ContractState` — an upstream
+ * mistake in the generated `.d.ts`, and the exact one `@midnightntwrk/ledger-v8@8.1.2` carries on
+ * the ledger side (see `internal/ledger/v8.ts`). The WASM really returns a
+ * `ContractMaintenanceAuthority`: verified against the shipped 3.1.1 build, where
+ * `deserialize(cma.serialize())` yields a value whose constructor is
+ * `ContractMaintenanceAuthority` and which fails `instanceof ContractState`.
+ *
+ * Repairing it at the seam matters more here than the label suggests. `makeConversions` derives
+ * `fromRuntimeMaintenanceAuthority`'s **parameter** from this return type, so unrepaired the
+ * published `/v8/effect` signature asks for a `ContractState`: the authority a caller actually
+ * holds is rejected at compile time, and the contract state that is accepted instead fails inside
+ * WASM. The ledger 9 line declares this correctly, so without the repair the two eras would also
+ * disagree on a signature that #388 requires to be identical.
+ *
+ * Re-check on each 3.x release — if upstream fixes the declaration, this cast becomes a no-op and
+ * can go. `RuntimeBinding.tst.ts` pins the relationship on both lines.
+ */
+const ContractMaintenanceAuthority = RuntimeContractMaintenanceAuthority as unknown as {
+  new (
+    committee: SignatureVerifyingKey[],
+    threshold: number,
+    counter?: bigint
+  ): RuntimeContractMaintenanceAuthority;
+  deserialize(raw: Uint8Array): RuntimeContractMaintenanceAuthority;
+};
+
+export { ContractMaintenanceAuthority };
+
+/** This line's `ContractMaintenanceAuthority` instance type, unaffected by the repair above. */
+export type ContractMaintenanceAuthority = RuntimeContractMaintenanceAuthority;
 
 /**
  * The compact-runtime line this binding targets.

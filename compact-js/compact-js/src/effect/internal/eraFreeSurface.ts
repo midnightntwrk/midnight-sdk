@@ -43,7 +43,11 @@
  *
  * Keep alphabetized, matching `effect/index.ts`.
  *
- * @internal
+ * This docblock carries no internal-marker JSDoc tag: a module docblock attaches to the file's
+ * first statement, so under `stripInternal` the marker deletes the first export below — silently,
+ * since the ESM emit keeps it. Privacy comes from `package.json` `exports` blocking
+ * `./effect/internal/*` instead, and `verify-exports` fails the build if the marker comes back.
+ * See `internal/boundary.ts` for why this note does not spell the tag out.
  */
 export * as CompactContext from '../CompactContext.js';
 export * as CompiledContract from '../CompiledContract.js';

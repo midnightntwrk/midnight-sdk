@@ -40,7 +40,8 @@
  *
  * Keep alphabetized, matching `effect/index.ts`.
  *
- * @internal
+ * No internal-marker JSDoc tag — see `eraFreeSurface.ts` for why a module docblock must not carry
+ * one here.
  */
 export * as CompactRuntime from '../CompactRuntime.js';
 export * as ContractExecutable from '../ContractExecutable.js';

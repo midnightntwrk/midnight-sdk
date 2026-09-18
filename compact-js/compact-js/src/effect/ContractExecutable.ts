@@ -13,176 +13,64 @@
  * limitations under the License.
  */
 
-import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
-import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
-import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Effect, Either, type Layer, Option } from 'effect';
-import { dual, identity } from 'effect/Function';
-import { type Pipeable, pipeArguments } from 'effect/Pipeable';
-
+/**
+ * Contract execution for the era this build binds.
+ *
+ * @remarks
+ * The bodies live in `internal/executable.ts`, which takes an era pair as arguments; this module is
+ * that factory applied to the {@link Ledger} and {@link CompactRuntime} facades — so it follows
+ * each seam's `current.ts`, exactly as it did when it held the implementation itself. Consumers
+ * see no difference: the type and function names, their parameters and their results are unchanged.
+ *
+ * What changed is that this is no longer the *only* application. `internal/era/v8Executable.ts` and
+ * `internal/era/v9Executable.ts` apply the same factory to a pinned era pair, which is what lets
+ * `/v8/effect` and `/v9/effect` export an executable that genuinely belongs to the era its path
+ * names rather than to whichever era the build bound (midnight-sdk#387/#388).
+ *
+ * @module
+ */
 import * as CompactRuntime from './CompactRuntime.js';
-import { type CompiledContract } from './CompiledContract.js';
-import * as Contract from './Contract.js';
-import * as ContractConfigurationError from './ContractConfigurationError.js';
-import { validateEvents } from './ContractEventValidator.js';
-import * as ContractRuntimeError from './ContractRuntimeError.js';
-import * as CompactContextInternal from './internal/compactContext.js';
+import type * as Contract from './Contract.js';
+import * as Internal from './internal/executable.js';
 import * as Ledger from './Ledger.js';
-import { ZKConfiguration } from './ZKConfiguration.js';
-import { type ZKConfigurationReadError } from './ZKConfigurationReadError.js';
+
+/** The era pair this entry executes against: whichever the build binds. */
+type BoundLedger = typeof Ledger;
+type BoundRuntime = typeof CompactRuntime;
+
+const executable = Internal.makeExecutable(Ledger, CompactRuntime);
 
 /**
  * An executable form of a Compact compiled contract.
  */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
 export interface ContractExecutable<in out C extends Contract.Contract<PS>, PS, out E = never, out R = never>
-  extends Pipeable {
-  readonly compiledContract: CompiledContract<C, PS>;
-
-  /**
-   * Creates and initializes a new instance of the contract.
-   *
-   * @param initialPrivateState The initial private state to apply when initializing the new contract instance.
-   * @param args The arguments to supply the contract constructor.
-   * @returns A {@link ContractExecutable.DeployResult} describing the result of initializing a new contract
-   * instance.
-   */
-  initialize(
-    initialPrivateState: PS,
-    ...args: Contract.Contract.InitializeParameters<C>
-  ): Effect.Effect<ContractExecutable.DeployResult<PS>, E, R>;
-
-  /**
-   * Invokes a circuit on deployed instance of the contract.
-   *
-   * @param provableCircuitId The circuit to be invoked.
-   * @param circuitContext Execution context for `provableCircuitId` including its current onchain and private
-   * states.
-   * @param args The arguments to supply the circuit.
-   * @returns A {@link ContractExecutable.CallResult} describing the result of invoking `provableCircuitId`.
-   */
-  circuit<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
-    provableCircuitId: K,
-    circuitContext: ContractExecutable.CircuitContext<PS>,
-    ...args: Contract.Contract.CircuitParameters<C, K>
-  ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R>;
-
-  /**
-   * Retrieves the provable circuits available as part of the underlying contract.
-   *
-   * @returns An array of {@link Contract.ProvableCircuitId} describing the available provable circuits.
-   */
-  getProvableCircuitIds(): Contract.ProvableCircuitId<C>[];
-
-  /**
-   * Applies a new Contract Maintenance Authority (CMA) to a deployed instance of the contract.
-   *
-   * @param newSigningKey The signing key that will replace the current that is associated with the
-   * deployed contract. If `Option.none` then a new singing key is sampled and used instead.
-   * @param contractContext Execution context for the maintenance operation.
-   * @returns A {@link ContractExecutable.MaintenanceResult} describing the result of the maintenance update.
-   *
-   * @remarks
-   * The current signing key will be taken from the {@link Configuration.Keys} that is part of the executable
-   * context, and used to sign the maintenance operation.
-   */
-  replaceContractMaintenanceAuthority(
-    newSigningKey: Option.Option<SigningKey.SigningKey>,
-    contractContext: ContractExecutable.ContractContext
-  ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R>;
-
-  /**
-   * Removes the current verifier key for an operation on a deployed instance of the contract.
-   *
-   * @param provableCircuitId The circuit to be removed from the deployed contract.
-   * @param contractContext Execution context for the maintenance operation.
-   * @returns A {@link ContractExecutable.MaintenanceResult} describing the result of the maintenance update.
-   */
-  removeContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
-    provableCircuitId: K,
-    contractContext: ContractExecutable.ContractContext
-  ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R>;
-
-  /**
-   * Adds or replaces a verifier key associated with a circuit on a deployed contract.
-   *
-   * @param provableCircuitId The circuit to add or replace on the deployed contract.
-   * @param verifierKey The verifier key to apply to `provableCircuitId`.
-   * @param contractContext Execution context for the maintenance operation.
-   * @returns A {@link ContractExecutable.MaintenanceResult} describing the result of the maintenance update.
-   */
-  addOrReplaceContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
-    provableCircuitId: K,
-    verifierKey: Contract.VerifierKey,
-    contractContext: ContractExecutable.ContractContext
-  ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R>;
-}
+  extends Internal.ContractExecutable<BoundLedger, BoundRuntime, C, PS, E, R> {}
 
 export declare namespace ContractExecutable {
   /**
    * The services required as context for executing contracts.
    */
-  export type Context = ZKConfiguration | Configuration.Keys;
+  export type Context = Internal.Context;
 
-  export type ContractContext = {
-    readonly address: ContractAddress.ContractAddress;
-    readonly contractState: CompactRuntime.ContractState;
-  };
+  export type ContractContext = Internal.ContractContext<BoundLedger, BoundRuntime>;
 
-  export type CircuitContext<PS> = ContractContext & {
-    readonly privateState: PS;
-    readonly zswapLocalState?: CompactRuntime.ZswapLocalState;
-    readonly ledgerParameters?: Ledger.LedgerParameters;
-  } & (
-      | { readonly stateProvider?: undefined; readonly parentBlockHash?: undefined }
-      | { readonly stateProvider: CompactRuntime.ContractStateProvider; readonly parentBlockHash: string }
-    );
+  export type CircuitContext<PS> = Internal.CircuitContext<BoundLedger, BoundRuntime, PS>;
 
-  export type DeployResultPublic = {
-    readonly contractState: CompactRuntime.ContractState;
-  };
-  export type DeployResultPrivate<PS> = {
-    readonly signingKey: SigningKey.SigningKey;
-    readonly privateState: PS;
-    readonly zswapLocalState: CompactRuntime.ZswapLocalState;
-  };
-  export type DeployResult<PS> = {
-    readonly public: DeployResultPublic;
-    readonly private: DeployResultPrivate<PS>;
-  };
+  export type DeployResultPublic = Internal.DeployResultPublic<BoundLedger, BoundRuntime>;
+  export type DeployResultPrivate<PS> = Internal.DeployResultPrivate<BoundLedger, BoundRuntime, PS>;
+  export type DeployResult<PS> = Internal.DeployResult<BoundLedger, BoundRuntime, PS>;
 
-  export type PartitionedTranscript = [
-    Ledger.Transcript<CompactRuntime.AlignedValue> | undefined,
-    Ledger.Transcript<CompactRuntime.AlignedValue> | undefined
-  ];
-  export type ContractCallPublic = {
-    readonly contractState: CompactRuntime.StateValue;
-    readonly publicTranscript: CompactRuntime.Op<CompactRuntime.AlignedValue>[];
-    readonly partitionedTranscript: PartitionedTranscript;
-  };
-  export type ContractCallPrivate = {
-    readonly input: CompactRuntime.AlignedValue;
-    readonly output: CompactRuntime.AlignedValue;
-    readonly privateTranscriptOutputs: CompactRuntime.AlignedValue[];
-  };
+  export type PartitionedTranscript = Internal.PartitionedTranscript<BoundLedger, BoundRuntime>;
+  export type ContractCallPublic = Internal.ContractCallPublic<BoundLedger, BoundRuntime>;
+  export type ContractCallPrivate = Internal.ContractCallPrivate<BoundLedger, BoundRuntime>;
 
   /**
    * Proof data for a single contract call. One {@link ContractCall} is produced for every call
    * made while executing a circuit — the root call plus one per cross-contract call —
    * corresponding to the entries of the runtime's `callProofDataTrace`.
    */
-  export type ContractCall = {
-    readonly contractAddress: ContractAddress.ContractAddress;
-    readonly circuitId: string;
-    readonly public: ContractCallPublic;
-    readonly private: ContractCallPrivate;
-    /**
-     * The communication commitment binding this call to its caller. Present (`Option.some`) for
-     * cross-contract sub-calls (callees); `Option.none` for the root call, which is no one's
-     * callee.
-     */
-    readonly communicationCommitment: Option.Option<CompactRuntime.CommunicationCommitmentData>;
-  };
+  export type ContractCall = Internal.ContractCall<BoundLedger, BoundRuntime>;
 
   /**
    * The result of invoking a circuit.
@@ -202,556 +90,23 @@ export declare namespace ContractExecutable {
    * per-event payloads, decode on demand with `ContractLog.decodeAll(result.events)` (which
    * degrades gracefully and never throws); feed them to a `ContractEventStore` to query/subscribe.
    */
-  export type CallResult<C extends Contract.Contract<PS>, PS, K extends Contract.ProvableCircuitId<C>> = {
-    readonly result: Contract.Contract.CircuitReturnType<C, K>;
-    readonly privateState: PS | undefined;
-    readonly zswapLocalState: CompactRuntime.ZswapLocalState;
-    readonly events: CompactRuntime.LogEvent[];
-    readonly calls: readonly ContractCall[];
-  };
+  export type CallResult<
+    C extends Contract.Contract<PS>,
+    PS,
+    K extends Contract.ProvableCircuitId<C>
+  > = Internal.CallResult<BoundLedger, BoundRuntime, C, PS, K>;
 
-  export type MaintenanceResultPublic = {
-    readonly maintenanceUpdate: Ledger.MaintenanceUpdate;
-  };
-  export type MaintenanceResultPrivate = {
-    readonly signingKey: SigningKey.SigningKey;
-  };
-  export type MaintenanceResult = {
-    readonly public: MaintenanceResultPublic;
-    readonly private: MaintenanceResultPrivate;
-  };
+  export type MaintenanceResultPublic = Internal.MaintenanceResultPublic<BoundLedger, BoundRuntime>;
+  export type MaintenanceResultPrivate = Internal.MaintenanceResultPrivate;
+  export type MaintenanceResult = Internal.MaintenanceResult<BoundLedger, BoundRuntime>;
 }
 
 /**
  * An error occurred while executing a constructor, or a circuit, of an executable contract.
- *`
+ *
  * @category errors
  */
-export type ContractExecutionError =
-  | ContractRuntimeError.ContractRuntimeError
-  | ContractConfigurationError.ContractConfigurationError
-  | ZKConfigurationReadError;
-
-// A function that receives an `Effect`, and captures it within another `Effect` that is bound to some
-// specified error and context type.
-type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<A, E, R>; // eslint-disable-line @typescript-eslint/no-explicit-any
-
-const DEFAULT_CMA_THRESHOLD = 1;
-const DEFAULT_SIGNATURE_INDEX = 0n;
-
-// Partition the public transcripts of every call in the trace in a single batch.
-//
-// `partitionTranscripts` builds a caller->callee call graph across the whole batch by matching
-// each callee's communication commitment against the commitments its caller claimed, so it must
-// see every call at once (see midnight-ledger `construct.rs::partition_transcripts`). The
-// commitment rides on the *callee's* pre-transcript (`commCommData.commComm`); the root call has
-// no commitment and becomes the graph root. The returned array is in the same order as `trace`.
-const partitionAllTranscripts = (
-  // The era-neutral trace-entry type supplied by whichever runtime line is bound. On 0.19 it is
-  // the runtime's own `CallProofData`; on 0.16 it is synthesised by that binding's `readExecution`
-  // from the flat frame. Using it here rather than `CallProofData` is what keeps this module
-  // buildable on both lines (midnight-sdk#387 phase 3).
-  trace: readonly CompactRuntime.CallTraceEntry[],
-  ledgerParameters: Ledger.LedgerParameters | undefined
-): Effect.Effect<ContractExecutable.PartitionedTranscript[], ContractRuntimeError.ContractRuntimeError> =>
-  Effect.gen(function* () {
-    // Each pre-transcript is built from the *initial* context (whose own commitments arrive with
-    // its `block`), then given the *final* context's commitments on top — the set the partitioner
-    // matches callers to callees on.
-    const preTranscripts = yield* Effect.forEach(trace, (entry) =>
-      Ledger.fromRuntimeQueryContext(entry.initialQueryContext).pipe(
-        Effect.flatMap((initialContext) =>
-          Ledger.tryConvert('Unexpected error building call pre-transcript', () =>
-            new Ledger.PreTranscript(
-              Array.from(entry.finalQueryContext.comIndices).reduce(
-                (queryContext, comEntry) => queryContext.insertCommitment(...comEntry),
-                initialContext
-              ),
-              [...entry.publicTranscript],
-              entry.commCommData?.commComm
-            )
-          )
-        )
-      )
-    );
-    const partitioned = yield* Ledger.tryConvert('Unexpected error partitioning call transcripts', () =>
-      Ledger.partitionTranscripts(preTranscripts, ledgerParameters ?? Ledger.LedgerParameters.initialParameters())
-    );
-    return partitioned.length === trace.length
-      ? partitioned
-      : yield* ContractRuntimeError.make(
-          `Expected ${trace.length} transcript partition pairs, received: ${partitioned.length}`
-        );
-  });
-
-class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implements ContractExecutable<C, PS, E, R> {
-  compiledContract: CompiledContract<C, PS>;
-  transform: Transform<E, R>;
-
-  constructor(compiledContract: CompiledContract<C, PS, never>, transform: Transform<E, R> = identity) {
-    this.compiledContract = compiledContract;
-    this.transform = transform;
-  }
-
-  pipe() {
-    return pipeArguments(this, arguments); // eslint-disable-line prefer-rest-params
-  }
-
-  initialize(
-    initialPrivateState: PS,
-    ...args: Contract.Contract.InitializeParameters<C>
-  ): Effect.Effect<ContractExecutable.DeployResult<PS>, E, R> {
-    return Effect.all({
-      zkConfigReader: ZKConfiguration.pipe(
-        Effect.andThen((zkConfig) => zkConfig.createReader<C, PS>(this.compiledContract))
-      ),
-      keyConfig: Configuration.Keys,
-      contract: this.createContract()
-    }).pipe(
-      Effect.flatMap(({ zkConfigReader, keyConfig, contract }) =>
-        Effect.tryPromise({
-          try: async () => {
-            const { currentContractState, currentPrivateState, currentZswapLocalState } = await contract.initialState(
-              CompactRuntime.createConstructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
-              ...args
-            );
-            return {
-              contractState: currentContractState,
-              privateState: currentPrivateState,
-              zswapLocalState: CompactRuntime.decodeZswapLocalState(currentZswapLocalState)
-            };
-          },
-          catch: (err: unknown) =>
-            err instanceof CompactRuntime.CompactError
-              ? ContractRuntimeError.make('Failed to initialize contract', err)
-              : ContractConfigurationError.make(
-                  'Failed to configure constructor context with coin public key',
-                  undefined,
-                  err
-                )
-        }).pipe(
-          Effect.flatMap(({ contractState, privateState, zswapLocalState }) =>
-            Effect.gen(this, function* () {
-              // Add the verifier keys.
-              const verifierKeys = yield* zkConfigReader.getVerifierKeys(Contract.getProvableCircuitIds(contract));
-
-              for (const [provableCircuitId, verifierKey] of verifierKeys) {
-                // If there is no verifier key for this circuit, raise an error.
-                if (Option.isNone(verifierKey)) {
-                  return yield* ContractConfigurationError.make(
-                    `Failed to find a verifier key for circuit '${provableCircuitId}'`,
-                    contractState
-                  );
-                }
-
-                // `operation()` crosses the runtime WASM boundary, so it throws on a state built
-                // against a second instantiation rather than returning `undefined`. Unguarded in
-                // this generator body that throw would be a defect, escaping the declared error
-                // channel — the `undefined` check below only covers the circuit-not-found case.
-                let operation: ReturnType<typeof contractState.operation>;
-                try {
-                  operation = contractState.operation(provableCircuitId);
-                } catch (err: unknown) {
-                  return yield* ContractConfigurationError.make(
-                    `Failed to read the operation for circuit '${provableCircuitId}' from the given contract state`,
-                    contractState,
-                    err
-                  );
-                }
-
-                if (!operation) {
-                  return yield* ContractConfigurationError.make(
-                    `Circuit '${provableCircuitId}' is undefined for the given contract state`,
-                    contractState
-                  );
-                }
-
-                try {
-                  operation.verifierKey = verifierKey.value;
-                  contractState.setOperation(provableCircuitId, operation);
-                } catch (err: unknown) {
-                  return yield* ContractConfigurationError.make(
-                    `Failed to configure verifier key for circuit '${provableCircuitId}' for the given contract state`,
-                    contractState,
-                    err
-                  );
-                }
-              }
-
-              const [cma, signingKey] = yield* this.createMaintenanceAuthority(keyConfig.getSigningKey());
-
-              // A runtime WASM setter, and the one that reports `expected instance of
-              // ContractMaintenanceAuthority` when the state and the authority come from two
-              // copies of the runtime. Guarded for the same reason as `setOperation` above.
-              try {
-                contractState.maintenanceAuthority = cma;
-              } catch (err: unknown) {
-                return yield* ContractConfigurationError.make(
-                  'Failed to set the maintenance authority on the given contract state',
-                  contractState,
-                  err
-                );
-              }
-
-              return {
-                public: {
-                  contractState
-                },
-                private: {
-                  signingKey,
-                  privateState,
-                  zswapLocalState
-                }
-              };
-            })
-          )
-        )
-      ),
-      this.transform
-    );
-  }
-
-  circuit<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
-    provableCircuitId: K,
-    circuitContext: ContractExecutable.CircuitContext<PS>,
-    ...args: Contract.Contract.CircuitParameters<C, K>
-  ): Effect.Effect<ContractExecutable.CallResult<C, PS, K>, E, R> {
-    return Effect.all({
-      keyConfig: Configuration.Keys,
-      contract: this.createContract()
-    }).pipe(
-      Effect.flatMap(({ keyConfig, contract }) =>
-        Effect.tryPromise({
-          try: async () => {
-            const circuit = contract.provableCircuits[provableCircuitId] as Contract.ProvableCircuit<
-              PS,
-              Contract.Contract.CircuitReturnType<C, K>
-            >;
-            if (!circuit) {
-              throw new Error(`Circuit ${this.compiledContract.tag}#${provableCircuitId} could not be found.`);
-            }
-            const zswapLocalState = circuitContext.zswapLocalState
-              ? CompactRuntime.encodeZswapLocalState(circuitContext.zswapLocalState)
-              : CompactRuntime.emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey));
-            // Both the context build and the result projection go through the runtime seam's
-            // execution adapter rather than `createCircuitContext`/`context.callProofDataTrace`
-            // directly. The two lines disagree on the argument order, on whether a circuit id is
-            // even a parameter, and on where proof data lands; the adapter presents one view of
-            // both. `readExecution` is called inside this `try` so an era that cannot honour the
-            // request (0.16 given a cross-contract state provider) surfaces through the
-            // `ContractRuntimeError` mapping below instead of escaping as a defect.
-            const runtimeContext = CompactRuntime.createExecutionContext({
-              circuitId: provableCircuitId,
-              address: circuitContext.address,
-              zswapLocalState,
-              contractState: circuitContext.contractState,
-              privateState: circuitContext.privateState,
-              stateProvider: circuitContext.stateProvider,
-              parentBlockHash: circuitContext.parentBlockHash
-            });
-            return CompactRuntime.readExecution(await circuit(runtimeContext, ...args));
-          },
-          catch: identity
-        }).pipe(
-          Effect.flatMap((execution) =>
-            Effect.gen(function* () {
-              // Every call made while executing the circuit, in trace order (callees first, the
-              // root call last). For a circuit with no cross-contract calls this has length 1 —
-              // which is the only case a ledger 8 build can produce.
-              const trace = execution.trace;
-              const zswapLocalState = execution.zswapLocalState;
-              if (zswapLocalState === undefined) {
-                return yield* ContractRuntimeError.make(`Circuit '${provableCircuitId}' returned no zswap local state`);
-              }
-              // Validate the log events emitted by the VM before surfacing them: they are untrusted
-              // VM output and are serialized verbatim for external (indexer/DApp) consumption. A
-              // structural failure is funnelled through the `ContractRuntimeError` mapping below.
-              // Events are a single execution-wide list, each tagged with the emitting contract's
-              // address; a per-call view is a filter over that address (see compact-runtime).
-              yield* validateEvents(execution.events);
-              // Partition all calls' transcripts together (the partitioner needs the whole batch
-              // to reconstruct the caller/callee graph).
-              const partitioned = yield* partitionAllTranscripts(trace, circuitContext.ledgerParameters);
-              const calls: ContractExecutable.ContractCall[] = yield* Effect.forEach(trace, (entry, i) =>
-                Effect.gen(function* () {
-                  const partitionedTranscript = partitioned[i];
-                  if (partitionedTranscript === undefined) {
-                    // Unreachable: `partitionAllTranscripts` guarantees one partition pair per
-                    // trace entry. Guarded so the mapping is sound under `noUncheckedIndexedAccess`.
-                    return yield* ContractRuntimeError.make(
-                      `Missing partitioned transcript for call ${i} ('${entry.circuitId}')`
-                    );
-                  }
-                  return {
-                    contractAddress: ContractAddress.ContractAddress(entry.contractAddress),
-                    circuitId: entry.circuitId,
-                    public: {
-                      contractState: entry.finalQueryContext.state.state,
-                      // Copied because the era-neutral trace exposes a readonly view while the
-                      // public `ContractCall` field is mutable; narrowing that field would be a
-                      // breaking type change for consumers.
-                      publicTranscript: [...entry.publicTranscript],
-                      partitionedTranscript
-                    },
-                    private: {
-                      input: entry.input,
-                      output: entry.output,
-                      privateTranscriptOutputs: [...entry.privateTranscriptOutputs]
-                    },
-                    communicationCommitment: Option.fromNullable(entry.commCommData)
-                  };
-                })
-              );
-              // Unlike the runtime calls that build the context above, this one runs in the
-              // generator body rather than inside `Effect.tryPromise`'s callback, so it needs the
-              // seam's wrapper: an unwrapped throw here would be a defect, and the terminating
-              // `Effect.mapError` below maps the error channel only. That would make this method's
-              // declared `ContractExecutionError` channel unsound for consumers.
-              const decodedZswapLocalState = yield* CompactRuntime.tryRuntime(
-                `Failed to decode the zswap local state returned by circuit '${provableCircuitId}'`,
-                () => CompactRuntime.decodeZswapLocalState(zswapLocalState)
-              );
-              // `result`, `privateState`, and `zswapLocalState` belong to the root contract;
-              // `events` is the whole execution's log-event list (each tagged with its emitter).
-              return {
-                result: execution.result,
-                privateState: execution.privateState,
-                zswapLocalState: decodedZswapLocalState,
-                // Copied rather than narrowing `CallResult.events` to `readonly`: the adapter hands
-                // back a readonly view, and changing the public field's mutability would be a
-                // breaking type change for consumers. On a line that cannot emit events this is
-                // `never[]`, so the copy is of an empty array.
-                events: [...execution.events],
-                calls
-              };
-            })
-          ),
-          Effect.mapError((err) => ContractRuntimeError.make(`Error executing circuit '${provableCircuitId}'`, err))
-        )
-      ),
-      this.transform
-    );
-  }
-
-  getProvableCircuitIds(): Contract.ProvableCircuitId<C>[] {
-    return Contract.getProvableCircuitIds(Effect.runSync(this.createContract()));
-  }
-
-  replaceContractMaintenanceAuthority(
-    this: ContractExecutableImpl<C, PS, E, R>,
-    newSigningKey: Option.Option<SigningKey.SigningKey>,
-    contractContext: ContractExecutable.ContractContext
-  ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R> {
-    return Effect.all({
-      keyConfig: Configuration.Keys
-    }).pipe(
-      Effect.flatMap(({ keyConfig }) =>
-        Effect.gen(this, function* () {
-          const { contractState } = contractContext;
-          const [cma, signingKey] = yield* this.createMaintenanceAuthority(newSigningKey, contractState);
-          const ledger_cma = yield* Ledger.fromRuntimeMaintenanceAuthority(cma);
-          const update = yield* this.createSignedMaintenanceUpdate(
-            () => {
-              return Either.right([new Ledger.ReplaceAuthority(ledger_cma)]);
-            },
-            keyConfig,
-            contractContext
-          );
-          return {
-            ...update,
-            private: {
-              ...update.private,
-              signingKey // We need to include the new signing key in the result (rather than the current).
-            }
-          };
-        })
-      ),
-      this.transform
-    );
-  }
-
-  removeContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
-    this: ContractExecutableImpl<C, PS, E, R>,
-    provableCircuitId: K,
-    contractContext: ContractExecutable.ContractContext
-  ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R> {
-    return Effect.all({
-      keyConfig: Configuration.Keys
-    }).pipe(
-      Effect.flatMap(({ keyConfig }) =>
-        Effect.gen(this, function* () {
-          return yield* this.createSignedMaintenanceUpdate(
-            () => {
-              return Either.right([new Ledger.VerifierKeyRemove(provableCircuitId, Ledger.makeContractOperationVersion())]);
-            },
-            keyConfig,
-            contractContext
-          );
-        })
-      ),
-      this.transform
-    );
-  }
-
-  addOrReplaceContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
-    provableCircuitId: K,
-    verifierKey: Contract.VerifierKey,
-    contractContext: ContractExecutable.ContractContext
-  ): Effect.Effect<ContractExecutable.MaintenanceResult, E, R> {
-    return Effect.all({
-      keyConfig: Configuration.Keys
-    }).pipe(
-      Effect.flatMap(({ keyConfig }) =>
-        Effect.gen(this, function* () {
-          return yield* this.createSignedMaintenanceUpdate(
-            () => {
-              return Either.right([
-                new Ledger.VerifierKeyInsert(provableCircuitId, Ledger.makeVersionedVerifierKey(verifierKey))
-              ]);
-            },
-            keyConfig,
-            contractContext
-          );
-        })
-      ),
-      this.transform
-    );
-  }
-
-  protected createSignedMaintenanceUpdate(
-    createUpdateFn: () => Either.Either<Ledger.SingleUpdate[], ContractConfigurationError.ContractConfigurationError>,
-    keyConfig: Configuration.Configuration.Keys,
-    contractContext: ContractExecutable.ContractContext
-  ): Either.Either<ContractExecutable.MaintenanceResult, ContractConfigurationError.ContractConfigurationError> {
-    const { address, contractState } = contractContext;
-    const currentSigningKey = keyConfig.getSigningKey();
-    if (Option.isNone(currentSigningKey)) {
-      return Either.left(
-        ContractConfigurationError.make('Signing key required to authorize contract maintenance update', contractState)
-      );
-    }
-    const signingKey = currentSigningKey.value;
-    const ledgerSigningKey = Ledger.fromPlatformSigningKey(signingKey, contractState);
-    if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);
-    // `createUpdateFn` builds ledger `SingleUpdate`s, so it crosses the ledger boundary: a
-    // `VerifierKeyInsert` over a key the era rejects throws here. `Contract.VerifierKey` is
-    // `Brand.nominal` and validates nothing, so any file a caller reads reaches this line.
-    let update: Either.Either<Ledger.SingleUpdate[], ContractConfigurationError.ContractConfigurationError>;
-    try {
-      update = createUpdateFn();
-    } catch (err: unknown) {
-      return Either.left(
-        ContractConfigurationError.make('Failed to build the contract maintenance update', contractState, err)
-      );
-    }
-    if (Either.isLeft(update)) return Either.left(update.left);
-
-    // The constructor validates `address` and the updates, and the counter read is a runtime WASM
-    // getter — all three reject by throwing.
-    let maintenanceUpdate: Ledger.MaintenanceUpdate;
-    try {
-      maintenanceUpdate = new Ledger.MaintenanceUpdate(address, update.right, contractState.maintenanceAuthority.counter);
-    } catch (err: unknown) {
-      return Either.left(
-        ContractConfigurationError.make(
-          `Failed to create a maintenance update for contract '${address}'`,
-          contractState,
-          err
-        )
-      );
-    }
-
-    // `addSignature` is inside this block with `signData`: it rejects a signature whose scheme the
-    // era's authority does not accept, which is the same failure surfaced one call later.
-    try {
-      const signature = Ledger.signData(ledgerSigningKey.right, maintenanceUpdate.dataToSign);
-      return Either.right({
-        public: {
-          maintenanceUpdate: maintenanceUpdate.addSignature(DEFAULT_SIGNATURE_INDEX, signature)
-        },
-        private: {
-          signingKey
-        }
-      });
-    } catch (err: unknown) {
-      return Either.left(
-        ContractConfigurationError.make(
-          `Failed to sign contract maintenance update with a '${signingKey.tag}' signing key`,
-          contractState,
-          err
-        )
-      );
-    }
-  }
-
-  protected createMaintenanceAuthority(
-    key: Option.Option<SigningKey.SigningKey>,
-    contractState?: CompactRuntime.ContractState
-  ): Either.Either<
-    [CompactRuntime.ContractMaintenanceAuthority, SigningKey.SigningKey],
-    ContractConfigurationError.ContractConfigurationError
-  > {
-    // `makeSampleSigningKey` crosses the runtime boundary and rejects a scheme the bound line
-    // cannot sample. Guarded here rather than in the `try` below, which starts after the key is
-    // already needed — an unguarded throw in this `Either`-returning helper is a defect at every
-    // caller.
-    let signingKey: SigningKey.SigningKey;
-    try {
-      signingKey = Option.match(key, {
-        onSome: identity,
-        // Tag the sampled key with the era's scheme too: `SigningKey.make` otherwise defaults the
-        // tag to platform-js's own constant, which would label an era's non-schnorr sample as
-        // schnorr and sign with the wrong scheme while still passing the allowlist check below.
-        // Sampled through the seam's `makeSampleSigningKey`/`signingKeyHex` pair rather than the
-        // runtime's own `sampleSigningKey`, because that function is era-varying on both sides:
-        // onchain-runtime-v3 takes no argument and returns a bare hex string, v4 takes a scheme and
-        // returns `{ tag, value }`. Reading `.value` here would compile against only one line.
-        onNone: () =>
-          SigningKey.make(
-            CompactRuntime.signingKeyHex(CompactRuntime.makeSampleSigningKey(Ledger.era.defaultCmaSignatureKind)),
-            Ledger.era.defaultCmaSignatureKind
-          )
-      });
-    } catch (err: unknown) {
-      return Either.left(
-        ContractConfigurationError.make(
-          `Failed to sample a '${Ledger.era.defaultCmaSignatureKind}' contract maintenance authority signing key`,
-          contractState,
-          err
-        )
-      );
-    }
-    const ledgerSigningKey = Ledger.fromPlatformSigningKey(signingKey, contractState);
-    if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);
-    try {
-      return Either.right([
-        new CompactRuntime.ContractMaintenanceAuthority(
-          [CompactRuntime.signatureVerifyingKey(ledgerSigningKey.right)],
-          DEFAULT_CMA_THRESHOLD,
-          contractState ? contractState.maintenanceAuthority.counter + 1n : 0n
-        ),
-        signingKey
-      ]);
-    } catch (err: unknown) {
-      return Either.left(
-        ContractConfigurationError.make(
-          `Failed to create a signature verifying key for signing key '${signingKey}'`,
-          contractState,
-          err
-        )
-      );
-    }
-  }
-
-  protected createContract(): Effect.Effect<C, ContractRuntimeError.ContractRuntimeError> {
-    return (this.contract ??= CompactContextInternal.createContract(this.compiledContract).pipe(
-      Effect.mapError((err: unknown) => ContractRuntimeError.make(String(err), err)),
-      Effect.cached,
-      Effect.runSync
-    ));
-  }
-  private contract?: Effect.Effect<C, ContractRuntimeError.ContractRuntimeError>; // Backing property for `createContract`.
-}
+export type ContractExecutionError = Internal.ContractExecutionError;
 
 /**
  * Takes a Compact compiled contract, and makes it executable.
@@ -761,43 +116,11 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
  *
  * @category constructors
  */
-export const make: <C extends Contract.Contract<PS>, PS>(
-  compiledContract: CompiledContract<C, PS, never>
-) => ContractExecutable<C, PS, ContractExecutionError, ContractExecutable.Context> = <
-  C extends Contract.Contract<PS>,
-  PS
->(
-  compiledContract: CompiledContract<C, PS, never>
-) => new ContractExecutableImpl<C, PS, ContractExecutionError, ContractExecutable.Context>(compiledContract);
+export const make = executable.make;
 
 /**
  * Provides a layer to the executable contract.
  *
  * @category combinators
  */
-export const provide: {
-  /**
-   * @param layer The layer to provide.
-   * @returns A function that receives the {@link ContractExecutable} that `layer` should be provided to.
-   */
-  <LA, LE, LR>(layer: Layer.Layer<LA, LE, LR>): <C extends Contract.Contract<PS>, PS, E, R>(
-    self: ContractExecutable<C, PS, E, R>
-  ) => ContractExecutable<C, PS, E | LE, LR | Exclude<R, LA>>;
-  /**
-   * @param self The {@link ContractExecutable} that `layer` should be provided with.
-   * @param layer The layer to provide.
-   */
-  <C extends Contract.Contract<PS>, PS, E, R, LA, LE, LR>(
-    self: ContractExecutable<C, PS, E, R>,
-    layer: Layer.Layer<LA, LE, LR>
-  ): ContractExecutable<C, PS, E | LE, LR | Exclude<R, LA>>;
-} = dual(
-  2,
-  <C extends Contract.Contract<PS>, PS, E, R, LA, LE, LR>(
-    self: ContractExecutable<C, PS, E, R>,
-    layer: Layer.Layer<LA, LE, LR>
-  ) =>
-    new ContractExecutableImpl<C, PS, E | LE, LR | Exclude<R, LA>>(self.compiledContract, (e) =>
-      Effect.provide(e, layer)
-    )
-);
+export const provide = executable.provide;

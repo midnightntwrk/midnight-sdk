@@ -34,9 +34,9 @@
  * runtime-failing. The corresponding type-level gate is `CallTreeRuntimeBinding` in
  * `internal/runtime/binding.ts`, asserted unsatisfiable by `v0_16.ts`.
  *
- * Internal by design, for the same reasons as its era-neutral sibling.
- *
- * @internal
+ * Internal by design, for the same reasons as its era-neutral sibling — and, like it, without an
+ * internal-marker JSDoc tag, which `stripInternal` would apply to the first export below (see
+ * `eraFreeSurface.ts`).
  */
 export * as ContractEventStore from '../ContractEventStore.js';
 export * as ContractEventValidationError from '../ContractEventValidationError.js';

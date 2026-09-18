@@ -93,6 +93,16 @@ describe('era-pinned entries', () => {
     expect((v9EffectEntry as typeof effectEntry).Ledger.ContractState).toBe(ContractState);
     expect((v9EffectEntry as typeof effectEntry).Ledger.LedgerParameters).toBe(LedgerParameters);
   });
+
+  it('offers the boundary wrapper on both seams of every era entry', () => {
+    // Both era entries used to export the bare runtime *binding* as `CompactRuntime`, so the one
+    // member that makes a WASM rejection a typed failure rather than a defect was missing from the
+    // era-pinned paths while the unsuffixed entry had it. One function object across both seams and
+    // both eras — identity, not just presence, because a second copy would drift.
+    for (const entry of [effectEntry, v9EffectEntry, v8EffectEntry]) {
+      expect(entry.CompactRuntime.tryRuntime).toBe(entry.Ledger.tryConvert);
+    }
+  });
 });
 
 describe('the ledger 8 entry', () => {
@@ -119,12 +129,23 @@ describe('the ledger 8 entry', () => {
     }
   });
 
-  it('omits ContractExecutable while it is still bound to the facades', () => {
-    // Not an era truth — ledger 8 execution works (`test/era8/LedgerEightExecution.test.ts`). This
-    // is the one module left whose *runtime* imports reach `Ledger.js`/`CompactRuntime.js`, so it
-    // would hand back ledger-9-bound objects from a path named v8. Delete this assertion when the
-    // executable takes its bindings as parameters.
-    expect(Object.keys(v8EffectEntry)).not.toContain('ContractExecutable');
+  it('executes contracts, through its own era pair rather than the bound one', () => {
+    // This entry used to omit `ContractExecutable` entirely: it was the one public module written
+    // against the facades, so it resolved whichever era `current.ts` bound and would have handed
+    // back ledger-9 objects from a path named v8. It is now `internal/executable.ts` applied to the
+    // ledger 8 pair — so it is present, and it is a *different application* from the bound entry's.
+    // Identity is the assertion that catches a regression to a re-export; a `toBeTypeOf('function')`
+    // would pass on the very mistake this replaces.
+    expect(v8EffectEntry.ContractExecutable.make).toBeTypeOf('function');
+    expect(v8EffectEntry.ContractExecutable.make).not.toBe(effectEntry.ContractExecutable.make);
+  });
+
+  it('gives each era entry its own executable, pinned rather than following the build', () => {
+    // `/v9` too: it re-exported `effect/ContractExecutable.js` and needed a build-time assertion to
+    // notice when `current.ts` moved underneath it. Both entries now carry their era in the
+    // application itself, so all three `make`s are distinct objects.
+    const makes = [effectEntry, v9EffectEntry, v8EffectEntry].map((entry) => entry.ContractExecutable.make);
+    expect(new Set(makes).size).toBe(3);
   });
 });
 

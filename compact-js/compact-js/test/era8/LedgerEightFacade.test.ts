@@ -14,9 +14,10 @@
  */
 
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Effect, Either } from 'effect';
+import { Cause, Effect, Either, Exit, Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import * as ContractRuntimeError from '../../src/effect/ContractRuntimeError.js';
 import { makeConversions } from '../../src/effect/internal/ledger/conversions.js';
 import * as V8 from '../../src/effect/internal/ledger/v8.js';
 import * as V0_16 from '../../src/effect/internal/runtime/v0_16.js';
@@ -114,6 +115,31 @@ describe('ledger 8 facade', () => {
     for (const name of ['ContractEventStore', 'ContractLog', 'ContractEventValidationError', 'validateEvents']) {
       expect(Object.keys(v8Entry)).not.toContain(name);
     }
+  });
+
+  it('offers the boundary wrapper on both halves of the `/v8/effect` entry', async () => {
+    const v8Entry = await import('@midnight-ntwrk/compact-js/v8/effect');
+
+    // Without this the era-8 entry is the one place in the package where a WASM rejection is a
+    // defect: it escapes the caller's declared error channel, and the CLI (running with
+    // `disableErrorReporting`) exits non-zero printing nothing. One function object across both
+    // seams and both eras — the same property `CompactRuntime.test.ts` pins for the bound era.
+    expect(v8Entry.CompactRuntime.tryRuntime).toBe(v8Entry.Ledger.tryConvert);
+  });
+
+  it('turns a rejected era 8 runtime call into a typed failure, not a defect', async () => {
+    const v8Entry = await import('@midnight-ntwrk/compact-js/v8/effect');
+    const exit = await Effect.runPromiseExit(
+      v8Entry.CompactRuntime.tryRuntime('Failed on the era 8 runtime boundary', () => {
+        throw new Error('rejected by WASM');
+      })
+    );
+
+    // `Cause.failureOption`, not `Exit.isFailure`: a defect keeps the latter true while the former
+    // goes `None`, which is exactly the distinction an unwrapped call gets wrong.
+    const failure = Exit.isFailure(exit) ? Cause.failureOption(exit.cause) : Option.none();
+    expect(Option.isSome(failure)).toBe(true);
+    expect(Option.isSome(failure) && ContractRuntimeError.isRuntimeError(failure.value)).toBe(true);
   });
 
   it('reports the era 8 CMA allowlist in its failure message', () => {

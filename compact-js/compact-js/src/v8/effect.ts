@@ -44,25 +44,21 @@
  * *rejects* a state provider rather than ignoring it. This is the "absent, not runtime-failing"
  * requirement in #388.
  *
- * **`ContractExecutable` is absent for a different reason: an outstanding implementation limit, not
- * an era truth.** It is the one module in the public surface whose *runtime* imports reach both
- * facades, so it resolves whatever `current.ts` binds — today ledger 9. Exposing it here would hand
- * back ledger-9-bound objects from a path named v8, which is exactly the mis-labelling this entry
- * exists to avoid. Ledger 8 execution itself is proven to work
- * (`test/era8/LedgerEightExecution.test.ts` runs a circuit end to end); what remains is
- * parameterising that one module on an era pair the way the conversions now are.
+ * **`ContractExecutable` executes against ledger 8 here, not against the build's bound era.** It is
+ * `internal/executable.ts` applied to this entry's two facades, so `deploy`, `circuit` and the
+ * maintenance operations all speak ledger 8 and runtime 0.16 — including the types they return.
+ * A cross-contract state provider is *rejected* by this era's `createExecutionContext` rather than
+ * ignored, and `CallResult.events` is statically empty, so the two features ledger 8 cannot do stay
+ * unreachable from here rather than failing at run time.
  *
- * Note this is a *smaller* gap than it once was. `CompiledContract`, `Contract` and the
- * ZK-configuration services were previously withheld for the same stated reason, but their built
- * import closures reach neither facade — the coupling was `import type`, which is erased — so they
- * are exported above. `LedgerEra.test.ts` pins both the inclusion and the exclusion.
- *
- * Until then, a consumer that wants the full executable surface against ledger 8 selects the era at
- * resolution time — repoint both `current.ts` files, or resolve `@midnight-ntwrk/compact-js` to a
- * ledger-8-pinned build in that subtree. That is the same mechanism a compiled ledger-8 contract
- * already forces, since its generated code imports `@midnight-ntwrk/compact-runtime` by bare
- * specifier and asserts `checkRuntimeVersion('0.16.0')` on load.
+ * A compiled ledger 8 contract still has to resolve its own `@midnight-ntwrk/compact-runtime` to
+ * the 0.16 line — its generated code imports that specifier directly and asserts
+ * `checkRuntimeVersion('0.16.0')` on load, which no compact-js entry can influence. The recipe is
+ * one line in the manifest of the package holding those artifacts; `test/effect/DualEraResolution.test.ts`
+ * pins it, and `test/era8/LedgerEightExecutable.test.ts` runs a contract end to end through this
+ * entry.
  */
+export * as ContractExecutable from '../effect/internal/era/v8Executable.js';
 export * as Ledger from '../effect/internal/era/v8Ledger.js';
+export * as CompactRuntime from '../effect/internal/era/v8Runtime.js';
 export * from '../effect/internal/eraFreeSurface.js';
-export * as CompactRuntime from '../effect/internal/runtime/v0_16.js';

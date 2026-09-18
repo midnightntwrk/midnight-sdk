@@ -37,22 +37,12 @@
  */
 export * from '../effect/internal/contractEventsSurface.js';
 export * as Ledger from '../effect/internal/era/v9Ledger.js';
+export * as CompactRuntime from '../effect/internal/era/v9Runtime.js';
 export * from '../effect/internal/eraFreeSurface.js';
-export * as CompactRuntime from '../effect/internal/runtime/v0_19.js';
 
-// `ContractExecutable` is the one public module whose *runtime* imports reach `Ledger.js` and
-// `CompactRuntime.js`, so it still resolves whichever era `current.ts` binds rather than this
-// entry's. While that is true, a ledger 9 entry is only honest on a build whose bound era *is*
-// ledger 9 — hence the assertion below, which makes the mismatch a build error at this entry
-// instead of a `/v9` that quietly executes another era. Remove it, and the indirection, once the
-// executable takes its bindings as parameters the way the conversions factory does.
-export * as ContractExecutable from '../effect/ContractExecutable.js';
-
-import type { Assert, Extends } from '../effect/internal/typeAssertions.js';
-import type * as BoundLedger from '../effect/Ledger.js';
-
-// Fails the build if the era `ContractExecutable` resolves is not ledger 9. `import type` keeps
-// this erased, so the assertion costs no module edge and cannot instantiate a second WASM. This is
-// what CLAUDE.md's era-swap checklist calls out as step 5's trap — that repointing `current.ts`
-// leaves `/v9` claiming an era it no longer executes — enforced rather than documented.
-type _ExecutableEraIsLedger9 = Assert<Extends<typeof BoundLedger.era.ledger, 9>>;
+// `ContractExecutable` is this entry's own application of `internal/executable.ts` to the ledger 9
+// pair, not a re-export of `effect/ContractExecutable.ts`. That module applies the same factory to
+// the *bound* facades, so re-exporting it would have made this entry follow a `current.ts` swap —
+// the trap CLAUDE.md's era-swap checklist calls out at step 5. It needed a build-time assertion to
+// catch; now it cannot happen, because the era arrives as an argument here.
+export * as ContractExecutable from '../effect/internal/era/v9Executable.js';

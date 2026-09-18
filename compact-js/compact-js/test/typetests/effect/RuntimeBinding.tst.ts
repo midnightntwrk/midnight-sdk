@@ -59,6 +59,22 @@ describe('RuntimeBinding — real bindings', () => {
     expect<typeof V0_19>().type.toBeAssignableTo<RuntimeBinding>();
     expect<typeof V0_16>().type.toBeAssignableTo<RuntimeBinding>();
   });
+
+  it('deserializes a maintenance authority to a maintenance authority on both lines', () => {
+    // onchain-runtime-v3 declares `ContractMaintenanceAuthority.deserialize(raw): ContractState` —
+    // wrong, the same way `@midnightntwrk/ledger-v8@8.1.2` was. Verified against the shipped WASM:
+    // the returned value's constructor is `ContractMaintenanceAuthority` and it fails
+    // `instanceof ContractState`. Unrepaired it reaches the published surface, because
+    // `makeConversions` derives `fromRuntimeMaintenanceAuthority`'s *parameter* from this return
+    // type: `/v8/effect` then advertises a function that rejects the authority it is meant to take
+    // and accepts a contract state it will fail on inside WASM.
+    expect<ReturnType<(typeof V0_16)['ContractMaintenanceAuthority']['deserialize']>>().type.toBe<
+      V0_16.ContractMaintenanceAuthority
+    >();
+    expect<ReturnType<(typeof V0_19)['ContractMaintenanceAuthority']['deserialize']>>().type.toBe<
+      V0_19.ContractMaintenanceAuthority
+    >();
+  });
 });
 
 describe('CallTreeRuntimeBinding — the ledger 9+ capability', () => {
