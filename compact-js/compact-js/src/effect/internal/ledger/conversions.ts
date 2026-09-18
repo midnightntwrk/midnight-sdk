@@ -19,6 +19,7 @@ import { type Effect, Either } from 'effect';
 import * as ContractConfigurationError from '../../ContractConfigurationError.js';
 import type * as ContractRuntimeError from '../../ContractRuntimeError.js';
 import { tryBoundary as tryConvert } from '../boundary.js';
+import { type RuntimeLine } from '../era.js';
 
 /**
  * The runtime↔ledger conversions, as a **factory over an era pair** rather than a module bound to
@@ -47,9 +48,20 @@ import { tryBoundary as tryConvert } from '../boundary.js';
 
 /** The ledger-binding members the conversions need. Narrow on purpose: this is not the whole binding. */
 export interface ConversionLedger {
-  readonly era: { readonly supportsCmaSignatureKind: (kind: never) => boolean; readonly cmaSignatureKindsDescription: string };
+  readonly era: {
+    /**
+     * The compact-runtime line this ledger era pairs with. Present so {@link makeConversions} can
+     * require the runtime half to *be* that line — see its `R` constraint.
+     */
+    readonly runtime: RuntimeLine;
+    readonly supportsCmaSignatureKind: (kind: never) => boolean;
+    readonly cmaSignatureKindsDescription: string;
+  };
   readonly makeSigningKey: (signingKey: PlatformSigningKey) => unknown;
-  readonly ContractState: { deserialize(raw: Uint8Array): unknown };
+  // `Serializable` rather than `unknown` where a conversion serializes the value: it keeps
+  // `.serialize()` callable in the body without a cast, and costs no precision, because for a
+  // concrete binding `ReturnType<…>` is still that binding's own class.
+  readonly ContractState: { deserialize(raw: Uint8Array): Serializable };
   readonly LedgerParameters: { deserialize(raw: Uint8Array): unknown };
   readonly ContractMaintenanceAuthority: { deserialize(raw: Uint8Array): unknown };
   readonly StateValue: { decode(value: never): unknown };
@@ -59,7 +71,10 @@ export interface ConversionLedger {
 
 /** The runtime-binding members the conversions need. */
 export interface ConversionRuntime {
-  readonly ContractState: { deserialize(raw: Uint8Array): unknown };
+  /** The line this binding speaks, checked against the ledger half's `era.runtime`. */
+  readonly line: RuntimeLine;
+  readonly ContractState: { deserialize(raw: Uint8Array): Serializable };
+  readonly ContractMaintenanceAuthority: { deserialize(raw: Uint8Array): Serializable };
 }
 
 /**
@@ -100,7 +115,18 @@ export { tryConvert };
  *
  * @category constructors
  */
-export const makeConversions = <L extends ConversionLedger, R extends ConversionRuntime>(ledger: L, runtime: R) => {
+export const makeConversions = <
+  L extends ConversionLedger,
+  // `R`'s line must be the one `L`'s era pairs with, so `makeConversions(V9, V0_16)` does not
+  // compile. Without it the docstring above claimed a guarantee nothing provided: the two
+  // `current.ts` files are chosen independently, and only `CompactRuntime.test.ts` compared them,
+  // at run time, for the *bound* pair alone — an era-pinned entry pairing the wrong halves was
+  // caught nowhere.
+  R extends ConversionRuntime & { readonly line: L['era']['runtime'] }
+>(
+  ledger: L,
+  runtime: R
+) => {
   type LedgerContractState = ReturnType<L['ContractState']['deserialize']>;
   type LedgerParameters = ReturnType<L['LedgerParameters']['deserialize']>;
   type LedgerAuthority = ReturnType<L['ContractMaintenanceAuthority']['deserialize']>;
@@ -108,6 +134,7 @@ export const makeConversions = <L extends ConversionLedger, R extends Conversion
   type LedgerQueryContext = InstanceType<L['QueryContext']>;
   type LedgerSigningKey = ReturnType<L['makeSigningKey']>;
   type RuntimeContractState = ReturnType<R['ContractState']['deserialize']>;
+  type RuntimeAuthority = ReturnType<R['ContractMaintenanceAuthority']['deserialize']>;
 
   // Unwrapped, for composing inside another conversion's `tryConvert`. Throws on an era-boundary
   // decode failure, so every caller must already be inside one.
@@ -117,7 +144,7 @@ export const makeConversions = <L extends ConversionLedger, R extends Conversion
   return {
     /** Converts a runtime contract state to this era's ledger `ContractState`. @category conversions */
     fromRuntimeContractState: (
-      contractState: Serializable
+      contractState: RuntimeContractState
     ): Effect.Effect<LedgerContractState, ContractRuntimeError.ContractRuntimeError> =>
       tryConvert(
         'Unexpected error converting runtime contract state',
@@ -126,7 +153,7 @@ export const makeConversions = <L extends ConversionLedger, R extends Conversion
 
     /** Converts this era's ledger `ContractState` to a runtime contract state. @category conversions */
     toRuntimeContractState: (
-      contractState: Serializable
+      contractState: LedgerContractState
     ): Effect.Effect<RuntimeContractState, ContractRuntimeError.ContractRuntimeError> =>
       tryConvert(
         'Unexpected error converting ledger contract state',
@@ -156,7 +183,7 @@ export const makeConversions = <L extends ConversionLedger, R extends Conversion
      * @category conversions
      */
     fromRuntimeMaintenanceAuthority: (
-      authority: Serializable
+      authority: RuntimeAuthority
     ): Effect.Effect<LedgerAuthority, ContractRuntimeError.ContractRuntimeError> =>
       tryConvert(
         'Unexpected error converting runtime contract maintenance authority',
@@ -224,7 +251,7 @@ export const makeConversions = <L extends ConversionLedger, R extends Conversion
      */
     fromPlatformSigningKey: (
       signingKey: PlatformSigningKey,
-      contractState?: unknown
+      contractState?: RuntimeContractState
     ): Either.Either<LedgerSigningKey, ContractConfigurationError.ContractConfigurationError> =>
       (ledger.era.supportsCmaSignatureKind as (kind: PlatformSigningKey['tag']) => boolean)(signingKey.tag)
         ? Either.right(ledger.makeSigningKey(signingKey) as LedgerSigningKey)
@@ -232,7 +259,13 @@ export const makeConversions = <L extends ConversionLedger, R extends Conversion
             ContractConfigurationError.make(
               `Unsupported signature scheme '${signingKey.tag}' for a contract maintenance authority; ` +
                 `supported schemes are: ${ledger.era.cmaSignatureKindsDescription}`,
-              contractState as never
+              // The one genuine impedance mismatch left: `ContractConfigurationError` names the
+              // *bound* era's `ContractState`, while `R` here is whichever runtime this factory was
+              // given. The cast is narrow — the parameter above is the era's own contract state, so
+              // this can no longer launder an arbitrary value (a string, a signing key) into a field
+              // the type system reports as a `ContractState`. Removing it entirely needs the error
+              // type to be era-parameterised too.
+              contractState as Parameters<typeof ContractConfigurationError.make>[1]
             )
           )
   };

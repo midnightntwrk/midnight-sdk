@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-import { type ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
+import { type CompactRuntime, type ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import type * as v9EffectEntry from '@midnight-ntwrk/compact-js/v9/effect';
 import type { SignatureKind } from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import type {
@@ -136,6 +136,49 @@ describe('Ledger facade type surface', () => {
     expect(Ledger.makeVersionedVerifierKey).type.toBe<
       (verifierKey: Uint8Array) => Ledger.ContractOperationVersionedVerifierKey
     >();
+  });
+});
+
+describe('conversion parameter types', () => {
+  // These conversions cross the runtime↔ledger boundary in one direction each, and passing the
+  // handle for the other direction is the mistake they exist to prevent. Before the conversions
+  // became an era factory, each parameter named its own runtime type and a swap was a compile
+  // error. Typing them structurally — `Serializable`, i.e. `{ serialize(): Uint8Array }` — made
+  // every ledger and runtime handle interchangeable, because they all serialize, so the mistake
+  // now fails inside WASM instead of at the call site.
+  //
+  // Asserted as *negatives* rather than by pinning each signature: the parameter types are derived
+  // from the binding by indexed access, so spelling them out here would restate the derivation
+  // rather than check it.
+  it('rejects a maintenance authority where a contract state belongs', () => {
+    expect(Ledger.fromRuntimeContractState).type.not.toBeCallableWith(
+      {} as CompactRuntime.ContractMaintenanceAuthority
+    );
+  });
+
+  it('rejects a contract state where a maintenance authority belongs', () => {
+    expect(Ledger.fromRuntimeMaintenanceAuthority).type.not.toBeCallableWith({} as CompactRuntime.ContractState);
+  });
+
+  it('rejects a maintenance authority on the ledger→runtime direction', () => {
+    expect(Ledger.toRuntimeContractState).type.not.toBeCallableWith({} as CompactRuntime.ContractMaintenanceAuthority);
+  });
+
+  it('keeps `fromPlatformSigningKey`\'s contract state typed', () => {
+    // Regressed to `unknown` plus an `as never` cast at the call into `ContractConfigurationError`,
+    // which types the error's `contractState` field as a `ContractState` while it holds whatever
+    // the caller passed.
+    expect(Ledger.fromPlatformSigningKey).type.not.toBeCallableWith(
+      {} as Parameters<typeof Ledger.fromPlatformSigningKey>[0],
+      'not a contract state'
+    );
+  });
+
+  it('still accepts the correct handles', () => {
+    expect(Ledger.fromRuntimeContractState).type.toBeCallableWith({} as CompactRuntime.ContractState);
+    expect(Ledger.fromRuntimeMaintenanceAuthority).type.toBeCallableWith(
+      {} as CompactRuntime.ContractMaintenanceAuthority
+    );
   });
 });
 
