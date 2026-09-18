@@ -21,6 +21,8 @@ import * as v9EffectEntry from '@midnight-ntwrk/compact-js/v9/effect';
 import { ContractState, LedgerParameters } from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
+import * as eraNeutralSurface from '../../src/effect/internal/eraNeutralSurface.js';
+
 describe('Ledger era seam', () => {
   it('describes the ledger 9 era', () => {
     expect(Ledger.era.ledger).toBe(9);
@@ -43,11 +45,11 @@ describe('Ledger era seam', () => {
 });
 
 describe('era-pinned entries', () => {
-  // The two key-parity checks below cannot distinguish the entries: `/v9` currently IS the root
-  // module re-exported, so the key sets match by construction (and type-only exports are erased
-  // from `Object.keys` entirely). What they do prove is that the new `exports` subpaths exist,
-  // are spelled correctly, and resolve — a typo in the exports map is the regression they catch.
-  // Era pinning itself is asserted independently in the last test.
+  // These two key-parity checks cannot distinguish the entries — `/v9` is the current era, so its
+  // key set matches the root's by construction (and type-only exports are erased from
+  // `Object.keys` entirely). What they prove is that the `exports` subpaths exist, are spelled
+  // correctly, and resolve: a typo in the exports map is the regression they catch. Era pinning
+  // and the capability split are asserted independently below.
   it('`/v9` exposes the same API as the unsuffixed root', () => {
     expect(Object.keys(v9Entry).sort()).toEqual(Object.keys(rootEntry).sort());
   });
@@ -64,5 +66,47 @@ describe('era-pinned entries', () => {
     // to catch.
     expect((v9EffectEntry as typeof effectEntry).Ledger.ContractState).toBe(ContractState);
     expect((v9EffectEntry as typeof effectEntry).Ledger.LedgerParameters).toBe(LedgerParameters);
+  });
+});
+
+describe('era capability split', () => {
+  // Contract events are a ledger 9 feature: compact-runtime 0.16 has no `LogEvent`, no per-context
+  // event accumulation, and onchain-runtime-v3's `log` payload is a bare `EncodedStateValue` with
+  // no emitting-contract address. #388 requires such a member to be *absent* from an older era's
+  // entry, not present and failing at run time — so the surface is split in two, and an era entry
+  // composes only the levels its runtime line can support.
+  const CONTRACT_EVENT_EXPORTS = [
+    'ContractEventStore',
+    'ContractEventValidationError',
+    'ContractLog',
+    // `ContractEventValidator` is star-exported rather than namespaced, so its member is named
+    // directly here.
+    'validateEvents'
+  ];
+
+  it('keeps contract events out of the era-neutral surface', () => {
+    // The surface a ledger 8 entry would compose. If an event module leaks in here, that entry
+    // stops being buildable at all (its runtime line has no `LogEvent`) — the failure mode this
+    // split exists to prevent.
+    const keys = Object.keys(eraNeutralSurface);
+    for (const name of CONTRACT_EVENT_EXPORTS) {
+      expect(keys).not.toContain(name);
+    }
+  });
+
+  it('exposes contract events on the ledger 9 entry', () => {
+    const keys = Object.keys(v9EffectEntry);
+    for (const name of CONTRACT_EVENT_EXPORTS) {
+      expect(keys).toContain(name);
+    }
+  });
+
+  it('composes the ledger 9 entry from the era-neutral surface plus the event surface', () => {
+    // Guards the split from drifting apart: every era-neutral export must still be reachable from
+    // the era entry, so splitting the barrel cannot silently drop a member from the public API.
+    const entryKeys = new Set(Object.keys(v9EffectEntry));
+    for (const name of Object.keys(eraNeutralSurface)) {
+      expect(entryKeys).toContain(name);
+    }
   });
 });

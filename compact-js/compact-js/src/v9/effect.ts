@@ -22,5 +22,11 @@
  * *current* era binding — ledger 9 today — and `test/effect/LedgerEra.test.ts` guards that the
  * alias resolves era 9. When the current era advances, this entry must be rebound to a pinned
  * ledger 9 binding rather than left following `current`.
+ *
+ * Composed from the capability levels explicitly, rather than re-exporting `../effect/index.js`,
+ * so that what a ledger 9 entry includes is visible here: the era-neutral surface *plus* contract
+ * events. An entry for an era without events (ledger 8) takes the first line only — see
+ * `internal/contractEventsSurface.ts`.
  */
-export * from '../effect/index.js';
+export * from '../effect/internal/contractEventsSurface.js';
+export * from '../effect/internal/eraNeutralSurface.js';

@@ -5,7 +5,8 @@
   "private": true,
   "packageManager": "yarn@4.18.0",
   "resolutions": {
-    "effect": "^3.22.1"
+    "effect": "^3.22.1",
+    "@midnight-ntwrk/onchain-runtime-v3": "https://registry.npmjs.org/@midnight-ntwrk/onchain-runtime-v3/-/onchain-runtime-v3-3.1.1.tgz"
   },
   "repository": "git@github.com:midnight-ntwrk/artifacts",
   "engines": {

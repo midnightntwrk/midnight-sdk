@@ -23,6 +23,9 @@
  * The runtime line is era-paired with the ledger — 0.19 with ledger 9, over onchain-runtime-v4 —
  * so this binding and `internal/ledger/v9.ts` are swapped together. Neither is meaningful alone.
  */
+import { sampleSigningKey, type SigningKey } from '@midnight-ntwrk/compact-runtime';
+import { type SignatureKind } from '@midnight-ntwrk/platform-js/effect/SigningKey';
+
 import { type RuntimeLine } from '../era.js';
 
 export {
@@ -66,3 +69,27 @@ export {
  * @category era
  */
 export const line = '0.19' as const satisfies RuntimeLine;
+
+/**
+ * Samples a fresh signing key for `kind`.
+ *
+ * @remarks
+ * A thin pass-through on this line: onchain-runtime-v4 keys are already tagged (`{ tag, value }`)
+ * and `sampleSigningKey` already takes the scheme. The wrapper exists so the *older* line can
+ * present the same shape — see `v0_16.ts`, where the underlying call takes no argument and returns
+ * a bare hex string — and so era-neutral code reads `.value` without branching.
+ *
+ * @category constructors
+ */
+export const makeSampleSigningKey = (kind: SignatureKind): SigningKey => sampleSigningKey(kind);
+
+/**
+ * Extracts the hex value of a ledger 9 era signing key.
+ *
+ * @remarks
+ * onchain-runtime-v4 keys are tagged, so the hex lives under `value`. The 0.16 binding's
+ * counterpart is the identity, its keys being bare hex strings already.
+ *
+ * @category conversions
+ */
+export const signingKeyHex = (key: SigningKey): string => key.value;

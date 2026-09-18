@@ -37,7 +37,17 @@ const RUNTIME_SEAM_PATTERN = {
   // runtime line, which it cannot do while call sites name the package. Only the hyphenated scope
   // is listed because, unlike the ledger packages above, no `@midnightntwrk/compact-runtime` is
   // published — add the second spelling here if one ever is.
-  group: ['@midnight-ntwrk/compact-runtime', '@midnight-ntwrk/compact-runtime/**'],
+  //
+  // `compact-runtime-ledger8` is the npm alias the ledger 8 era's 0.16 line is installed under, so
+  // one tree can hold both lines. It needs listing explicitly: the alias shares no prefix with the
+  // canonical package, so the entries above do not match it and an import would slip past the seam
+  // unnoticed. Every future era alias needs the same treatment.
+  group: [
+    '@midnight-ntwrk/compact-runtime',
+    '@midnight-ntwrk/compact-runtime/**',
+    'compact-runtime-ledger8',
+    'compact-runtime-ledger8/**'
+  ],
   message:
     'Import runtime types through the `CompactRuntime` facade (@midnight-ntwrk/compact-js/effect); ' +
     'only compact-js/src/effect/internal/runtime/* may bind a runtime line directly.'
@@ -54,7 +64,10 @@ const LEDGER_SEAM_DYNAMIC_IMPORT = {
 };
 
 const RUNTIME_SEAM_DYNAMIC_IMPORT = {
-  selector: 'ImportExpression[source.value=/^@midnight-ntwrk\\u002Fcompact-runtime/]',
+  // Mirrors `RUNTIME_SEAM_PATTERN.group`, alias included — a selector that only knew the canonical
+  // name would leave `await import('compact-runtime-ledger8')` as an open second binding point.
+  selector:
+    'ImportExpression[source.value=/^(@midnight-ntwrk\\u002Fcompact-runtime|compact-runtime-ledger8)/]',
   message: RUNTIME_SEAM_PATTERN.message
 };
 

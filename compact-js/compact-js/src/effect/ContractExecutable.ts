@@ -675,9 +675,10 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     [CompactRuntime.ContractMaintenanceAuthority, SigningKey.SigningKey],
     ContractConfigurationError.ContractConfigurationError
   > {
-    // `sampleSigningKey` crosses the runtime boundary and rejects a scheme the bound line cannot
-    // sample. Guarded here rather than in the `try` below, which starts after the key is already
-    // needed — an unguarded throw in this `Either`-returning helper is a defect at every caller.
+    // `makeSampleSigningKey` crosses the runtime boundary and rejects a scheme the bound line
+    // cannot sample. Guarded here rather than in the `try` below, which starts after the key is
+    // already needed — an unguarded throw in this `Either`-returning helper is a defect at every
+    // caller.
     let signingKey: SigningKey.SigningKey;
     try {
       signingKey = Option.match(key, {
@@ -685,9 +686,13 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         // Tag the sampled key with the era's scheme too: `SigningKey.make` otherwise defaults the
         // tag to platform-js's own constant, which would label an era's non-schnorr sample as
         // schnorr and sign with the wrong scheme while still passing the allowlist check below.
+        // Sampled through the seam's `makeSampleSigningKey`/`signingKeyHex` pair rather than the
+        // runtime's own `sampleSigningKey`, because that function is era-varying on both sides:
+        // onchain-runtime-v3 takes no argument and returns a bare hex string, v4 takes a scheme and
+        // returns `{ tag, value }`. Reading `.value` here would compile against only one line.
         onNone: () =>
           SigningKey.make(
-            CompactRuntime.sampleSigningKey(Ledger.era.defaultCmaSignatureKind).value,
+            CompactRuntime.signingKeyHex(CompactRuntime.makeSampleSigningKey(Ledger.era.defaultCmaSignatureKind)),
             Ledger.era.defaultCmaSignatureKind
           )
       });

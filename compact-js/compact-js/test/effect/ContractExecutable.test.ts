@@ -87,6 +87,29 @@ describe('ContractExecutable', () => {
       })
     );
 
+    it.effect('samples a signing key tagged with the era default when none is configured', () =>
+      Effect.gen(function* () {
+        const contract = counterContract.pipe(
+          ContractExecutable.provide(testLayer(new Map([['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY]])))
+        );
+        const result = yield* contract.initialize(initialPS);
+        const signingKey = result.private.signingKey;
+
+        // The sampled key must carry the era's own default scheme and its bare hex value. Both
+        // halves are era-varying at the runtime seam — onchain-runtime-v3 samples an untagged hex
+        // string, v4 a `{ tag, value }` pair — so this is what pins the sampling path while the
+        // seam absorbs that difference. The pre-existing test above only asserts `toBeDefined`,
+        // which a dropped tag or a stringified key object would both survive.
+        expect(signingKey.tag).toEqual(Ledger.era.defaultCmaSignatureKind);
+        expect(signingKey.value).toMatch(/^[0-9a-f]+$/);
+
+        // ...and it must be the key the on-chain maintenance authority was actually built from.
+        const committee = asLedgerContractState(result.public.contractState).maintenanceAuthority.committee;
+        expect(committee).toHaveLength(1);
+        expect(committee[0].tag).toEqual(Ledger.era.defaultCmaSignatureKind);
+      })
+    );
+
     it.effect('should return the given signing key', () =>
       Effect.gen(function* () {
         const contract = counterContract.pipe(

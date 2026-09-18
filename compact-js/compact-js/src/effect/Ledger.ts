@@ -230,11 +230,12 @@ export const fromRuntimeQueryContext: (
  * Adapts a platform-js {@link SigningKey.SigningKey} to this era's ledger `SigningKey`, failing
  * when the signature scheme is not supported by the era's CMA path.
  *
- * As of platform-js@3.0.0 both are `{ tag: SignatureKind, value }` and structurally compatible;
- * the onchain-runtime `SigningKey` is identical too, so this serves both `signData` (ledger) and
- * `signatureVerifyingKey` (compact-runtime). The caller-supplied `tag` is preserved so
- * ECDSA-tagged keys are not silently treated as Schnorr; a scheme outside the era's
- * `cmaSignatureKinds` allowlist fails rather than being silently coerced.
+ * The two halves of that sentence live in different places on purpose. Admissibility is
+ * era-neutral policy and stays here: a scheme outside the era's allowlist fails rather than being
+ * silently coerced. The key's *shape* is era-varying — ledger 9 tags each key (`{ tag, value }`)
+ * while ledger 8 has no tagged-key concept and uses a bare hex string — so the construction is
+ * delegated to the era binding's `makeSigningKey`. Returning `{ tag, value }` from here directly
+ * would hard-code ledger 9's representation into the era-neutral facade.
  *
  * @category conversions
  */
@@ -243,7 +244,7 @@ export const fromPlatformSigningKey = (
   contractState?: RuntimeContractState
 ): Either.Either<CurrentEra.SigningKey, ContractConfigurationError.ContractConfigurationError> =>
   CurrentEra.era.supportsCmaSignatureKind(signingKey.tag)
-    ? Either.right({ tag: signingKey.tag, value: signingKey.value })
+    ? Either.right(CurrentEra.makeSigningKey(signingKey))
     : Either.left(
         ContractConfigurationError.make(
           `Unsupported signature scheme '${signingKey.tag}' for a contract maintenance authority; ` +

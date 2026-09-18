@@ -49,5 +49,9 @@
   },
   "files": [
     "dist/"
-  ]
+  ],
+  "devDependencies": {
+    "@midnightntwrk/ledger-v8": "8.1.2",
+    "compact-runtime-ledger8": "https://registry.npmjs.org/@midnight-ntwrk/compact-runtime/-/compact-runtime-0.16.0.tgz"
+  }
 }

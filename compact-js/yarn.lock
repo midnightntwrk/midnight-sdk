@@ -1095,8 +1095,10 @@ __metadata:
     "@effect/platform": "npm:^0.97.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.19.0-rc.0"
     "@midnight-ntwrk/platform-js": "npm:^3.0.0"
+    "@midnightntwrk/ledger-v8": "npm:8.1.2"
     "@midnightntwrk/ledger-v9": "npm:^1.0.0-rc.4"
     "@noble/hashes": "npm:^2.3.0"
+    compact-runtime-ledger8: "https://registry.npmjs.org/@midnight-ntwrk/compact-runtime/-/compact-runtime-0.16.0.tgz"
     effect: "npm:^3.22.1"
     tslib: "npm:^2.8.1"
   languageName: unknown
@@ -1179,6 +1181,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@midnight-ntwrk/onchain-runtime-v3@https://registry.npmjs.org/@midnight-ntwrk/onchain-runtime-v3/-/onchain-runtime-v3-3.1.1.tgz":
+  version: 3.1.1
+  resolution: "@midnight-ntwrk/onchain-runtime-v3@https://registry.npmjs.org/@midnight-ntwrk/onchain-runtime-v3/-/onchain-runtime-v3-3.1.1.tgz"
+  checksum: 10/03b5752fcf108e95e3ed8ffd80aedd42fe69a5458f24262dc9928df2e48daf121f8d2b57bfa1a61cea57bf42e166883818050d2469efd9de121d2a249c7b6039
+  languageName: node
+  linkType: hard
+
 "@midnight-ntwrk/platform-js@npm:3.0.0, @midnight-ntwrk/platform-js@npm:^3.0.0":
   version: 3.0.0
   resolution: "@midnight-ntwrk/platform-js@npm:3.0.0::__archiveUrl=https%3A%2F%2Fnpm.pkg.github.com%2Fdownload%2F%40midnight-ntwrk%2Fplatform-js%2F3.0.0%2Fb18da0d7b112c09f071e2569392aaf7b8f97eb8d"
@@ -1198,6 +1207,13 @@ __metadata:
     "@scure/base": "npm:^2.0.0"
     "@subsquid/scale-codec": "npm:^4.0.1"
   checksum: 10/be1cfde40a7753c62377a914ec72fe29ac57e38895b33d14861b22b7193aa1fdd1989680f5b5907b73a24d9c080e5ea6711a88b4442192fb1b1fa37da0a9009a
+  languageName: node
+  linkType: hard
+
+"@midnightntwrk/ledger-v8@npm:8.1.2":
+  version: 8.1.2
+  resolution: "@midnightntwrk/ledger-v8@npm:8.1.2"
+  checksum: 10/733dc1f5eca1a2f310d9b35e32b602704c23639fc4c174448187a2610ab1ffb8250f1aaecc68fe8ca4feb1a89e2905b77bafdcc343a6fd3d92b8c740948c07d1
   languageName: node
   linkType: hard
 
@@ -2521,6 +2537,17 @@ __metadata:
   version: 1.4.5
   resolution: "comment-parser@npm:1.4.5"
   checksum: 10/4b5cacc7ab1ec48e3f51b788bd7cda567f5c83040e029e5c92eacf0785735a9b44ac49fdaf73d9bd4af9464aa4cc8cc7184902090b55b0023605a845f2666ba4
+  languageName: node
+  linkType: hard
+
+"compact-runtime-ledger8@https://registry.npmjs.org/@midnight-ntwrk/compact-runtime/-/compact-runtime-0.16.0.tgz":
+  version: 0.16.0
+  resolution: "compact-runtime-ledger8@https://registry.npmjs.org/@midnight-ntwrk/compact-runtime/-/compact-runtime-0.16.0.tgz"
+  dependencies:
+    "@midnight-ntwrk/onchain-runtime-v3": "npm:^3.0.0"
+    "@types/object-inspect": "npm:^1.8.1"
+    object-inspect: "npm:^1.12.3"
+  checksum: 10/7546c6d69179a1c81dfcd419a0f85f26cba7d6331cea9e31835be3da3d700df483867e4535958ec66dc97de2525d4008ee8b117518eec8a2d82709b2d9d9f658
   languageName: node
   linkType: hard
 
