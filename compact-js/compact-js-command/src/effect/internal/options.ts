@@ -15,10 +15,11 @@
 
 import { type Command, HelpDoc, Options, ValidationError } from '@effect/cli';
 import { Path } from '@effect/platform';
-import { Ledger } from '@midnight-ntwrk/compact-js/effect';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { ConfigProvider, Effect, Option, Schema } from 'effect';
+
+import * as InternalEras from './era/eras.js';
 
 /**
  * Resolves an optional filesystem path against the platform `Path` service while preserving
@@ -43,34 +44,46 @@ export const config = Options.file('config', { exists: 'either' }).pipe(
 );
 
 /**
- * Selects the ledger era an invocation targets. This build is era-pinned, so the only accepted
- * value is the era it is bound to ({@link Ledger.era}); the option exists to make the era an
- * explicit, stable part of the CLI contract across the hardfork window — an invocation that needs
- * a different era fails fast here and must use a build pinned to that era.
+ * Selects the ledger era an invocation targets — genuinely selects it, rather than checking it.
  *
- * No handler reads the parsed value: the option exists purely so parsing rejects a mismatched
- * era. Do not remove it as "unused" — `LedgerEraOption.test.ts` exercises the rejection through
- * every command.
+ * @remarks
+ * The parsed value reaches `invocationHandler`, which resolves it through
+ * `internal/era/registry.ts` to that era's application of the four handler factories. Every ledger
+ * and compact-runtime call the chosen handler makes — intent construction, state decoding, the
+ * conversions, the cross-contract state provider — belongs to the era named here, because the
+ * handlers take their era as an argument the way `compact-js`'s `internal/executable.ts` does
+ * (midnight-sdk#387/#388).
+ *
+ * Selecting an era is only half of an invocation's era, and the CLI does not own the other half.
+ * The executable comes from the user's `contract.config.ts`, whose own import (`/v8/effect` or
+ * `/v9/effect`) fixes *its* era; `invocationHandler` compares the two and fails by name when they
+ * disagree, rather than letting the mismatch surface as a WASM rejection later on.
+ *
+ * An era outside {@link InternalEras.SELECTABLE_LEDGER_ERAS} is still rejected at parse time: this
+ * build has no facade for it, and quietly running some other era's execution is the mislabelling
+ * the era work exists to prevent.
  *
  * @internal
  */
 export const ledgerEra = Options.integer('ledger-era').pipe(
   Options.withDescription(
-    `The ledger era to target. Only ${Ledger.era.ledger} is accepted; this build is pinned to it.`
+    `The ledger era to target (${InternalEras.SELECTABLE_LEDGER_ERAS.join(', ')}). Defaults to ` +
+      `${InternalEras.DEFAULT_LEDGER_ERA}, the era this build binds. The contract configuration's ` +
+      'executable must be built for the same era.'
   ),
   Options.mapEffect((era) =>
-    era === Ledger.era.ledger
+    InternalEras.isSelectableLedgerEra(era)
       ? Effect.succeed(era)
       : Effect.fail(
           ValidationError.invalidValue(
             HelpDoc.p(
-              `ledger era ${era} is not supported by this build (pinned to ledger era ${Ledger.era.ledger}); ` +
-                `use a build pinned to era ${era} to target it`
+              `ledger era ${era} is not supported by this command; this build selects between ` +
+                `${InternalEras.SELECTABLE_LEDGER_ERAS.join(', ')}`
             )
           )
         )
   ),
-  Options.withDefault(Ledger.era.ledger)
+  Options.withDefault(InternalEras.DEFAULT_LEDGER_ERA)
 );
 
 /** @internal */

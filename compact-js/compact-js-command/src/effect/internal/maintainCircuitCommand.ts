@@ -15,12 +15,12 @@
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { Contract, type ContractExecutable, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
-import { type ConfigError, Effect, Option } from 'effect';
+import { Contract, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import { Effect, Option } from 'effect';
 
-import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
+import type * as EraBinding from './era/binding.js';
 import * as InternalMaintainCommand from './maintainCommand.js';
 import * as InternalOptions from './options.js';
 
@@ -41,61 +41,58 @@ export const Options = {
   signingKey: InternalOptions.signingKey,
 }
 
-const removeCircuit = (
-  contract: ContractExecutable.ContractExecutable<any, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-  circuitId: Contract.ProvableCircuitId,
-  contractContext: ContractExecutable.ContractExecutable.ContractContext
-) => contract.removeContractOperation(circuitId, contractContext);
+/**
+ * Builds the `maintain circuit` handler for one era.
+ *
+ * @param ledger The era's `Ledger` facade. As with `maintain contract`, no compact-runtime API is
+ * reached from here directly.
+ *
+ * @internal
+ */
+export const makeHandler: (
+  ledger: EraBinding.CommandLedger
+) => InternalCommand.CommandHandler<Args & Options> = (ledger) => {
+  const { tryLedger, newIntent, serializeIntent } = InternalCommand.makeIntents(ledger);
 
-const addOrReplaceCircuit = (
-  contract: ContractExecutable.ContractExecutable<any, any>, // eslint-disable-line @typescript-eslint/no-explicit-any
-  circuitId: Contract.ProvableCircuitId,
-  verifierKey: Contract.VerifierKey,
-  contractContext: ContractExecutable.ContractExecutable.ContractContext
-) => contract.addOrReplaceContractOperation(circuitId, verifierKey, contractContext);
-
-/** @internal */
-export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.ModuleSpec) =>
-  Effect.Effect<
-    void,
-    ContractExecutable.ContractExecutionError | ConfigError.ConfigError,
-    FileSystem.FileSystem
-  > =
-  (
+  return (
     { inputFilePath, outputFilePath, address, circuitId, verifierKeyPath },
     moduleSpec
   ) => Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const { module: { default: contractModule } } = moduleSpec;
+    const { contractExecutable } = contractModule;
     const ledgerContractState = yield* fs.readFile(inputFilePath).pipe(
-      Effect.flatMap(Ledger.contractStateFromBytes)
+      Effect.flatMap(ledger.contractStateFromBytes)
     );
-    const contractContext: ContractExecutable.ContractExecutable.ContractContext = {
+    const contractContext = {
       address,
-      contractState: yield* Ledger.toRuntimeContractState(ledgerContractState)
-    }
+      contractState: yield* ledger.toRuntimeContractState(ledgerContractState as never)
+    } satisfies EraBinding.CommandContractContext;
     const result = yield* Option.match(verifierKeyPath, {
       onSome: (filePath) => fs.readFile(filePath).pipe(
-        Effect.flatMap((data) => addOrReplaceCircuit(
-          contractModule.contractExecutable,
+        Effect.flatMap((data) => contractExecutable.addOrReplaceContractOperation(
           Contract.ProvableCircuitId(circuitId),
           Contract.VerifierKey(data),
-          contractContext)
-        )
+          contractContext as never
+        ))
       ),
-      onNone: () => removeCircuit(contractModule.contractExecutable, Contract.ProvableCircuitId(circuitId), contractContext)
+      onNone: () => contractExecutable.removeContractOperation(
+        Contract.ProvableCircuitId(circuitId),
+        contractContext as never
+      )
     });
-    const emptyIntent = yield* InternalCommand.newIntent();
-    const intent = yield* InternalCommand.tryLedger(
+    const emptyIntent = yield* newIntent();
+    const intent = yield* tryLedger(
       'Failed to add the maintenance update to the intent',
-      () => emptyIntent.addMaintenanceUpdate(result.public.maintenanceUpdate)
+      () => emptyIntent.addMaintenanceUpdate(result.public.maintenanceUpdate as never)
     );
     yield* fs.writeFile(
       outputFilePath,
-      yield* InternalCommand.serializeIntent(intent)
+      yield* serializeIntent(intent)
     );
   }).pipe(
     Effect.mapError(
       (err) => ContractRuntimeError.make('Failed to apply maintenance operation', err)
     )
   );
+};

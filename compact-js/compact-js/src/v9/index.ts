@@ -18,9 +18,13 @@
  * era this entry targets — ledger 9 — not this package's own version. Binding to this path
  * records an intent to speak a specific ledger era (e.g. across a hardfork window).
  *
- * Until the era-scoped build wiring lands (midnight-sdk#388), this entry aliases the package's
- * *current* era binding — ledger 9 today — with `test/effect/LedgerEra.test.ts` guarding that the
- * alias resolves era 9. When the current era advances, this entry must be rebound to a pinned
- * ledger 9 binding rather than left following `current`.
+ * Same surface as `@midnight-ntwrk/compact-js/v9/effect`, exactly as `/v8` mirrors `/v8/effect`.
+ *
+ * This used to be `export * from '../index.js'` — the *root* barrel, which resolves both seams'
+ * `current.ts`. That made this entry an alias for whichever era the build bound, so repointing
+ * `current.ts` at ledger 10 would have turned `/v9` into a ledger 10 entry: a path naming an era it
+ * no longer speaks, with no build error to catch it. `/v9/effect` was rebound to its own binding
+ * when the era-pinned entries landed and this one was missed, which is the failure mode
+ * `internal/era/v9Ledger.ts` describes and CLAUDE.md's era-swap checklist promises cannot happen.
  */
-export * from '../index.js';
+export * from './effect.js';

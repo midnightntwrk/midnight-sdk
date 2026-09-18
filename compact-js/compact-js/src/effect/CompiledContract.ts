@@ -45,7 +45,13 @@ export interface CompiledContract<in out C extends Contract<PS>, in out PS, out 
 }
 
 export declare namespace CompiledContract {
-  /** @internal */
+  // Deliberately carries no internal-marker JSDoc tag. The public {@link CompiledContract}
+  // interface *extends* this type, so under `stripInternal` the marker deleted it from the emitted
+  // typings while the interface above went on naming it — `CompiledContract.d.ts` referencing a
+  // member of its own namespace that no longer exists. It only looked sound because most consumers
+  // build with `skipLibCheck`. A variance witness is unusable to a consumer anyway: `TypeId` is a
+  // module-private symbol, so the shape can be named but never satisfied. See
+  // `internal/boundary.ts` for why this note does not spell the tag out.
   export type Variance<in out C, in out PS, out R> = {
     readonly [TypeId]: {
       readonly _C: Types.Invariant<C>;

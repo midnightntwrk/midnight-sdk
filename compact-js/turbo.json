@@ -28,7 +28,16 @@
     "test": {
       "outputLogs": "new-only",
       "dependsOn": ["^build"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts", "compose.yml", "tstyche.json", "vitest.config.ts", "tsconfig*.json"],
+      "inputs": [
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "compose.yml",
+        "tstyche.json",
+        "vitest.config.ts",
+        "vitest.era8.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
     },
     "package": {
