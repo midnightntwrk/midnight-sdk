@@ -81,6 +81,36 @@ export interface RuntimeBinding {
    * scheme concept cannot honour anything but its one native scheme, and ignores the argument.
    */
   readonly makeSampleSigningKey: (kind: SignatureKind) => unknown;
+
+  /**
+   * Builds a circuit-execution context for this line, from named parameters.
+   *
+   * @remarks
+   * The era-neutral half of the execution model. Named parameters because the lines disagree on
+   * both arity and order — 0.19 takes `(circuitId, address, …)`, 0.16 takes `(address, …)` with no
+   * circuit id — so a positional contract would let an era swap shift an argument silently.
+   *
+   * A line without cross-contract calls must *reject* a `stateProvider`, not ignore it. See
+   * `execution.ts`.
+   */
+  readonly createExecutionContext: (params: never) => unknown;
+  /**
+   * Projects this line's circuit results into the era-neutral {@link ExecutionView}.
+   *
+   * @remarks
+   * On 0.19 a pass-through over `context.callProofDataTrace`. On 0.16 the trace is synthesised as
+   * a single entry from `results.proofData` — complete by construction, since a line with no
+   * `crossContractCall` cannot produce more than one call.
+   */
+  readonly readExecution: (results: never) => {
+    readonly result: unknown;
+    readonly trace: readonly {
+      readonly circuitId: string;
+      readonly contractAddress: string;
+      readonly publicTranscript: readonly unknown[];
+    }[];
+    readonly events: readonly unknown[];
+  };
   /**
    * Extracts the hex value of one of this line's signing keys.
    *

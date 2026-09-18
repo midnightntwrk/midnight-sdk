@@ -56,9 +56,26 @@
  * GitHub Packages copy the `@midnight-ntwrk` scope routing would otherwise pick.
  */
 import { type SignatureKind } from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { sampleSigningKey, type SigningKey } from 'compact-runtime-ledger8';
+import {
+  type AlignedValue,
+  type CircuitContext,
+  type CircuitResults,
+  type ContractState,
+  createCircuitContext,
+  type EncodedZswapLocalState,
+  type Op,
+  type ProofData,
+  type QueryContext,
+  sampleSigningKey,
+  type SigningKey
+} from 'compact-runtime-ledger8';
 
 import { type RuntimeLine } from '../era.js';
+import {
+  type CallProofDataView,
+  type ExecutionContextParams,
+  type ExecutionView
+} from './execution.js';
 
 export {
   type AlignedValue,
@@ -120,3 +137,161 @@ export const makeSampleSigningKey = (_kind: SignatureKind): SigningKey => sample
  * @category conversions
  */
 export const signingKeyHex = (key: SigningKey): string => key;
+
+/**
+ * Contract events do not exist on this line, so there is no type to carry one.
+ *
+ * @remarks
+ * `never` rather than an empty-object stand-in, and this is load-bearing: it makes
+ * `ContractExecutable`'s `CallResult.events` a `never[]` on this era — a list that is *statically*
+ * empty, not merely empty at run time. So the same `CallResult` type serves both eras while the
+ * impossible case stays unconstructable, which is what #388 asks for.
+ *
+ * The VM-level `log` gather op does exist under onchain-runtime-v3, but its payload is a bare
+ * `EncodedStateValue` against v4's `{ version, eventType, data }`, it has no emitting-contract
+ * address, and 0.16 accumulates nothing on the circuit context. Events here would be a rebuild
+ * against a different payload, not a binding.
+ *
+ * @category execution
+ */
+export type LogEvent = never;
+
+/** This line's instantiation of the era-neutral call-trace entry. @category execution */
+export type CallTraceEntry = CallProofDataView<
+  QueryContext,
+  AlignedValue,
+  Op<AlignedValue>,
+  EncodedZswapLocalState,
+  never
+>;
+
+/** This line's instantiation of the era-neutral execution view. @category execution */
+export type Execution<Result, PrivateState> = ExecutionView<
+  Result,
+  PrivateState,
+  CallTraceEntry,
+  EncodedZswapLocalState,
+  LogEvent
+>;
+
+/**
+ * Carries the facts `readExecution` needs but 0.16 does not record: the circuit id, the contract
+ * address, and the query context as it stood *before* execution.
+ *
+ * A `Symbol` key, not a string, so it cannot collide with anything the generated contract reads —
+ * and not a `WeakMap`, because the generated 0.16 circuit rebuilds the context
+ * (`const context = { ...contextOrig_0, gasCost: … }`), which would break identity-keyed lookup.
+ * Object spread copies own enumerable *symbol* properties as well as string ones, so this survives
+ * that hop.
+ */
+const EXECUTION_META = Symbol('compact-js/runtime/0.16/executionMeta');
+
+interface ExecutionMeta {
+  readonly circuitId: string;
+  readonly contractAddress: string;
+  readonly initialQueryContext: QueryContext;
+}
+
+type AnnotatedContext<PS> = CircuitContext<PS> & { readonly [EXECUTION_META]?: ExecutionMeta };
+
+/**
+ * Builds a circuit-execution context for this line.
+ *
+ * @remarks
+ * Two adaptations. The positional order differs — 0.16 takes the contract address first and has no
+ * circuit-id parameter at all — and the circuit id, address and pre-execution query context are
+ * recorded on the context so {@link readExecution} can rebuild a trace entry the newer line
+ * supplies natively.
+ *
+ * The initial query context is snapshotted *here*, not read back later: the flat 0.16 context is
+ * mutated in place during execution, so reading it afterwards would report the final state as the
+ * initial one and silently corrupt transcript partitioning.
+ *
+ * @throws If `stateProvider` or `parentBlockHash` is supplied. This line has no `crossContractCall`
+ * and no `ContractStateProvider`, so honouring a cross-contract call is impossible; ignoring the
+ * provider would instead make such a call appear to succeed against stale state.
+ *
+ * @category execution
+ */
+export const createExecutionContext = <PS>(
+  params: ExecutionContextParams<PS, ContractState, EncodedZswapLocalState, never>
+): CircuitContext<PS> => {
+  if (params.stateProvider !== undefined || params.parentBlockHash !== undefined) {
+    throw new Error(
+      `compact-runtime ${line} (ledger 8 era) cannot execute cross-contract calls: ` +
+        'this line has no crossContractCall or ContractStateProvider. ' +
+        'Use a build pinned to a later era to call across contracts.'
+    );
+  }
+
+  const context = createCircuitContext(
+    params.address,
+    params.zswapLocalState,
+    params.contractState,
+    params.privateState
+  );
+
+  const meta: ExecutionMeta = {
+    circuitId: params.circuitId,
+    contractAddress: params.address,
+    initialQueryContext: context.currentQueryContext
+  };
+
+  return Object.defineProperty(context, EXECUTION_META, {
+    value: meta,
+    enumerable: true,
+    writable: false,
+    configurable: false
+  });
+};
+
+/**
+ * Projects this line's circuit results into the era-neutral execution view.
+ *
+ * @remarks
+ * The trace is **synthesised** as a single entry. That is faithful rather than lossy: without
+ * `crossContractCall` this line can only ever produce one call, so a one-element trace is complete
+ * by construction. The proof data 0.19 hangs off each `CallProofData` lives on `results.proofData`
+ * here, and is moved across.
+ *
+ * `events` is always empty, and typed `never[]` — see {@link LogEvent}.
+ *
+ * @throws If the context was not built by {@link createExecutionContext}. Without the recorded
+ * metadata the circuit id, address and pre-execution state are unrecoverable, and guessing them
+ * would produce a trace that looks valid and proves the wrong call.
+ *
+ * @category execution
+ */
+export const readExecution = <Result, PS>(
+  results: CircuitResults<PS, Result> & { readonly proofData: ProofData }
+): Execution<Result, PS | undefined> => {
+  const meta = (results.context as AnnotatedContext<PS>)[EXECUTION_META];
+  if (meta === undefined) {
+    throw new Error(
+      `compact-runtime ${line} (ledger 8 era): circuit results carry no execution metadata. ` +
+        'Build the context with createExecutionContext rather than createCircuitContext.'
+    );
+  }
+
+  const entry: CallTraceEntry = {
+    circuitId: meta.circuitId,
+    contractAddress: meta.contractAddress,
+    initialQueryContext: meta.initialQueryContext,
+    finalQueryContext: results.context.currentQueryContext,
+    publicTranscript: results.proofData.publicTranscript,
+    input: results.proofData.input,
+    output: results.proofData.output,
+    privateTranscriptOutputs: results.proofData.privateTranscriptOutputs,
+    zswapLocalState: results.context.currentZswapLocalState,
+    // Only ever set for a cross-contract sub-call, which this line cannot make.
+    commCommData: undefined
+  };
+
+  return {
+    result: results.result,
+    trace: [entry],
+    privateState: results.context.currentPrivateState,
+    zswapLocalState: results.context.currentZswapLocalState,
+    events: []
+  };
+};

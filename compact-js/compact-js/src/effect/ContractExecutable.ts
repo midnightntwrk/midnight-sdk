@@ -247,7 +247,11 @@ const DEFAULT_SIGNATURE_INDEX = 0n;
 // commitment rides on the *callee's* pre-transcript (`commCommData.commComm`); the root call has
 // no commitment and becomes the graph root. The returned array is in the same order as `trace`.
 const partitionAllTranscripts = (
-  trace: readonly CompactRuntime.CallProofData[],
+  // The era-neutral trace-entry type supplied by whichever runtime line is bound. On 0.19 it is
+  // the runtime's own `CallProofData`; on 0.16 it is synthesised by that binding's `readExecution`
+  // from the flat frame. Using it here rather than `CallProofData` is what keeps this module
+  // buildable on both lines (midnight-sdk#387 phase 3).
+  trace: readonly CompactRuntime.CallTraceEntry[],
   ledgerParameters: Ledger.LedgerParameters | undefined
 ): Effect.Effect<ContractExecutable.PartitionedTranscript[], ContractRuntimeError.ContractRuntimeError> =>
   Effect.gen(function* () {
@@ -263,7 +267,7 @@ const partitionAllTranscripts = (
                 (queryContext, comEntry) => queryContext.insertCommitment(...comEntry),
                 initialContext
               ),
-              entry.publicTranscript,
+              [...entry.publicTranscript],
               entry.commCommData?.commComm
             )
           )
@@ -429,28 +433,33 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
             const zswapLocalState = circuitContext.zswapLocalState
               ? CompactRuntime.encodeZswapLocalState(circuitContext.zswapLocalState)
               : CompactRuntime.emptyZswapLocalState(CoinPublicKey.asHex(keyConfig.coinPublicKey));
-            const runtimeContext = CompactRuntime.createCircuitContext(
-              provableCircuitId,
-              circuitContext.address,
+            // Both the context build and the result projection go through the runtime seam's
+            // execution adapter rather than `createCircuitContext`/`context.callProofDataTrace`
+            // directly. The two lines disagree on the argument order, on whether a circuit id is
+            // even a parameter, and on where proof data lands; the adapter presents one view of
+            // both. `readExecution` is called inside this `try` so an era that cannot honour the
+            // request (0.16 given a cross-contract state provider) surfaces through the
+            // `ContractRuntimeError` mapping below instead of escaping as a defect.
+            const runtimeContext = CompactRuntime.createExecutionContext({
+              circuitId: provableCircuitId,
+              address: circuitContext.address,
               zswapLocalState,
-              circuitContext.contractState,
-              circuitContext.privateState,
-              circuitContext.stateProvider,
-              undefined,
-              undefined,
-              undefined,
-              circuitContext.parentBlockHash
-            );
-            return await circuit(runtimeContext, ...args);
+              contractState: circuitContext.contractState,
+              privateState: circuitContext.privateState,
+              stateProvider: circuitContext.stateProvider,
+              parentBlockHash: circuitContext.parentBlockHash
+            });
+            return CompactRuntime.readExecution(await circuit(runtimeContext, ...args));
           },
           catch: identity
         }).pipe(
-          Effect.flatMap(({ result, context }) =>
+          Effect.flatMap((execution) =>
             Effect.gen(function* () {
               // Every call made while executing the circuit, in trace order (callees first, the
-              // root call last). For a circuit with no cross-contract calls this has length 1.
-              const trace = context.callProofDataTrace;
-              const zswapLocalState = context.callContext.currentZswapLocalState;
+              // root call last). For a circuit with no cross-contract calls this has length 1 —
+              // which is the only case a ledger 8 build can produce.
+              const trace = execution.trace;
+              const zswapLocalState = execution.zswapLocalState;
               if (zswapLocalState === undefined) {
                 return yield* ContractRuntimeError.make(`Circuit '${provableCircuitId}' returned no zswap local state`);
               }
@@ -459,7 +468,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               // structural failure is funnelled through the `ContractRuntimeError` mapping below.
               // Events are a single execution-wide list, each tagged with the emitting contract's
               // address; a per-call view is a filter over that address (see compact-runtime).
-              yield* validateEvents(context.events);
+              yield* validateEvents(execution.events);
               // Partition all calls' transcripts together (the partitioner needs the whole batch
               // to reconstruct the caller/callee graph).
               const partitioned = yield* partitionAllTranscripts(trace, circuitContext.ledgerParameters);
@@ -478,13 +487,16 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                     circuitId: entry.circuitId,
                     public: {
                       contractState: entry.finalQueryContext.state.state,
-                      publicTranscript: entry.publicTranscript,
+                      // Copied because the era-neutral trace exposes a readonly view while the
+                      // public `ContractCall` field is mutable; narrowing that field would be a
+                      // breaking type change for consumers.
+                      publicTranscript: [...entry.publicTranscript],
                       partitionedTranscript
                     },
                     private: {
                       input: entry.input,
                       output: entry.output,
-                      privateTranscriptOutputs: entry.privateTranscriptOutputs
+                      privateTranscriptOutputs: [...entry.privateTranscriptOutputs]
                     },
                     communicationCommitment: Option.fromNullable(entry.commCommData)
                   };
@@ -502,10 +514,14 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
               // `result`, `privateState`, and `zswapLocalState` belong to the root contract;
               // `events` is the whole execution's log-event list (each tagged with its emitter).
               return {
-                result,
-                privateState: context.callContext.currentPrivateState,
+                result: execution.result,
+                privateState: execution.privateState,
                 zswapLocalState: decodedZswapLocalState,
-                events: context.events,
+                // Copied rather than narrowing `CallResult.events` to `readonly`: the adapter hands
+                // back a readonly view, and changing the public field's mutability would be a
+                // breaking type change for consumers. On a line that cannot emit events this is
+                // `never[]`, so the copy is of an empty array.
+                events: [...execution.events],
                 calls
               };
             })

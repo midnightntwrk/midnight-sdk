@@ -27,28 +27,30 @@
  * a packaging-level fact — one era per build artifact — not a runtime dependency to vary per
  * effect. Downstream multi-era consumers select between era-scoped entries instead.
  */
-import type * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Effect, Either } from 'effect';
+import { Effect } from 'effect';
 
+// Type-only: this module is where the two era-paired halves meet, so it is where a mismatched pair
+// would first misbehave — `_SeamsArePaired` below reads the runtime line from here. The conversions
+// themselves no longer name runtime types directly; they are instantiated from both bindings by
+// `makeConversions`.
 import type * as CompactRuntime from './CompactRuntime.js';
-// The runtime side of every conversion below comes through the compact-runtime seam, not the
-// package: this module is where the two era-paired halves meet, so it is also where a mismatched
-// pair would first misbehave. Aliased `Runtime*` to keep each conversion's direction readable.
-import {
-  type ContractMaintenanceAuthority as RuntimeContractMaintenanceAuthority,
-  ContractState as RuntimeContractState,
-  type QueryContext as RuntimeQueryContext,
-  type StateValue as RuntimeStateValue
-} from './CompactRuntime.js';
-import * as ContractConfigurationError from './ContractConfigurationError.js';
 import * as ContractRuntimeError from './ContractRuntimeError.js';
-import * as boundary from './internal/boundary.js';
 import { type EraPairing } from './internal/era.js';
+import { makeConversions, tryConvert } from './internal/ledger/conversions.js';
 import * as CurrentEra from './internal/ledger/current.js';
+import * as CurrentRuntime from './internal/runtime/current.js';
 import type { Assert, Extends } from './internal/typeAssertions.js';
 
 export { type Era } from './internal/era.js';
+export { tryConvert } from './internal/ledger/conversions.js';
 export * from './internal/ledger/current.js';
+
+// The conversions are instantiated from the two `current.ts` bindings rather than written against
+// them, so a second era can be instantiated alongside this one (midnight-sdk#387/#388). Passing
+// both halves in one call is also what finally ties the era pair together statically: the ledger
+// era and the compact-runtime line are era-paired, and until this existed only
+// `CompactRuntime.test.ts` checked at run time that the two independent `current.ts` files agreed.
+const conversions = makeConversions(CurrentEra, CurrentRuntime);
 
 // Compile-time proof that the two seams are bound to the *same* era. The ledger and runtime
 // halves are chosen in separate `current.ts` files, and `EraPairing` makes a mispaired descriptor
@@ -60,96 +62,72 @@ export * from './internal/ledger/current.js';
 type _SeamsArePaired = Assert<Extends<typeof CompactRuntime.line, EraPairing[typeof CurrentEra.era.ledger]>>;
 
 /**
- * Wraps a call across the ledger (WASM) boundary so that a rejection becomes a typed failure
- * rather than a defect.
- *
- * @remarks
- * Ledger bindings signal rejection by throwing — a throw inside `Effect.gen` or a bare
- * `Effect.map` callback becomes a defect, which escapes the caller's typed error handling.
- * Every conversion below goes through this wrapper; any other ledger call made outside this
- * facade should too.
- *
- * This is `internal/boundary.ts`'s `tryBoundary` under the name the ledger side knows it by; the
- * compact-runtime seam re-exports the same function as `CompactRuntime.tryRuntime`, so there is
- * exactly one copy of the boundary handling across both seams.
- *
- * @param message A message describing the operation, used as the failure's message.
- * @param evaluate A thunk that performs the ledger call.
- * @returns An `Effect` that yields the result of `evaluate`, failing with a
- * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects it.
- * @category combinators
- */
-export const tryConvert: <A>(
-  message: string,
-  evaluate: () => A extends PromiseLike<unknown> ? never : A
-) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = boundary.tryBoundary;
-
-/**
- * Converts a runtime {@link RuntimeContractState} to this era's ledger `ContractState`.
+ * Converts a runtime `ContractState` to this era's ledger `ContractState`.
  *
  * @category conversions
  */
-export const fromRuntimeContractState: (
-  contractState: RuntimeContractState
-) => Effect.Effect<CurrentEra.ContractState, ContractRuntimeError.ContractRuntimeError> = (state) =>
-  tryConvert('Unexpected error converting runtime contract state', () =>
-    CurrentEra.ContractState.deserialize(state.serialize())
-  );
+export const fromRuntimeContractState = conversions.fromRuntimeContractState;
 
 /**
- * Converts this era's ledger `ContractState` to a runtime {@link RuntimeContractState}.
+ * Converts this era's ledger `ContractState` to a runtime `ContractState`.
  *
  * @category conversions
  */
-export const toRuntimeContractState: (
-  contractState: CurrentEra.ContractState
-) => Effect.Effect<RuntimeContractState, ContractRuntimeError.ContractRuntimeError> = (state) =>
-  tryConvert('Unexpected error converting ledger contract state', () =>
-    RuntimeContractState.deserialize(state.serialize())
-  );
+export const toRuntimeContractState = conversions.toRuntimeContractState;
 
 /**
  * Deserializes ledger-serialized bytes into this era's ledger `ContractState`.
  *
  * @category conversions
  */
-export const contractStateFromBytes: (
-  bytes: Uint8Array
-) => Effect.Effect<CurrentEra.ContractState, ContractRuntimeError.ContractRuntimeError> = (bytes) =>
-  tryConvert('Unexpected error deserializing ledger contract state from bytes', () =>
-    CurrentEra.ContractState.deserialize(bytes)
-  );
+export const contractStateFromBytes = conversions.contractStateFromBytes;
 
 /**
  * Deserializes ledger-serialized bytes into this era's `LedgerParameters`.
  *
  * @category conversions
  */
-export const parametersFromBytes: (
-  bytes: Uint8Array
-) => Effect.Effect<CurrentEra.LedgerParameters, ContractRuntimeError.ContractRuntimeError> = (bytes) =>
-  tryConvert('Unexpected error deserializing ledger parameters', () =>
-    CurrentEra.LedgerParameters.deserialize(bytes)
-  );
+export const parametersFromBytes = conversions.parametersFromBytes;
 
 /**
- * Converts a runtime {@link RuntimeContractMaintenanceAuthority} to this era's ledger
- * `ContractMaintenanceAuthority`.
+ * Converts a runtime `ContractMaintenanceAuthority` to this era's ledger one.
  *
  * @category conversions
  */
-export const fromRuntimeMaintenanceAuthority: (
-  authority: RuntimeContractMaintenanceAuthority
-) => Effect.Effect<CurrentEra.ContractMaintenanceAuthority, ContractRuntimeError.ContractRuntimeError> = (authority) =>
-  tryConvert('Unexpected error converting runtime contract maintenance authority', () =>
-    CurrentEra.ContractMaintenanceAuthority.deserialize(authority.serialize())
-  );
+export const fromRuntimeMaintenanceAuthority = conversions.fromRuntimeMaintenanceAuthority;
+
+/**
+ * Converts a runtime `StateValue` to this era's ledger `StateValue` via the shared binary
+ * encoding.
+ *
+ * @category conversions
+ */
+export const fromRuntimeStateValue = conversions.fromRuntimeStateValue;
+
+/**
+ * Converts a runtime `QueryContext` to this era's ledger `QueryContext`, carrying `state`,
+ * `address`, `block`, `effects`, and the commitment indices (`comIndices`).
+ *
+ * @category conversions
+ */
+export const fromRuntimeQueryContext = conversions.fromRuntimeQueryContext;
+
+/**
+ * Adapts a platform-js signing key to this era's ledger `SigningKey`, failing when the signature
+ * scheme is not supported by the era's CMA path.
+ *
+ * @category conversions
+ */
+export const fromPlatformSigningKey = conversions.fromPlatformSigningKey;
 
 /**
  * Resolves the `ContractOperation` for a circuit from a contract's ledger state, failing with a
  * {@link ContractRuntimeError.ContractRuntimeError} if absent. A state with no operation for the
  * requested circuit (e.g. a state file for the wrong contract) would otherwise be cast from
  * `undefined` and surface as an opaque native fault.
+ *
+ * Era-independent, so it stays here rather than in the conversions factory: it reads the era's own
+ * `ContractState` and needs no second binding.
  *
  * @remarks
  * Both of the ways a bad state file fails here are held in the error channel. `operation()`
@@ -181,74 +159,3 @@ export const operationForCircuit: (
         : Effect.succeed(operation)
     )
   );
-
-// Unwrapped form of `fromRuntimeStateValue`, for composing inside another conversion's
-// `tryConvert`. It throws on an era-boundary decode failure, so every caller must be inside one.
-const decodeStateValue = (value: RuntimeStateValue): CurrentEra.StateValue =>
-  CurrentEra.StateValue.decode(value.encode());
-
-/**
- * Converts a runtime {@link RuntimeStateValue} to this era's ledger `StateValue` via the shared
- * binary encoding.
- *
- * @category conversions
- */
-export const fromRuntimeStateValue: (
-  value: RuntimeStateValue
-) => Effect.Effect<CurrentEra.StateValue, ContractRuntimeError.ContractRuntimeError> = (value) =>
-  tryConvert('Unexpected error converting runtime state value', () => decodeStateValue(value));
-
-/**
- * Converts a runtime {@link RuntimeQueryContext} to this era's ledger `QueryContext`, carrying
- * `state`, `address`, `block`, `effects`, and the commitment indices (`comIndices`).
- *
- * `comIndices` is declared `readonly` and is only *writable* via `insertCommitment`, but it is
- * carried here by the `block` assignment: the commitment map is part of the block-level call
- * context, so assigning `block` restores it. This is verified by `test/effect/Ledger.test.ts` —
- * do not "fix" the apparent gap by re-inserting the entries, which would union two commitment
- * sets at any call site that also supplies its own (see
- * `ContractExecutable.partitionAllTranscripts`).
- *
- * @category conversions
- */
-export const fromRuntimeQueryContext: (
-  queryContext: RuntimeQueryContext
-) => Effect.Effect<CurrentEra.QueryContext, ContractRuntimeError.ContractRuntimeError> = (queryContext) =>
-  tryConvert('Unexpected error converting runtime query context', () => {
-    const ledgerQueryContext = new CurrentEra.QueryContext(
-      new CurrentEra.ChargedState(decodeStateValue(queryContext.state.state)),
-      queryContext.address
-    );
-    // The constructor takes only the state and address; the remaining settable properties are
-    // copied manually. `block` also carries `comIndices` (see the note above).
-    ledgerQueryContext.block = queryContext.block;
-    ledgerQueryContext.effects = queryContext.effects;
-    return ledgerQueryContext;
-  });
-
-/**
- * Adapts a platform-js {@link SigningKey.SigningKey} to this era's ledger `SigningKey`, failing
- * when the signature scheme is not supported by the era's CMA path.
- *
- * The two halves of that sentence live in different places on purpose. Admissibility is
- * era-neutral policy and stays here: a scheme outside the era's allowlist fails rather than being
- * silently coerced. The key's *shape* is era-varying — ledger 9 tags each key (`{ tag, value }`)
- * while ledger 8 has no tagged-key concept and uses a bare hex string — so the construction is
- * delegated to the era binding's `makeSigningKey`. Returning `{ tag, value }` from here directly
- * would hard-code ledger 9's representation into the era-neutral facade.
- *
- * @category conversions
- */
-export const fromPlatformSigningKey = (
-  signingKey: SigningKey.SigningKey,
-  contractState?: RuntimeContractState
-): Either.Either<CurrentEra.SigningKey, ContractConfigurationError.ContractConfigurationError> =>
-  CurrentEra.era.supportsCmaSignatureKind(signingKey.tag)
-    ? Either.right(CurrentEra.makeSigningKey(signingKey))
-    : Either.left(
-        ContractConfigurationError.make(
-          `Unsupported signature scheme '${signingKey.tag}' for a contract maintenance authority; ` +
-            `supported schemes are: ${CurrentEra.era.cmaSignatureKindsDescription}`,
-          contractState
-        )
-      );
