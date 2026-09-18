@@ -30,6 +30,7 @@
 import type * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { Effect, Either } from 'effect';
 
+import type * as CompactRuntime from './CompactRuntime.js';
 // The runtime side of every conversion below comes through the compact-runtime seam, not the
 // package: this module is where the two era-paired halves meet, so it is also where a mismatched
 // pair would first misbehave. Aliased `Runtime*` to keep each conversion's direction readable.
@@ -42,10 +43,21 @@ import {
 import * as ContractConfigurationError from './ContractConfigurationError.js';
 import * as ContractRuntimeError from './ContractRuntimeError.js';
 import * as boundary from './internal/boundary.js';
+import { type EraPairing } from './internal/era.js';
 import * as CurrentEra from './internal/ledger/current.js';
+import type { Assert, Extends } from './internal/typeAssertions.js';
 
 export { type Era } from './internal/era.js';
 export * from './internal/ledger/current.js';
+
+// Compile-time proof that the two seams are bound to the *same* era. The ledger and runtime
+// halves are chosen in separate `current.ts` files, and `EraPairing` makes a mispaired descriptor
+// unrepresentable *within* a binding but says nothing about which two bindings a build actually
+// wired together. This module already imports both facades, so the check costs no new edge, and
+// it fails closed: if either literal widens, the assertion errors rather than quietly passing.
+// `CompactRuntime.test.ts` asserts the same pairing at run time; this makes a half-completed era
+// swap a build failure instead, which is what step 5 of CLAUDE.md's checklist relies on.
+type _SeamsArePaired = Assert<Extends<typeof CompactRuntime.line, EraPairing[typeof CurrentEra.era.ledger]>>;
 
 /**
  * Wraps a call across the ledger (WASM) boundary so that a rejection becomes a typed failure
@@ -69,7 +81,7 @@ export * from './internal/ledger/current.js';
  */
 export const tryConvert: <A>(
   message: string,
-  evaluate: () => A
+  evaluate: () => A extends PromiseLike<unknown> ? never : A
 ) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = boundary.tryBoundary;
 
 /**

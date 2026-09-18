@@ -43,6 +43,21 @@ const RUNTIME_SEAM_PATTERN = {
     'only compact-js/src/effect/internal/runtime/* may bind a runtime line directly.'
 };
 
+// `no-restricted-imports` only inspects `ImportDeclaration` and `Export*Declaration`, so a dynamic
+// `await import('@midnight-ntwrk/compact-runtime')` walks straight through both seams above. These
+// close that hole. Kept as separate selectors (rather than folded into the patterns) because it is
+// a different rule, and a different rule means each override block must re-state it too — same
+// wholesale-replace hazard as the imports.
+const LEDGER_SEAM_DYNAMIC_IMPORT = {
+  selector: 'ImportExpression[source.value=/^@midnight-?ntwrk\\u002Fledger-v/]',
+  message: LEDGER_SEAM_PATTERN.message
+};
+
+const RUNTIME_SEAM_DYNAMIC_IMPORT = {
+  selector: 'ImportExpression[source.value=/^@midnight-ntwrk\\u002Fcompact-runtime/]',
+  message: RUNTIME_SEAM_PATTERN.message
+};
+
 export default tseslint.config(
   {
     ignores: [
@@ -145,6 +160,7 @@ export default tseslint.config(
         'error',
         { patterns: [DIST_IMPORT_PATTERN, LEDGER_SEAM_PATTERN, RUNTIME_SEAM_PATTERN] }
       ],
+      'no-restricted-syntax': ['error', LEDGER_SEAM_DYNAMIC_IMPORT, RUNTIME_SEAM_DYNAMIC_IMPORT],
     }
   },
   {
@@ -156,6 +172,7 @@ export default tseslint.config(
     files: ['compact-js/src/effect/internal/ledger/*.ts'],
     rules: {
       'no-restricted-imports': ['error', { patterns: [DIST_IMPORT_PATTERN, RUNTIME_SEAM_PATTERN] }],
+      'no-restricted-syntax': ['error', RUNTIME_SEAM_DYNAMIC_IMPORT],
     }
   },
   {
@@ -164,6 +181,7 @@ export default tseslint.config(
     files: ['compact-js/src/effect/internal/runtime/*.ts'],
     rules: {
       'no-restricted-imports': ['error', { patterns: [DIST_IMPORT_PATTERN, LEDGER_SEAM_PATTERN] }],
+      'no-restricted-syntax': ['error', LEDGER_SEAM_DYNAMIC_IMPORT],
     }
   },
   {
@@ -172,6 +190,7 @@ export default tseslint.config(
     files: ['**/test/**'],
     rules: {
       'no-restricted-imports': ['error', { patterns: [DIST_IMPORT_PATTERN] }],
+      'no-restricted-syntax': 'off',
     }
   },
   {

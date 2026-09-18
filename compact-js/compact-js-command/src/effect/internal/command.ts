@@ -63,7 +63,7 @@ const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) =>
  */
 export const tryLedger: <A>(
   message: string,
-  evaluate: () => A
+  evaluate: () => A extends PromiseLike<unknown> ? never : A
 ) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = Ledger.tryConvert;
 
 /**
@@ -107,6 +107,20 @@ export const newIntent: () => Effect.Effect<
     Effect.flatMap((date) => tryLedger('Failed to create intent', () => Ledger.Intent.new(date)))
   );
 
+/**
+ * Renders a link in a cause chain as text.
+ *
+ * @remarks
+ * `Doc.text` throws on a non-string, and a cause is not necessarily an `Error`:
+ * `ContractExecutable.circuit` maps a rejected witness with `Effect.tryPromise({ catch: identity })`,
+ * so a witness that does `throw 'insufficient balance'` puts a bare string in the chain. The
+ * reporter is what turns a failure into output, so a throw *here* is the silent exit it exists to
+ * prevent — it escapes {@link invocationHandler}'s `catchAll` as a defect.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const messageOf = (errOrCause: any): string =>
+  typeof errOrCause?.message === 'string' ? errOrCause.message : String(errOrCause);
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const reportCausableError: (err: any) => Effect.Effect<void, never> =
   (err) => Effect.gen(function* () {
@@ -116,15 +130,15 @@ const reportCausableError: (err: any) => Effect.Effect<void, never> =
         if (Doc.isDoc(errOrDoc)) {
           return docs.push(errOrDoc);
         }
-        docs.push(Doc.text(errOrDoc.message));
-        if (errOrDoc.cause) {
+        docs.push(Doc.text(messageOf(errOrDoc)));
+        if (errOrDoc?.cause) {
           buildCauseDoc(errOrDoc.cause);
         }
       }
       buildCauseDoc(err.cause);
       return docs;
     }
-    let errorDoc: Doc.AnsiDoc = Doc.text(err.message);
+    let errorDoc: Doc.AnsiDoc = Doc.text(messageOf(err));
     if (err.cause) {
       errorDoc = errorDoc.pipe(
         Doc.catWithLineBreak(Doc.annotate(Doc.text('(cause)'), Ansi.italicized)),

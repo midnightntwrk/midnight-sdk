@@ -22,11 +22,14 @@ import * as ContractRuntimeError from '../ContractRuntimeError.js';
  * defect.
  *
  * @remarks
- * Both era seams need this and neither can own it: `Ledger` imports `CompactRuntime` (it is where
- * the two era-paired halves meet), so a wrapper living in either facade would make the other's
- * import a cycle. It sits above both instead, and each facade re-exports it under the name that
- * documents its own package's failure mode — {@link Ledger.tryConvert} and
- * {@link CompactRuntime.tryRuntime} — so there is exactly one copy of the boundary handling.
+ * Both era seams need this, and it lives above both rather than in either. The dependency between
+ * the facades runs one way — `Ledger` imports `CompactRuntime` (it is where the two era-paired
+ * halves meet), not the reverse — so a wrapper owned by `Ledger` would make `CompactRuntime`'s
+ * import of it a cycle. Owning it in `CompactRuntime` would not cycle, but it would route every
+ * *ledger* rejection through the runtime facade and make the runtime seam load-bearing for the
+ * ledger one, which is the layering the two-seam split exists to avoid. Each facade re-exports it
+ * under the name that documents its own package's failure mode — `Ledger.tryConvert` and
+ * `CompactRuntime.tryRuntime` — so there is exactly one copy of the boundary handling.
  *
  * Every ledger and compact-runtime binding signals rejection by throwing. A throw evaluated in an
  * `Effect.gen` body (or a bare `Effect.map` callback) is a defect, and a defect escapes the
@@ -34,15 +37,21 @@ import * as ContractRuntimeError from '../ContractRuntimeError.js';
  * it, and the CLI — which runs with `disableErrorReporting` — exits non-zero printing nothing at
  * all.
  *
+ * `evaluate` is constrained to a synchronous thunk. `Effect.try` does not await, so an `async`
+ * thunk would infer `A = Promise<X>`: the effect *succeeds* carrying a pending promise, the
+ * rejection never reaches the error channel, and the caller gets an unhandled rejection plus a
+ * `Promise` where a value was expected — the very defect this function exists to prevent, arrived
+ * at through the wrapper meant to stop it. Use `Effect.tryPromise` for an async boundary call.
+ *
  * @param message A message describing the operation, used as the failure's message.
- * @param evaluate A thunk that performs the boundary call.
+ * @param evaluate A synchronous thunk that performs the boundary call.
  * @returns An `Effect` that yields the result of `evaluate`, failing with a
  * {@link ContractRuntimeError.ContractRuntimeError} if the boundary rejects it.
  * @internal
  */
 export const tryBoundary: <A>(
   message: string,
-  evaluate: () => A
+  evaluate: () => A extends PromiseLike<unknown> ? never : A
 ) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = (message, evaluate) =>
   Effect.try({
     try: evaluate,

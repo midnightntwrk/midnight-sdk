@@ -84,4 +84,13 @@ describe('CompactRuntime facade type surface', () => {
       Effect.Effect<number, ContractRuntimeError.ContractRuntimeError>
     >();
   });
+
+  it('rejects an async thunk rather than succeeding with a pending promise', () => {
+    // `Effect.try` does not await, so an async thunk would infer `A = Promise<X>`: the effect
+    // *succeeds* carrying a pending promise, the rejection never reaches the error channel, and
+    // the caller gets an unhandled rejection. The doctrine is "every boundary call goes through
+    // the wrapper", so the next person extending a call to an async API reaches for this function
+    // — it has to refuse rather than silently mis-handle it.
+    expect(CompactRuntime.tryRuntime('', async () => 1)).type.toRaiseError();
+  });
 });
