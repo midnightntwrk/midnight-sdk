@@ -36,32 +36,66 @@ describe('Ledger facade type surface', () => {
     // `toBe`, not `toBeAssignableFrom`: assignability ignores excess properties, so the source
     // below would stay assignable even if `Era.runtime` were deleted outright or widened to
     // `string`. The assertion would read like coverage while being unable to fail.
-    expect<Ledger.Era>().type.toBe<{
-      readonly ledger: 9;
-      readonly runtime: '0.19';
-      readonly supportsCmaSignatureKind: (kind: SignatureKind) => boolean;
-      readonly cmaSignatureKindsDescription: string;
-      readonly defaultCmaSignatureKind: SignatureKind;
-    }>();
+    //
+    // `Era` is the union over every *bound* major, not the era this build speaks — that is
+    // `typeof Ledger.era`, pinned in `LedgerEra.test.ts`. Each arm pairs its own runtime line.
+    expect<Ledger.Era>().type.toBe<
+      | {
+          readonly ledger: 8;
+          readonly runtime: '0.16';
+          readonly supportsCmaSignatureKind: (kind: SignatureKind) => boolean;
+          readonly cmaSignatureKindsDescription: string;
+          readonly defaultCmaSignatureKind: SignatureKind;
+        }
+      | {
+          readonly ledger: 9;
+          readonly runtime: '0.19';
+          readonly supportsCmaSignatureKind: (kind: SignatureKind) => boolean;
+          readonly cmaSignatureKindsDescription: string;
+          readonly defaultCmaSignatureKind: SignatureKind;
+        }
+    >();
   });
 
   it('fixes the runtime line from the ledger major rather than declaring the two independently', () => {
     // `Era` is the union of per-major descriptors and `runtime` is an `EraPairing` lookup on the
-    // major, so a binding cannot declare ledger 9 alongside another era's line. Today the union is
-    // a singleton and this holds by accident; it is the shape that keeps holding once it is not.
-    expect<Ledger.Era['runtime']>().type.toBe<'0.19'>();
+    // major, so a binding cannot declare ledger 9 alongside another era's line. With two eras bound
+    // the union is no longer a singleton, which is what makes the negative case below able to fail.
+    expect<Ledger.Era['runtime']>().type.toBe<'0.16' | '0.19'>();
   });
 
-  // NOTE: there is deliberately no negative pairing test here, and adding one is a trap. A
-  // counterexample needs a descriptor whose `runtime` is a *valid* `RuntimeLine` but the wrong one
-  // for its `ledger` — and while one era is bound, `RuntimeLine` is the singleton `'0.19'`, so
-  // every wrong line is also not a `RuntimeLine`. Such a test passes whether `Era` is the union of
-  // per-major descriptors or a flat `{ ledger: LedgerMajor; runtime: RuntimeLine }`: it looks like
-  // a guard against that "simplification" while catching nothing. (Verified by mutation.)
+  it('rejects a descriptor pairing a ledger major with another era\'s runtime line', () => {
+    // The negative case the NOTE below deferred until a second era existed. Both lines used here
+    // are valid `RuntimeLine`s — they are simply the wrong one for the stated major — so this can
+    // only pass because `Era` is the union of per-major descriptors. Flatten `Era` to
+    // `{ ledger: LedgerMajor; runtime: RuntimeLine }` and both assertions go green, which is the
+    // "simplification" this test exists to block.
+    expect<{
+      readonly ledger: 9;
+      readonly runtime: '0.16';
+      readonly supportsCmaSignatureKind: (kind: SignatureKind) => boolean;
+      readonly cmaSignatureKindsDescription: string;
+      readonly defaultCmaSignatureKind: SignatureKind;
+    }>().type.not.toBeAssignableTo<Ledger.Era>();
+
+    expect<{
+      readonly ledger: 8;
+      readonly runtime: '0.19';
+      readonly supportsCmaSignatureKind: (kind: SignatureKind) => boolean;
+      readonly cmaSignatureKindsDescription: string;
+      readonly defaultCmaSignatureKind: SignatureKind;
+    }>().type.not.toBeAssignableTo<Ledger.Era>();
+  });
+
+  // HISTORY: this used to carry a NOTE saying a negative pairing test was a trap, because with a
+  // single bound era `RuntimeLine` was the singleton `'0.19'` and every "wrong" line was also not
+  // a `RuntimeLine` — so the test passed whether `Era` was the union of per-major descriptors or a
+  // flat `{ ledger: LedgerMajor; runtime: RuntimeLine }`, catching nothing. Ledger 8 landing is the
+  // event that NOTE said to wait for, and the negative case above is now live.
   //
-  // What actually protects the pairing today is `Ledger.ts`'s `_SeamsArePaired` assertion, which
-  // is a build error rather than a test. Write the negative case here when a second era lands —
-  // that is the point at which it can fail.
+  // `Ledger.ts`'s `_SeamsArePaired` assertion remains the guard for a different thing: that the two
+  // *bound* `current.ts` files agree. That is a build error rather than a test, and neither check
+  // subsumes the other.
 
   it('exposes the bound era major as a literal, not a widened number', () => {
     // `as const satisfies Era` in the binding keeps this a literal, so downstream code can branch
