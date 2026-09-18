@@ -14,20 +14,24 @@
  */
 
 /**
- * The **era-neutral** half of the `/effect` surface: every module that any ledger era this
- * codebase binds can support.
+ * The **era-neutral** half of the `/effect` surface: the era-free core, plus the members that work
+ * on whichever era this build bound.
  *
  * @remarks
- * Split out from `effect/index.ts` so an era-scoped entry composes only the levels its runtime
- * line can actually provide (midnight-sdk#387/#388). A ledger 8 entry would re-export exactly
- * this module and nothing more; the ledger 9 entry adds `contractEventsSurface.ts` on top.
+ * Split out from `effect/index.ts` so an era-scoped entry composes only the levels its runtime line
+ * can actually provide (midnight-sdk#387/#388). This barrel is what the *unsuffixed* entry uses:
+ * the three members added below reach `Ledger.js`/`CompactRuntime.js`, so they resolve through each
+ * seam's `current.ts` and describe the build's bound era rather than a named one.
  *
- * #388 requires that a member which cannot exist on an older era is *absent* from that era's
- * entry rather than present and failing at run time. Omission is not merely the tidy option here
- * — the contract-event modules import `LogEvent` from the compact-runtime seam, which
- * compact-runtime 0.16 does not have, so an entry that re-exported them would not compile at all.
- * `LedgerEra.test.ts` asserts the event modules stay out of this barrel, and that everything in it
- * remains reachable from the era entry.
+ * An era-pinned entry therefore composes `eraFreeSurface.ts` plus its **own** binding, not this
+ * module — see `src/v8/effect.ts` and `src/v9/effect.ts`. Re-exporting this barrel from `/v8` would
+ * hand back ledger-9-bound objects from a path named v8, and re-exporting it from `/v9` is what
+ * previously made `/v9` an alias that silently followed an era swap.
+ *
+ * #388 requires that a member which cannot exist on an older era is *absent* from that era's entry
+ * rather than present and failing at run time. The contract-event modules are absent from every
+ * barrel here and live in `contractEventsSurface.ts`, composed only by entries whose era can emit
+ * events. `LedgerEra.test.ts` asserts both halves of that.
  *
  * Internal by design: consumers reach these through `@midnight-ntwrk/compact-js/effect` or an
  * era-pinned entry, and `package.json` `exports` blocks `./effect/internal/*` with `null`. The
@@ -38,18 +42,7 @@
  *
  * @internal
  */
-export * as CompactContext from '../CompactContext.js';
 export * as CompactRuntime from '../CompactRuntime.js';
-export * as CompiledContract from '../CompiledContract.js';
-export * as Contract from '../Contract.js';
-export * as ContractConfigurationError from '../ContractConfigurationError.js';
 export * as ContractExecutable from '../ContractExecutable.js';
-export * as ContractExecutableRuntime from '../ContractExecutableRuntime.js';
-export * as ContractKeyLocation from '../ContractKeyLocation.js';
-export * as ContractRuntimeError from '../ContractRuntimeError.js';
 export * as Ledger from '../Ledger.js';
-export * as MalformedHexPrefixError from '../MalformedHexPrefixError.js';
-export * as ZKConfiguration from '../ZKConfiguration.js';
-export * as ZKConfigurationReadError from '../ZKConfigurationReadError.js';
-export * as ZKManifest from '../ZKManifest.js';
-export * as ZKManifestError from '../ZKManifestError.js';
+export * from './eraFreeSurface.js';

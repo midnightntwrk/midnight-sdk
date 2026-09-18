@@ -16,12 +16,26 @@
 import * as rootEntry from '@midnight-ntwrk/compact-js';
 import * as effectEntry from '@midnight-ntwrk/compact-js/effect';
 import { Ledger } from '@midnight-ntwrk/compact-js/effect';
+import * as v8EffectEntry from '@midnight-ntwrk/compact-js/v8/effect';
 import * as v9Entry from '@midnight-ntwrk/compact-js/v9';
 import * as v9EffectEntry from '@midnight-ntwrk/compact-js/v9/effect';
 import { ContractState, LedgerParameters } from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
 
+import * as eraFreeSurface from '../../src/effect/internal/eraFreeSurface.js';
 import * as eraNeutralSurface from '../../src/effect/internal/eraNeutralSurface.js';
+
+// Contract events are a ledger 9 feature: compact-runtime 0.16 has no `LogEvent`, no per-context
+// event accumulation, and onchain-runtime-v3's `log` payload is a bare `EncodedStateValue` with no
+// emitting-contract address. #388 requires such a member to be *absent* from an older era's entry,
+// not present and failing at run time.
+const CONTRACT_EVENT_EXPORTS = [
+  'ContractEventStore',
+  'ContractEventValidationError',
+  'ContractLog',
+  // `ContractEventValidator` is star-exported rather than namespaced, so its member is named here.
+  'validateEvents'
+];
 
 describe('Ledger era seam', () => {
   it('describes the ledger 9 era', () => {
@@ -58,6 +72,18 @@ describe('era-pinned entries', () => {
     expect(Object.keys(v9EffectEntry).sort()).toEqual(Object.keys(effectEntry).sort());
   });
 
+  it('`/v9/effect` binds ledger 9 itself rather than following the build\'s bound era', () => {
+    // The regression this catches: while `/v9/effect` re-exported `Ledger.ts`, it resolved through
+    // `internal/ledger/current.ts` — so repointing that at ledger 10 turned `/v9` into a ledger 10
+    // entry with no build error and no test failure, because every `/v9`-vs-root comparison was
+    // then comparing an alias with its own target. A namespace object distinct from the root
+    // entry's is the observable evidence that this entry carries its own binding; the class
+    // identity asserted below shows the two still agree on the era today.
+    expect((v9EffectEntry as typeof effectEntry).Ledger).not.toBe(effectEntry.Ledger);
+    expect((v9EffectEntry as typeof effectEntry).Ledger.era.ledger).toBe(9);
+    expect((v9EffectEntry as typeof effectEntry).Ledger.era.runtime).toBe('0.19');
+  });
+
   it('`/v9/effect` resolves the ledger 9 package', () => {
     // Anchored on the ledger-v9 package itself, not on the unsuffixed entry (which `/v9/effect`
     // re-exports, making any comparison against it a tautology) and not on the literal `9` (whose
@@ -69,21 +95,40 @@ describe('era-pinned entries', () => {
   });
 });
 
-describe('era capability split', () => {
-  // Contract events are a ledger 9 feature: compact-runtime 0.16 has no `LogEvent`, no per-context
-  // event accumulation, and onchain-runtime-v3's `log` payload is a bare `EncodedStateValue` with
-  // no emitting-contract address. #388 requires such a member to be *absent* from an older era's
-  // entry, not present and failing at run time — so the surface is split in two, and an era entry
-  // composes only the levels its runtime line can support.
-  const CONTRACT_EVENT_EXPORTS = [
-    'ContractEventStore',
-    'ContractEventValidationError',
-    'ContractLog',
-    // `ContractEventValidator` is star-exported rather than namespaced, so its member is named
-    // directly here.
-    'validateEvents'
-  ];
+describe('the ledger 8 entry', () => {
+  it('pins ledger 8 and its paired 0.16 runtime', () => {
+    expect(v8EffectEntry.Ledger.era.ledger).toBe(8);
+    expect(v8EffectEntry.Ledger.era.runtime).toBe('0.16');
+    expect(v8EffectEntry.CompactRuntime.line).toBe('0.16');
+  });
 
+  it('exposes every era-free module, so era-agnostic code compiles against either entry', () => {
+    // #388's "identical public API wherever the era permits". These modules reach neither facade
+    // at runtime — verified in the built output, not assumed — so withholding them made `/v8`
+    // narrower than the era requires.
+    const keys = new Set(Object.keys(v8EffectEntry));
+    for (const name of Object.keys(eraFreeSurface)) {
+      expect(keys).toContain(name);
+    }
+  });
+
+  it('omits contract events, which ledger 8 cannot emit', () => {
+    const keys = Object.keys(v8EffectEntry);
+    for (const name of CONTRACT_EVENT_EXPORTS) {
+      expect(keys).not.toContain(name);
+    }
+  });
+
+  it('omits ContractExecutable while it is still bound to the facades', () => {
+    // Not an era truth — ledger 8 execution works (`test/era8/LedgerEightExecution.test.ts`). This
+    // is the one module left whose *runtime* imports reach `Ledger.js`/`CompactRuntime.js`, so it
+    // would hand back ledger-9-bound objects from a path named v8. Delete this assertion when the
+    // executable takes its bindings as parameters.
+    expect(Object.keys(v8EffectEntry)).not.toContain('ContractExecutable');
+  });
+});
+
+describe('era capability split', () => {
   it('keeps contract events out of the era-neutral surface', () => {
     // The surface a ledger 8 entry would compose. If an event module leaks in here, that entry
     // stops being buildable at all (its runtime line has no `LogEvent`) — the failure mode this
