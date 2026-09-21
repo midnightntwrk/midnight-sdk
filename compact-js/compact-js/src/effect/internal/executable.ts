@@ -108,7 +108,6 @@ export interface ExecutableRuntime {
    * to be the line the *ledger* half's era pairs with — see its `R` constraint.
    */
   readonly line: RuntimeLine;
-  readonly CompactError: abstract new (...args: never) => unknown;
   readonly ContractMaintenanceAuthority: new (committee: never, threshold: never, counter?: never) => unknown;
   readonly ContractState: abstract new (...args: never) => unknown;
   readonly createConstructorContext: (privateState: never, coinPublicKey: never) => unknown;
@@ -442,41 +441,62 @@ export const makeExecutable = <
         contract: this.createContract()
       }).pipe(
         Effect.flatMap(({ zkConfigReader, keyConfig, contract }) =>
-          Effect.tryPromise({
-            try: async () => {
-              // Read back as *this executable's* era. `Contract` describes a compiled contract
-              // era-free — it has to, since one description must cover every era compact-js binds —
-              // so it promises only `currentPrivateState`. The remaining members are era types, and
-              // the era that applies is the one whose `createConstructorContext` built the argument
-              // on the line below: a contract compiled for another line throws
-              // `checkRuntimeVersion` when its module is imported, long before this call.
-              const { currentContractState, currentPrivateState, currentZswapLocalState } =
-                (await contract.initialState(
-                  runtime.createConstructorContext(
-                    initialPrivateState as never,
-                    CoinPublicKey.asHex(keyConfig.coinPublicKey) as never
-                  ),
-                  ...args
-                )) as {
-                  currentContractState: Types['ContractState'];
-                  currentPrivateState: PS;
-                  currentZswapLocalState: Types['EncodedZswapLocalState'];
-                };
-              return {
-                contractState: currentContractState,
-                privateState: currentPrivateState,
-                zswapLocalState: runtime.decodeZswapLocalState(currentZswapLocalState as never) as Types['ZswapLocalState']
-              };
-            },
+          // Three unrelated operations, each with its own failure. Folded into one `try` they all
+          // reported the *first* one's message: a dApp author whose witness has a typo, or who does
+          // `throw 'insufficient balance'`, was sent to check their wallet configuration. Only
+          // `createConstructorContext` has anything to do with a coin public key.
+          Effect.try({
+            try: () =>
+              runtime.createConstructorContext(
+                initialPrivateState as never,
+                CoinPublicKey.asHex(keyConfig.coinPublicKey) as never
+              ),
             catch: (err: unknown) =>
-              err instanceof runtime.CompactError
-                ? ContractRuntimeError.make('Failed to initialize contract', err)
-                : ContractConfigurationError.make(
-                    'Failed to configure constructor context with coin public key',
-                    undefined,
-                    err
-                  )
+              ContractConfigurationError.make(
+                'Failed to configure constructor context with coin public key',
+                undefined,
+                err
+              )
           }).pipe(
+            // Runs the contract's constructor, and with it the user's witnesses. Anything it throws
+            // is an initialization failure, whether or not the runtime wrapped it in a
+            // `CompactError` — the `instanceof` that used to make that distinction also fails for a
+            // legitimate `CompactError` thrown by a second copy of compact-runtime, which is the
+            // nested `node_modules` case the era seam exists to surface.
+            //
+            // Read back as *this executable's* era. `Contract` describes a compiled contract
+            // era-free — it has to, since one description must cover every era compact-js binds —
+            // so it promises only `currentPrivateState`. The remaining members are era types, and
+            // the era that applies is the one whose `createConstructorContext` built the argument:
+            // a contract compiled for another line throws `checkRuntimeVersion` when its module is
+            // imported, long before this call.
+            Effect.flatMap((constructorContext) =>
+              Effect.tryPromise({
+                // `async` rather than returning the call directly: `Contract.initialState` *settles
+                // to* its result, and compactc 0.31.1 generates a synchronous constructor.
+                try: async () =>
+                  (await contract.initialState(constructorContext, ...args)) as {
+                    currentContractState: Types['ContractState'];
+                    currentPrivateState: PS;
+                    currentZswapLocalState: Types['EncodedZswapLocalState'];
+                  },
+                catch: (err: unknown) => ContractRuntimeError.make('Failed to initialize contract', err)
+              })
+            ),
+            Effect.flatMap(({ currentContractState, currentPrivateState, currentZswapLocalState }) =>
+              // Decoded through the seam's wrapper rather than inside the callback above, so a
+              // rejected zswap local state is not reported as a failed constructor.
+              tryBoundary(
+                'Failed to decode the zswap local state returned by the contract constructor',
+                () => runtime.decodeZswapLocalState(currentZswapLocalState as never) as Types['ZswapLocalState']
+              ).pipe(
+                Effect.map((zswapLocalState) => ({
+                  contractState: currentContractState,
+                  privateState: currentPrivateState,
+                  zswapLocalState
+                }))
+              )
+            ),
             Effect.flatMap(({ contractState, privateState, zswapLocalState }) =>
               Effect.gen(this, function* () {
                 // Add the verifier keys.
@@ -644,12 +664,27 @@ export const makeExecutable = <
                         `Missing partitioned transcript for call ${i} ('${entry.circuitId}')`
                       );
                     }
+                    // Two chained wasm-bindgen getters: `ChargedState.state` compiles to
+                    // `wasm.chargedstate_state(this.__wbg_ptr)`, so it traps on a freed or foreign
+                    // pointer rather than returning. This generator body is inside
+                    // `Effect.forEach`, where a throw is a defect — the same reason its sibling on
+                    // this object (`comIndices`) is held inside a wrapper in
+                    // `partitionAllTranscripts`. The other fields read off `entry` below are
+                    // plain-JS trace members and need no wrapper.
+                    // Annotated `unknown` and cast at the use site rather than inferred:
+                    // `Types['StateValue']` is itself a deferred conditional over
+                    // `finalQueryContext`, which `tryBoundary`'s own conditional parameter type
+                    // matches on, inferring `A` as the query context instead of the state value.
+                    const finalContractState = yield* tryBoundary(
+                      `Failed to read the updated contract state of the call to '${entry.circuitId}' ` +
+                        `on '${entry.contractAddress}'`,
+                      (): unknown => (entry.finalQueryContext as { state: { state: unknown } }).state.state
+                    );
                     return {
                       contractAddress: ContractAddress.ContractAddress(entry.contractAddress),
                       circuitId: entry.circuitId,
                       public: {
-                        contractState: (entry.finalQueryContext as { state: { state: Types['StateValue'] } }).state
-                          .state,
+                        contractState: finalContractState as Types['StateValue'],
                         // Copied because the era-neutral trace exposes a readonly view while the
                         // public `ContractCall` field is mutable; narrowing that field would be a
                         // breaking type change for consumers.
@@ -839,10 +874,41 @@ export const makeExecutable = <
         );
       }
 
-      // `addSignature` is inside this block with `signData`: it rejects a signature whose scheme the
-      // era's authority does not accept, which is the same failure surfaced one call later.
+      // Three WASM operations, three messages. Only the middle one is about key material, and the
+      // CLI prints the message first with the cause under a `(cause)` header — so folding all three
+      // into one `try` sends a consumer whose real fault is a duplicated ledger dependency
+      // (`expected instance of Signature`, `null pointer passed to rust`) off to audit their keys,
+      // which is the diagnosis the era seam exists to prevent.
+      let dataToSign: unknown;
       try {
-        const signature = ledger.signData(ledgerSigningKey.right as never, maintenanceUpdate.dataToSign as never);
+        dataToSign = maintenanceUpdate.dataToSign;
+      } catch (err: unknown) {
+        return Either.left(
+          ContractConfigurationError.make(
+            `Failed to read the data to sign from the maintenance update for contract '${address}'`,
+            contractState,
+            err
+          )
+        );
+      }
+
+      let signature: unknown;
+      try {
+        signature = ledger.signData(ledgerSigningKey.right as never, dataToSign as never);
+      } catch (err: unknown) {
+        return Either.left(
+          ContractConfigurationError.make(
+            `Failed to sign contract maintenance update with a '${signingKey.tag}' signing key`,
+            contractState,
+            err
+          )
+        );
+      }
+
+      // Rejects a signature whose scheme the era's authority does not accept — and equally a
+      // `Signature` built against a second copy of the ledger package, or an update already
+      // consumed.
+      try {
         return Either.right({
           public: {
             maintenanceUpdate: maintenanceUpdate.addSignature(DEFAULT_SIGNATURE_INDEX, signature)
@@ -854,7 +920,7 @@ export const makeExecutable = <
       } catch (err: unknown) {
         return Either.left(
           ContractConfigurationError.make(
-            `Failed to sign contract maintenance update with a '${signingKey.tag}' signing key`,
+            `Failed to attach the signature to the maintenance update for contract '${address}'`,
             contractState,
             err
           )

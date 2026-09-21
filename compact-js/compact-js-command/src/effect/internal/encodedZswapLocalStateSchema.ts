@@ -59,15 +59,16 @@ export const EncodedZswapLocalStateSchema = Schema.Struct({
  * compact-runtime zswap codec.
  *
  * @remarks
- * The two pins that used to live here (`_PinnedToRuntime` and `_RuntimePinnedToSchema`, asserting
- * assignability in each direction against `CompactRuntime.EncodedZswapLocalState`) moved into
- * `internal/era/binding.ts`, which states them as the *parameter* and *return* types of
- * `CommandRuntime`'s two zswap members. That checks the identical pair of relationships — parameters
- * contravariantly, returns covariantly — but once per era the CLI can select, rather than once
- * against whichever line the build happens to bind. The reason the encode direction matters is
- * unchanged and worth keeping in view: `Schema.Struct` defaults to `onExcessProperty: 'ignore'`, so
- * a field added to a line's encoded zswap state would be silently stripped from every written
- * `--output-zswap` file, surfacing only when the file is read back and the coin set is wrong.
+ * Every check that used to sit here against `CompactRuntime.EncodedZswapLocalState` has moved into
+ * `internal/era/binding.ts`, which states them once per era the CLI can select rather than once
+ * against whichever line the build happens to bind: the two assignability pins as the *parameter*
+ * and *return* types of `CommandRuntime`'s zswap members (parameters contravariantly, returns
+ * covariantly), and the key-set comparison as `AssertNoZswapKeyDrift`.
+ *
+ * Why the encode direction matters is unchanged and worth keeping in view: `Schema.Struct` defaults
+ * to `onExcessProperty: 'ignore'`, so a field added to a line's encoded zswap state would be
+ * silently stripped from every written `--output-zswap` file, surfacing only when the file is read
+ * back and the coin set is wrong.
  */
 export type EncodedZswapLocalStateSchema = typeof EncodedZswapLocalStateSchema.Type;
 

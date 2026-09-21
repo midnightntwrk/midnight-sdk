@@ -61,6 +61,10 @@ const capabilities = {
  * the era-agnostic view `ConfigCompiler.ModuleExport` promises. See
  * {@link EraBinding.AssertIsCommandExecutable} for why this cannot be left to the import.
  */
+type _NoZswapKeyDrift = EraBinding.AssertNoZswapKeyDrift<
+  EraBinding.ZswapKeyDrift<CompactRuntime.EncodedZswapLocalState>
+>;
+
 type ProbePrivateState = { readonly count: number };
 type _ExecutableIsCommandExecutable = EraBinding.AssertIsCommandExecutable<
   ContractExecutable.ContractExecutable<

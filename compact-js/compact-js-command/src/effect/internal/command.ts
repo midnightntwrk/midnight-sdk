@@ -117,6 +117,16 @@ export const makeIntents: (ledger: EraBinding.CommandLedger) => Intents = (ledge
 };
 
 /**
+ * How many links of a cause chain are rendered before the walk gives up.
+ *
+ * @remarks
+ * A cap rather than a cycle guard alone: a chain can be unbounded without repeating an object
+ * (each link freshly wrapping the last), and a report long enough to scroll the real failure off
+ * the terminal is no more use than one that overflows the stack.
+ */
+const MAX_CAUSE_DEPTH = 16;
+
+/**
  * Renders a link in a cause chain as text.
  *
  * @remarks
@@ -125,26 +135,65 @@ export const makeIntents: (ledger: EraBinding.CommandLedger) => Intents = (ledge
  * so a witness that does `throw 'insufficient balance'` puts a bare string in the chain. The
  * reporter is what turns a failure into output, so a throw *here* is the silent exit it exists to
  * prevent — it escapes {@link invocationHandler}'s `catchAll` as a defect.
+ *
+ * Hence the `try`: `String(x)` is not total. A null-prototype object — which is what a witness
+ * rejecting with `Object.create(null)` puts in the chain — throws
+ * `TypeError: Cannot convert object to primitive value`, as does any value whose `toString` throws.
+ * `JSON.stringify` is preferred over `String` for objects because `String({ code: 42 })` is
+ * `'[object Object]'`: a printed line with no diagnostic content, which reports the failure while
+ * losing the only part of it that identifies the fault.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const messageOf = (errOrCause: any): string =>
-  typeof errOrCause?.message === 'string' ? errOrCause.message : String(errOrCause);
+const messageOf = (errOrCause: any): string => {
+  if (typeof errOrCause?.message === 'string') {
+    return errOrCause.message;
+  }
+  try {
+    return errOrCause !== null && typeof errOrCause === 'object'
+      ? (JSON.stringify(errOrCause) ?? Object.prototype.toString.call(errOrCause))
+      : String(errOrCause);
+  } catch {
+    // Unserializable (cyclic, a throwing getter, a bigint field) or unprintable. The tag is poor
+    // output, but it is output: the alternative is a defect in the one function that cannot fail.
+    return Object.prototype.toString.call(errOrCause);
+  }
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const reportCausableError: (err: any) => Effect.Effect<void, never> =
   (err) => Effect.gen(function* () {
     const buildCauseDocs = () => {
       const docs: Doc.Doc<unknown>[] = [];
-      const buildCauseDoc = (errOrDoc: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      // A cause chain is user-supplied data, not a structure this package controls: wrapping an
+      // error in its own cause is an ordinary mistake, and the walk's only terminating condition is
+      // a falsy `.cause`. Unbounded, that recurses until the stack gives out — a defect inside the
+      // reporter, which is precisely the silent exit it exists to prevent.
+      const seen = new WeakSet<object>();
+      const buildCauseDoc = (errOrDoc: any, depth: number): void => { // eslint-disable-line @typescript-eslint/no-explicit-any
         if (Doc.isDoc(errOrDoc)) {
-          return docs.push(errOrDoc);
+          docs.push(errOrDoc);
+          return;
+        }
+        if (errOrDoc !== null && typeof errOrDoc === 'object') {
+          if (seen.has(errOrDoc)) {
+            docs.push(Doc.text('(cause chain is circular)'));
+            return;
+          }
+          seen.add(errOrDoc);
         }
         docs.push(Doc.text(messageOf(errOrDoc)));
         if (errOrDoc?.cause) {
-          buildCauseDoc(errOrDoc.cause);
+          if (depth >= MAX_CAUSE_DEPTH) {
+            docs.push(Doc.text(`(cause chain truncated at ${MAX_CAUSE_DEPTH} entries)`));
+            return;
+          }
+          buildCauseDoc(errOrDoc.cause, depth + 1);
         }
       }
-      buildCauseDoc(err.cause);
+      if (err !== null && typeof err === 'object') {
+        seen.add(err);
+      }
+      buildCauseDoc(err.cause, 1);
       return docs;
     }
     let errorDoc: Doc.AnsiDoc = Doc.text(messageOf(err));

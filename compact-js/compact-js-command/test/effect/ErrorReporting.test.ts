@@ -56,6 +56,41 @@ describe('reportContractExecutionError', () => {
       const lines = yield* report(ContractRuntimeError.make('Failed to execute circuit', { code: 42 }));
 
       expect(lines.join('\n')).toContain('Failed to execute circuit');
+      // `String({ code: 42 })` is '[object Object]': the process exits 1 having printed a cause
+      // line with no diagnostic content at all. The cause's own fields are what makes the report
+      // actionable.
+      expect(lines.join('\n')).toContain('42');
+    })
+  );
+
+  it.effect('reports an error whose cause has a null prototype rather than dying', () =>
+    Effect.gen(function* () {
+      // `String(Object.create(null))` throws `TypeError: Cannot convert object to primitive value`.
+      // The reporter is typed `Effect<void, never>`, so that throw is a defect: it escapes both
+      // `catchAll`s in `invocationHandler` and the CLI exits printing nothing — exactly the silent
+      // exit this function exists to prevent. A witness rejecting with a null-prototype object
+      // reaches here verbatim via `Effect.tryPromise({ catch: identity })`.
+      const cause: { code?: number } = Object.create(null);
+      cause.code = 5;
+
+      const lines = yield* report(ContractRuntimeError.make('Failed to execute circuit', cause));
+
+      expect(lines.join('\n')).toContain('Failed to execute circuit');
+    })
+  );
+
+  it.effect('reports a self-referential cause chain rather than overflowing the stack', () =>
+    Effect.gen(function* () {
+      // Wrapping an error in its own cause is a plausible mistake in user code, and the walk over
+      // `.cause` has no terminating condition other than a falsy link, so it recurses until the
+      // stack gives out — again as a defect inside the reporter.
+      const cause: { message: string; cause?: unknown } = { message: 'circular boom' };
+      cause.cause = cause;
+
+      const lines = yield* report(ContractRuntimeError.make('Failed to execute circuit', cause));
+
+      expect(lines.join('\n')).toContain('Failed to execute circuit');
+      expect(lines.join('\n')).toContain('circular boom');
     })
   );
 });

@@ -169,6 +169,28 @@ export interface CommandRuntime {
 }
 
 /**
+ * Fails the build if a line's `EncodedZswapLocalState` has a key the CLI's schema does not —
+ * the gap neither direction of {@link CommandRuntime}'s zswap members covers.
+ *
+ * @remarks
+ * An **optional** field added to the runtime's type is assignable in both directions, so both pins
+ * stay silent, yet it is exactly what a compatible upstream release adds. `Schema.Struct` defaults
+ * to `onExcessProperty: 'ignore'`, so the field is **stripped** rather than rejected:
+ * `--output-zswap` writes a value that came *from* the runtime, so the field vanishes from every
+ * written state file with the build still green, and the loss surfaces much later, when the file is
+ * read back through `--input-zswap` and the coin set is wrong.
+ *
+ * Comparing key sets rather than types is what makes optional fields visible. Applied once per era
+ * in `internal/era/v<N>.ts`, where that era's `CompactRuntime` is in scope. The constraint is on
+ * the *argument*, so it is not vacuous the way `T extends never` in return position would be: the
+ * excess keys are what gets checked against `never`, and any non-empty union fails to satisfy it.
+ */
+export type AssertNoZswapKeyDrift<ExcessKeys extends never> = ExcessKeys;
+
+/** The excess keys {@link AssertNoZswapKeyDrift} is applied to, for a line's encoded zswap state. */
+export type ZswapKeyDrift<S> = Exclude<keyof S, keyof EncodedZswapLocalStateSchema>;
+
+/**
  * The capabilities an era either has or does not, as the commands see them.
  *
  * @remarks
