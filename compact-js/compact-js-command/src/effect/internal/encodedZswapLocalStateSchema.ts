@@ -71,16 +71,34 @@ type _PinnedToRuntime = AssertAssignable<
 >;
 
 /**
- * The same pin in the other direction, for the encode path. `--output-zswap` feeds a value that
- * comes *from* the runtime into `encodeZswapLocalStateObject`, and `Schema.Struct` defaults to
- * `onExcessProperty: 'ignore'` — it **strips** unknown fields rather than rejecting them. Without
- * this, a field added to the runtime's `EncodedZswapLocalState` would be silently dropped from
- * every written state file, with the build still green; the loss only surfaces much later, when
- * the file is read back through `--input-zswap` and the coin set is wrong.
+ * The same pin in the other direction, for the encode path: it catches a field this schema declares
+ * that the runtime's `EncodedZswapLocalState` does not have — a schema written against a newer or
+ * older runtime than the one actually bound, which would decode `--input-zswap` into a shape the
+ * runtime rejects.
+ *
+ * Note what it does *not* catch, since the two pins divide the work unevenly: a **required** field
+ * added to the runtime type is caught by {@link _PinnedToRuntime} above, not here. This one stays
+ * silent for that case.
  */
 type _RuntimePinnedToSchema = AssertAssignable<
   CompactRuntime.EncodedZswapLocalState,
   typeof EncodedZswapLocalStateSchema.Type
+>;
+
+/**
+ * Closes the gap neither assignability pin covers: an **optional** field added to the runtime's
+ * `EncodedZswapLocalState`. Assignability ignores it in both directions, yet it is exactly what a
+ * compatible upstream release adds — and `Schema.Struct` defaults to `onExcessProperty: 'ignore'`,
+ * so it is **stripped** rather than rejected. `--output-zswap` feeds a value that comes *from* the
+ * runtime through `encodeZswapLocalStateObject`, so the field would vanish from every written state
+ * file with the build still green; the loss surfaces much later, when the file is read back through
+ * `--input-zswap` and the coin set is wrong.
+ *
+ * Comparing key sets rather than types is what makes optional fields visible.
+ */
+type _NoKeyDrift = AssertAssignable<
+  Exclude<keyof CompactRuntime.EncodedZswapLocalState, keyof typeof EncodedZswapLocalStateSchema.Type>,
+  never
 >;
 
 export const encodeZswapLocalStateObject = Schema.encodeUnknown(EncodedZswapLocalStateSchema);

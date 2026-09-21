@@ -35,9 +35,11 @@
  * runtime dependency to vary per effect. Downstream multi-era consumers select between era-scoped
  * entries instead.
  *
- * Sibling packages (`compact-js-node`, `compact-js-command`) import this facade from
- * `@midnight-ntwrk/compact-js/effect` rather than declaring their own compact-runtime dependency,
- * so a swap here reaches them too and they cannot drift onto a second copy of the WASM.
+ * Sibling packages (`compact-js-node`, `compact-js-command`) reach the runtime *through* this
+ * facade, so a swap here reaches them too and they cannot drift onto a second copy of the WASM.
+ * Each pins compact-runtime only as a `devDependency`, for its own tests; that pin and this
+ * package's `dependencies` entry must stay in lockstep (`RuntimeIdentity.test.ts` states the same
+ * rule, and is what catches them diverging).
  *
  * @example
  * ```ts

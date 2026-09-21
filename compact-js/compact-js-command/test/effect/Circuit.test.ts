@@ -19,6 +19,7 @@ import { Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { describe, it } from '@effect/vitest';
 import { circuitCommand } from '@midnight-ntwrk/compact-js-command/effect';
+import { encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import {
   type ContractCall,
   Intent,
@@ -28,11 +29,31 @@ import {
   type SignatureEnabled
 } from '@midnightntwrk/ledger-v9';
 import { Effect } from 'effect';
+import { afterEach, vi } from 'vitest';
 
 import { ensureRemovePath } from './cleanup.js';
 import { useConfigFixture } from './configFixture.js';
 import * as MockConsole from './MockConsole.js';
 import { testLayer } from './testLayer.js';
+
+// Wrap `encodeZswapLocalState` so it delegates to the real implementation by default; one test
+// below overrides a single call. The compact-runtime seam re-exports this binding, so mocking the
+// package reaches `CompactRuntime.encodeZswapLocalState` inside the command handler too.
+vi.mock('@midnight-ntwrk/compact-runtime', async (importActual) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  const actual = await importActual<typeof import('@midnight-ntwrk/compact-runtime')>();
+  return { ...actual, encodeZswapLocalState: vi.fn(actual.encodeZswapLocalState) };
+});
+
+// Captured before any test queues an override, so `afterEach` can restore the delegating default:
+// neither `mockClear` nor `vi.restoreAllMocks()` drains a `mockImplementationOnce` queue, so a test
+// that failed before consuming its throw would leave it armed for the next one.
+const delegatingEncodeZswapLocalState = vi.mocked(encodeZswapLocalState).getMockImplementation()!;
+
+afterEach(() => {
+  vi.mocked(encodeZswapLocalState).mockReset();
+  vi.mocked(encodeZswapLocalState).mockImplementation(delegatingEncodeZswapLocalState);
+});
 
 // Test files run in parallel, so each owns a distinct path for every artefact it writes — the
 // config fixture (which is transpiled to a sibling `.js` before import) as much as the outputs
@@ -296,6 +317,47 @@ describe('Circuit Command', () => {
       }).pipe(
         Effect.ensuring(ensureRemovePath(COUNTER_INPUT_ZSWAP_FILEPATH)),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
+    30_000
+  );
+
+  it.effect(
+    'reports a runtime rejection when encoding the resulting zswap local state, after the intent is written',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
+        // This guard sits *after* the intent file is on disk, which makes it the worst failure mode
+        // in the command's blast radius: unwrapped, the throw is a defect, the CLI (running with
+        // `disableErrorReporting`) exits non-zero printing nothing, and the user is left with a
+        // half-written output directory and no indication of why.
+        vi.mocked(encodeZswapLocalState).mockImplementationOnce(() => {
+          throw new Error('expected instance of ZswapLocalState');
+        });
+
+        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+
+        yield* cli([
+          'node', 'circuit.ts',
+          '-c', COUNTER_CONFIG_FILEPATH,
+          '--input', COUNTER_STATE_FILEPATH,
+          '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output', COUNTER_OUTPUT_FILEPATH,
+          '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
+          '--output-result', COUNTER_RESULT_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.join('\n')).toContain('Failed to encode the zswap local state produced by the circuit');
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
         Effect.provide(testLayer)
       ),
     30_000

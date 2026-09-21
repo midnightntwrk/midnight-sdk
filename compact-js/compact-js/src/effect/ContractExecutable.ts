@@ -305,27 +305,45 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       contract: this.createContract()
     }).pipe(
       Effect.flatMap(({ zkConfigReader, keyConfig, contract }) =>
-        Effect.tryPromise({
-          try: async () => {
-            const { currentContractState, currentPrivateState, currentZswapLocalState } = await contract.initialState(
-              CompactRuntime.createConstructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
-              ...args
-            );
-            return {
-              contractState: currentContractState,
-              privateState: currentPrivateState,
-              zswapLocalState: CompactRuntime.decodeZswapLocalState(currentZswapLocalState)
-            };
-          },
+        // Three unrelated operations, each with its own failure. Folded into one `try` they all
+        // reported the *first* one's message: a dApp author whose witness has a typo, or who does
+        // `throw 'insufficient balance'`, was sent to check their wallet configuration. Only
+        // `createConstructorContext` has anything to do with a coin public key.
+        Effect.try({
+          try: () =>
+            CompactRuntime.createConstructorContext(initialPrivateState, CoinPublicKey.asHex(keyConfig.coinPublicKey)),
           catch: (err: unknown) =>
-            err instanceof CompactRuntime.CompactError
-              ? ContractRuntimeError.make('Failed to initialize contract', err)
-              : ContractConfigurationError.make(
-                  'Failed to configure constructor context with coin public key',
-                  undefined,
-                  err
-                )
+            ContractConfigurationError.make(
+              'Failed to configure constructor context with coin public key',
+              undefined,
+              err
+            )
         }).pipe(
+          // Runs the contract's constructor, and with it the user's witnesses. Anything it throws
+          // is an initialization failure, whether or not the runtime wrapped it in a `CompactError`
+          // — the `instanceof` that used to make that distinction also fails for a legitimate
+          // `CompactError` thrown by a second copy of compact-runtime, which is the nested
+          // `node_modules` case the era seam exists to surface.
+          Effect.flatMap((constructorContext) =>
+            Effect.tryPromise({
+              try: () => contract.initialState(constructorContext, ...args),
+              catch: (err: unknown) => ContractRuntimeError.make('Failed to initialize contract', err)
+            })
+          ),
+          Effect.flatMap(({ currentContractState, currentPrivateState, currentZswapLocalState }) =>
+            // Decoded through the seam's wrapper rather than inside the callback above, so a
+            // rejected zswap local state is not reported as a failed constructor.
+            CompactRuntime.tryRuntime(
+              'Failed to decode the zswap local state returned by the contract constructor',
+              () => CompactRuntime.decodeZswapLocalState(currentZswapLocalState)
+            ).pipe(
+              Effect.map((zswapLocalState) => ({
+                contractState: currentContractState,
+                privateState: currentPrivateState,
+                zswapLocalState
+              }))
+            )
+          ),
           Effect.flatMap(({ contractState, privateState, zswapLocalState }) =>
             Effect.gen(this, function* () {
               // Add the verifier keys.
@@ -473,11 +491,23 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
                       `Missing partitioned transcript for call ${i} ('${entry.circuitId}')`
                     );
                   }
+                  // Two chained wasm-bindgen getters: `ChargedState.state` compiles to
+                  // `wasm.chargedstate_state(this.__wbg_ptr)`, so it traps on a freed or foreign
+                  // pointer rather than returning. This generator body is inside `Effect.forEach`,
+                  // where a throw is a defect — the same reason its sibling on this object
+                  // (`comIndices`) is held inside a wrapper in `partitionAllTranscripts`. The other
+                  // fields read off `entry` below are plain-JS `CallProofData` members and need no
+                  // wrapper.
+                  const finalContractState = yield* CompactRuntime.tryRuntime(
+                    `Failed to read the updated contract state of the call to '${entry.circuitId}' ` +
+                      `on '${entry.contractAddress}'`,
+                    () => entry.finalQueryContext.state.state
+                  );
                   return {
                     contractAddress: ContractAddress.ContractAddress(entry.contractAddress),
                     circuitId: entry.circuitId,
                     public: {
-                      contractState: entry.finalQueryContext.state.state,
+                      contractState: finalContractState,
                       publicTranscript: entry.publicTranscript,
                       partitionedTranscript
                     },
@@ -645,10 +675,40 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       );
     }
 
-    // `addSignature` is inside this block with `signData`: it rejects a signature whose scheme the
-    // era's authority does not accept, which is the same failure surfaced one call later.
+    // Three WASM operations, three messages. Only the middle one is about key material, and the
+    // CLI prints the message first with the cause under a `(cause)` header — so folding all three
+    // into one `try` sends a consumer whose real fault is a duplicated ledger dependency
+    // (`expected instance of Signature`, `null pointer passed to rust`) off to audit their keys,
+    // which is the diagnosis the era seam exists to prevent.
+    let dataToSign: Uint8Array;
     try {
-      const signature = Ledger.signData(ledgerSigningKey.right, maintenanceUpdate.dataToSign);
+      dataToSign = maintenanceUpdate.dataToSign;
+    } catch (err: unknown) {
+      return Either.left(
+        ContractConfigurationError.make(
+          `Failed to read the data to sign from the maintenance update for contract '${address}'`,
+          contractState,
+          err
+        )
+      );
+    }
+
+    let signature: ReturnType<typeof Ledger.signData>;
+    try {
+      signature = Ledger.signData(ledgerSigningKey.right, dataToSign);
+    } catch (err: unknown) {
+      return Either.left(
+        ContractConfigurationError.make(
+          `Failed to sign contract maintenance update with a '${signingKey.tag}' signing key`,
+          contractState,
+          err
+        )
+      );
+    }
+
+    // Rejects a signature whose scheme the era's authority does not accept — and equally a
+    // `Signature` built against a second copy of the ledger package, or an update already consumed.
+    try {
       return Either.right({
         public: {
           maintenanceUpdate: maintenanceUpdate.addSignature(DEFAULT_SIGNATURE_INDEX, signature)
@@ -660,7 +720,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
     } catch (err: unknown) {
       return Either.left(
         ContractConfigurationError.make(
-          `Failed to sign contract maintenance update with a '${signingKey.tag}' signing key`,
+          `Failed to attach the signature to the maintenance update for contract '${address}'`,
           contractState,
           err
         )
