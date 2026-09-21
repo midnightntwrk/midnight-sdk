@@ -88,18 +88,23 @@ describe('the era-pinned executables', () => {
     expect<LedgerV8ContractState>().type.not.toBe<LedgerV9ContractState>();
   });
 
-  it('carries the contract-event types of its own era, not the build\'s bound one', () => {
-    // `ContractLog` reaches `LogEvent` through `effect/CompactRuntime.ts`, which resolves
-    // `internal/runtime/current.ts` — so unlike everything else on this entry it is *not* derived
-    // from a binding argument. While the bound era and this entry's era coincide nothing is
-    // visibly wrong; repoint `current.ts` at a later line and `/v9/effect` keeps exporting
-    // `ContractExecutable.CallResult.events` as 0.19's (correctly derived) while its `ContractLog`
-    // silently decodes against the new line's.
+  it('decodes its own era\'s events, and does not lose their type', () => {
+    // `ContractLog` used to take `LogEvent` from `effect/CompactRuntime.ts`, which resolves
+    // `internal/runtime/current.ts` — the one era-varying type on this entry that was not derived
+    // from a binding argument. Repointing `current.ts` at a later line would have left
+    // `ContractExecutable.CallResult.events` correctly on 0.19 while `ContractLog` decoded against
+    // the new line: wrong precisely in a fork window, which is what an era-pinned entry is for.
     //
-    // Anchored on the *pinned* 0.19 binding rather than on the `@midnight-ntwrk/compact-runtime`
-    // package, which is the same module `current.ts` resolves and would therefore move with it.
-    // This goes red on the era swap, which is the moment the divergence would otherwise ship.
-    expect<V9Entry.ContractLog.LogEvent>().type.toBe<V0_19.LogEvent>();
+    // It is now era-*free* — the structural minimum the decoder reads — so it cannot follow a
+    // swap at all. These assert the two properties that replace that coupling.
+
+    // This entry's own events still fit the decoder. (`internal/runtime/conformance.ts` asserts the
+    // same for the binding; here it is stated at the entry a consumer actually imports.)
+    expect<V0_19.LogEvent>().type.toBeAssignableTo<V9Entry.ContractLog.LogEvent>();
+
+    // And era precision survives decoding: `decode` is generic in the event it is given, so `raw`
+    // comes back as the 0.19 event that went in rather than widened to the structural minimum.
+    expect<ReturnType<typeof V9Entry.ContractLog.decode<V0_19.LogEvent>>['raw']>().type.toBe<V0_19.LogEvent>();
   });
 
   it('exposes the maintenance surface on both eras', () => {

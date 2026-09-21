@@ -33,6 +33,7 @@
  *
  * @internal
  */
+import { type LogEvent as ContractLogEvent } from '../../ContractLog.js';
 import { type CallTreeRuntimeBinding, type RuntimeBinding, type RuntimeBindingViolations } from './binding.js';
 import type * as V0_16 from './v0_16.js';
 import type * as V0_19 from './v0_19.js';
@@ -56,3 +57,12 @@ type _V0_16HasNoCallTree = Assert<Extends<Extends<typeof V0_16, CallTreeRuntimeB
 type _V0_19Conforms = Assert<Extends<typeof V0_19, RuntimeBinding>>;
 type _V0_19NoViolations = AssertNoViolations<RuntimeBindingViolations<typeof V0_19>>;
 type _V0_19HasCallTree = Assert<Extends<typeof V0_19, CallTreeRuntimeBinding>>;
+
+// `ContractLog` decodes events era-free, against the structural minimum it reads rather than
+// against a line's own `LogEvent` — which is what stops an era-pinned entry's decoder from
+// following `current.ts`. This is what keeps that minimum honest: every line that *can* emit events
+// must still satisfy it, so a line whose `LogEvent` gains a required field, renames `eventType`, or
+// changes the `EncodedStateValue` arms fails here rather than silently decoding to degraded events
+// at run time. Only the call-tree lines are checked, because a line with no events has no
+// `LogEvent` to compare (0.16's is `never`, which satisfies anything).
+type _V0_19LogEventDecodable = Assert<Extends<V0_19.LogEvent, ContractLogEvent>>;

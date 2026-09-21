@@ -33,16 +33,19 @@
  * It is *not* structural, and an earlier version of this note claimed otherwise — that "every
  * module re-exported here reaches `LogEvent` through the compact-runtime seam, so composing this
  * barrel on an era whose runtime line lacks it fails the build". Composing it on `/v8/effect`
- * compiles cleanly, verified. Only `ContractLog.ts` names a runtime type at all, and it takes
- * `LogEvent` from the *bound* facade rather than from a binding argument, so on an older era it
- * would simply hand back the bound era's events. The other three modules name no runtime type.
+ * compiles cleanly; that was verified rather than assumed. Three of the four modules name no
+ * runtime type at all, and the fourth (`ContractLog`) reached the *bound* facade rather than a
+ * binding argument — so on an older era the barrel would have compiled and handed back the wrong
+ * era's events, which is the opposite of a gate.
  *
- * Two real gates back the omission up. `CallTreeRuntimeBinding` (`internal/runtime/binding.ts`) is
- * asserted satisfied by 0.19 and **unsatisfiable by 0.16** in `internal/runtime/conformance.ts`, so
- * a line that cannot accumulate events cannot claim it. And `test/typetests/effect/EraExecutable.tst.ts`
- * pins `/v9/effect`'s `ContractLog.LogEvent` to the *pinned* 0.19 binding, so the day `current.ts`
- * advances this barrel's types stop matching the entry that composes it and the build goes red —
- * the divergence that would otherwise ship silently.
+ * `CallTreeRuntimeBinding` (`internal/runtime/binding.ts`) is the type-level gate that backs the
+ * omission up: `internal/runtime/conformance.ts` asserts 0.19 satisfies it and **0.16 does not**, so
+ * a line that cannot accumulate events cannot claim it.
+ *
+ * These modules are era-free in their own right. `ContractLog` used to take `LogEvent` from the
+ * bound facade — which would have made an era-pinned entry's decoder follow `current.ts` — and now
+ * reads the structural minimum it decodes, recovering the caller's own event type by inference. So
+ * composing this barrel on a later era is correct by construction rather than by coincidence.
  *
  * Internal by design, for the same reasons as its era-neutral sibling — and, like it, without an
  * internal-marker JSDoc tag, which `stripInternal` would apply to the first export below (see
