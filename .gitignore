@@ -18,6 +18,7 @@ reports/
 !.yarn/sdks
 !.yarn/versions
 managed/
+managed-v*/
 midnight-level-db
 logs
 .states

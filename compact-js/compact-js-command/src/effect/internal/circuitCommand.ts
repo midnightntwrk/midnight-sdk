@@ -126,7 +126,31 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const ledgerContractState = yield* fs.readFile(inputFilePath).pipe(
       Effect.flatMap(Ledger.contractStateFromBytes)
     );
-    const privateState = yield* readJsonFile(fs, inputPrivateStateFilePath);
+    const rawPrivateState = yield* readJsonFile(fs, inputPrivateStateFilePath);
+    // `JSON.parse('null')` returns `null` rather than throwing, so `readJsonFile` cannot catch this
+    // one, and `--input-ps` is required (unlike `--input-zswap`): a `null` payload is never the
+    // user asking for a fresh state. There is exactly one contract shape for which it is faithful —
+    // one whose private state *is* `undefined`, which JSON cannot encode any other way. For every
+    // other contract it means the file has lost the state it was meant to carry, and substituting
+    // `createInitialPrivateState()` runs the circuit against an invented state, writes a
+    // well-formed signed intent, and exits 0: the user finds out on chain, with nothing pointing
+    // back at the state file. `createInitialPrivateState()` is the only thing that tells the two
+    // apart.
+    if (rawPrivateState === null || rawPrivateState === undefined) {
+      const initialPrivateState = yield* Effect.try({
+        try: () => contractModule.createInitialPrivateState(),
+        catch: (err) => ContractRuntimeError.make('Failed to create an initial private state for the contract', err)
+      });
+      if (initialPrivateState !== undefined) {
+        return yield* ContractRuntimeError.make(
+          `'${inputPrivateStateFilePath}' contains no private state (the file holds JSON 'null'), but this ` +
+            `contract has one. Supply the private state written by a previous invocation, or the contract's ` +
+            `initial private state if it has not run yet.`
+        );
+      }
+    }
+    // Guarded above: `null` here can only be the JSON encoding of a contract with no private state.
+    const privateState = rawPrivateState ?? undefined;
     const encodedZswapLocalState = Option.map(
       inputZswapLocalStateFilePath,
       (filePath) => readJsonFile(fs, filePath).pipe(
@@ -160,7 +184,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const baseCircuitContext = {
       address,
       contractState: yield* Ledger.toRuntimeContractState(ledgerContractState),
-      privateState: privateState ?? contractModule.createInitialPrivateState(),
+      privateState,
       zswapLocalState: Option.isSome(encodedZswapLocalState)
         ? yield* encodedZswapLocalState.value
         : undefined,

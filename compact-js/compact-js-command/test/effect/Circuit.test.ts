@@ -50,6 +50,7 @@ const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/
 const COUNTER_RESULT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/result.json');
 const COUNTER_OUTPUT_EVENTS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_events.json');
 const COUNTER_INPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/input_circuit_zswap.json');
+const COUNTER_NULL_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/null_circuit_ps.json');
 
 // Passes `EncodedZswapLocalStateSchema` — which validates shape only — and is then rejected by the
 // runtime, which requires a 32-byte coin public key. This is the shape of a hand-edited or
@@ -218,6 +219,49 @@ describe('Circuit Command', () => {
         expect(lines.join('\n')).toContain(COUNTER_OUTPUT_PS_FILEPATH);
       }).pipe(
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
+    30_000
+  );
+
+  it.effect(
+    'reports an --input-ps file holding JSON null instead of silently resetting the private state',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        // `JSON.parse('null')` does not throw — it returns `null`, which is indistinguishable from
+        // "no file supplied" to a `??`. `--input-ps` is required, so a `null` payload is never the
+        // user asking for a fresh state: it is what this command writes when a circuit yields an
+        // undefined private state, read back on the next invocation. Substituting
+        // `createInitialPrivateState()` runs the circuit against an empty state and emits a
+        // well-formed, wrong intent with a zero exit code — the failure only surfaces on chain.
+        yield* fs.writeFileString(COUNTER_NULL_PS_FILEPATH, 'null');
+
+        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+
+        yield* cli([
+          'node', 'circuit.ts',
+          '-c', COUNTER_CONFIG_FILEPATH,
+          '--input', COUNTER_STATE_FILEPATH,
+          '--input-ps', COUNTER_NULL_PS_FILEPATH,
+          '--output', COUNTER_OUTPUT_FILEPATH,
+          '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
+          '--output-result', COUNTER_RESULT_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.join('\n')).toContain(COUNTER_NULL_PS_FILEPATH);
+        // The circuit must not have run: no intent on disk to submit.
+        expect(yield* fs.exists(COUNTER_OUTPUT_FILEPATH)).toBe(false);
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_NULL_PS_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
         Effect.provide(testLayer)
       ),
     30_000
