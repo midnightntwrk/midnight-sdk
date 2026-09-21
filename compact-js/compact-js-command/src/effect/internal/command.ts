@@ -19,10 +19,10 @@ import { type PlatformError } from '@effect/platform/Error';
 import { NodeContext } from '@effect/platform-node';
 import * as Ansi from '@effect/printer-ansi/Ansi';
 import * as Doc from '@effect/printer-ansi/AnsiDoc';
-import { type ContractExecutable, ContractExecutableRuntime,type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractExecutable, ContractExecutableRuntime, ContractRuntimeError, Ledger, type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, type Duration, Effect, Layer } from 'effect';
+import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, Duration, Effect, Layer } from 'effect';
 
 import * as CommandConfigProvider from '../CommandConfigProvider.js';
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -31,14 +31,60 @@ import * as ConfigCompiler from '../ConfigCompiler.js';
 import type * as ConfigError from '../ConfigError.js';
 import * as InternalOptions from './options.js';
 
+/** How far into the future a generated intent's TTL is set. */
+const INTENT_TTL = Duration.minutes(10);
+
 /**
  * Applies a duration to the current date/time, returning a date/time that is in the future.
  *
  * @param duration A `Duration` describing how far into the future the returned date/time should be.
  * @returns An `Effect` that yields a `Date` that will be in the future from `duration`.
  */
-export const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) => 
+const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) =>
   DateTime.now.pipe(Effect.map((utcNow) => DateTime.toDate(DateTime.addDuration(utcNow, duration))));
+
+/**
+ * Wraps a call across the ledger (WASM) boundary so that a rejection becomes a typed failure
+ * rather than a defect.
+ *
+ * @remarks
+ * Ledger bindings signal rejection by throwing — `Intent.addMaintenanceUpdate()` throws
+ * `'expected instance of MaintenanceUpdate'` when handed a value built against a different WASM
+ * instance, for example. A throw inside `Effect.gen` becomes a defect, and a defect escapes both
+ * the `Effect.mapError(...)` a command handler ends with *and*
+ * {@link invocationHandler}'s `Effect.catchAll(reportContractExecutionError)` — the user gets a raw
+ * fiber dump instead of the CLI's formatted report. Every ledger call made outside the `Ledger`
+ * facade (which wraps its own) goes through here.
+ *
+ * @param message A message describing the operation, used as the failure's message.
+ * @param evaluate A thunk that performs the ledger call.
+ * @returns An `Effect` that yields the result of `evaluate`, failing with a
+ * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects it.
+ */
+export const tryLedger: <A>(
+  message: string,
+  evaluate: () => A
+) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = (message, evaluate) =>
+  Effect.try({
+    try: evaluate,
+    catch: (err) => ContractRuntimeError.make(message, err)
+  });
+
+/**
+ * Creates an empty ledger `Intent` with the command-wide TTL applied. Every command emits its
+ * result as an intent with the same TTL policy; single-sourcing it here keeps the default in one
+ * place.
+ *
+ * @returns An `Effect` that yields a new `Intent`, failing with a
+ * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects the construction.
+ */
+export const newIntent: () => Effect.Effect<
+  ReturnType<typeof Ledger.Intent.new>,
+  ContractRuntimeError.ContractRuntimeError
+> = () =>
+  ttl(INTENT_TTL).pipe(
+    Effect.flatMap((date) => tryLedger('Failed to create intent', () => Ledger.Intent.new(date)))
+  );
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const reportCausableError: (err: any) => Effect.Effect<void, never> =
@@ -165,7 +211,8 @@ export type GlobalOptions = Command.Command.ParseConfig<typeof GlobalOptions>;
 /** @internal */
 export const GlobalOptions = {
   config: InternalOptions.config,
-  coinPublicKey: InternalOptions.coinPublicKey
+  coinPublicKey: InternalOptions.coinPublicKey,
+  ledgerEra: InternalOptions.ledgerEra
 }
 
 /**

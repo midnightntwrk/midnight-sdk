@@ -5,7 +5,14 @@
     "build": {
       "dependsOn": ["^build"],
       "outputLogs": "new-only",
-      "inputs": ["src/**/*.ts", "!src/**/*.test.ts", "src/**/*.compact"],
+      "inputs": [
+        "src/**/*.ts",
+        "!src/**/*.test.ts",
+        "src/**/*.compact",
+        "package.json",
+        "../scripts/fix-esm-only-exports.mjs",
+        "../scripts/verify-exports.mjs"
+      ],
       "outputs": ["dist/**", "build/**", "src/**/managed/**"]
     },
     "clean": {

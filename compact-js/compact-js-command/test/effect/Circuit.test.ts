@@ -17,9 +17,8 @@ import { resolve } from 'node:path';
 
 import { Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
-import { circuitCommand, ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
+import { circuitCommand } from '@midnight-ntwrk/compact-js-command/effect';
 import {
   type ContractCall,
   Intent,
@@ -28,29 +27,28 @@ import {
   type PreProof,
   type SignatureEnabled
 } from '@midnightntwrk/ledger-v9';
-import { Console, Effect, Layer } from 'effect';
+import { Effect } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
+import { useConfigFixture } from './configFixture.js';
 import * as MockConsole from './MockConsole.js';
+import { testLayer } from './testLayer.js';
 
-const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
+// Test files run in parallel, so each owns a distinct path for every artefact it writes — the
+// config fixture (which is transpiled to a sibling `.js` before import) as much as the outputs
+// below: a shared name lets one file's cleanup delete another's artefact mid-read.
+const COUNTER_CONFIG_FILEPATH = useConfigFixture(
+  resolve(import.meta.dirname, '../contract/counter/contract.config.ts'),
+  'circuit'
+);
 const COUNTER_STATE_FILEPATH = resolve(import.meta.dirname, '../contract/counter/state.bin');
 const COUNTER_LEDGER_PARAMS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/ledger_parameters.bin');
-const COUNTER_OUTPUT_OC_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_onchain.bin');
+const COUNTER_OUTPUT_OC_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit_onchain.bin');
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.bin');
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.json');
-const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_zswap.json');
+const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit_zswap.json');
 const COUNTER_RESULT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/result.json');
 const COUNTER_OUTPUT_EVENTS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_events.json');
-
-const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext | FileSystem.FileSystem> =
-  Effect.gen(function* () {
-    const console = yield* MockConsole.make;
-    return Layer.mergeAll(
-      Console.setConsole(console),
-      ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer))
-    );
-  }).pipe(Layer.unwrapEffect);
 
 describe('Circuit Command', () => {
   it.effect(
@@ -131,7 +129,6 @@ describe('Circuit Command', () => {
         expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_PS_FILEPATH))).toMatchObject({ count: 101 });
         expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_EVENTS_FILEPATH))).toEqual([]);
       }).pipe(
-        Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
@@ -174,7 +171,6 @@ describe('Circuit Command', () => {
       const entryPoint = calls[0].entryPoint;
       expect(typeof entryPoint === 'string' ? entryPoint : new TextDecoder().decode(entryPoint)).toBe('increment');
     }).pipe(
-      Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
@@ -228,7 +224,6 @@ describe('Circuit Command', () => {
         expect(lines.length).toBe(0);
         expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_PS_FILEPATH))).toMatchObject({ count: 101 });
       }).pipe(
-        Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
         Effect.ensuring(ensureRemovePath(COUNTER_LEDGER_PARAMS_FILEPATH)),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),

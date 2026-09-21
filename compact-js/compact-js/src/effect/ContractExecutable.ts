@@ -28,7 +28,6 @@ import {
   encodeZswapLocalState,
   type LogEvent,
   type Op,
-  type QueryContext,
   sampleSigningKey,
   signatureVerifyingKey,
   type StateValue,
@@ -38,25 +37,6 @@ import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import {
-  ChargedState as LedgerChargedState,
-  ContractMaintenanceAuthority as LedgerContractMaintenanceAuthority,
-  ContractOperationVersion,
-  ContractOperationVersionedVerifierKey,
-  LedgerParameters,
-  MaintenanceUpdate,
-  partitionTranscripts,
-  PreTranscript,
-  QueryContext as LedgerQueryContext,
-  ReplaceAuthority,
-  signData,
-  type SigningKey as LedgerSigningKey,
-  type SingleUpdate,
-  StateValue as LedgerStateValue,
-  type Transcript,
-  VerifierKeyInsert,
-  VerifierKeyRemove
-} from '@midnightntwrk/ledger-v9';
 import { Effect, Either, type Layer, Option } from 'effect';
 import { dual, identity } from 'effect/Function';
 import { type Pipeable, pipeArguments } from 'effect/Pipeable';
@@ -67,6 +47,7 @@ import * as ContractConfigurationError from './ContractConfigurationError.js';
 import { validateEvents } from './ContractEventValidator.js';
 import * as ContractRuntimeError from './ContractRuntimeError.js';
 import * as CompactContextInternal from './internal/compactContext.js';
+import * as Ledger from './Ledger.js';
 import { ZKConfiguration } from './ZKConfiguration.js';
 import { type ZKConfigurationReadError } from './ZKConfigurationReadError.js';
 
@@ -170,7 +151,7 @@ export declare namespace ContractExecutable {
   export type CircuitContext<PS> = ContractContext & {
     readonly privateState: PS;
     readonly zswapLocalState?: ZswapLocalState;
-    readonly ledgerParameters?: LedgerParameters;
+    readonly ledgerParameters?: Ledger.LedgerParameters;
   } & (
       | { readonly stateProvider?: undefined; readonly parentBlockHash?: undefined }
       | { readonly stateProvider: ContractStateProvider; readonly parentBlockHash: string }
@@ -189,7 +170,10 @@ export declare namespace ContractExecutable {
     readonly private: DeployResultPrivate<PS>;
   };
 
-  export type PartitionedTranscript = [Transcript<AlignedValue> | undefined, Transcript<AlignedValue> | undefined];
+  export type PartitionedTranscript = [
+    Ledger.Transcript<AlignedValue> | undefined,
+    Ledger.Transcript<AlignedValue> | undefined
+  ];
   export type ContractCallPublic = {
     readonly contractState: StateValue;
     readonly publicTranscript: Op<AlignedValue>[];
@@ -246,7 +230,7 @@ export declare namespace ContractExecutable {
   };
 
   export type MaintenanceResultPublic = {
-    readonly maintenanceUpdate: MaintenanceUpdate;
+    readonly maintenanceUpdate: Ledger.MaintenanceUpdate;
   };
   export type MaintenanceResultPrivate = {
     readonly signingKey: SigningKey.SigningKey;
@@ -274,43 +258,6 @@ type Transform<E, R> = <A>(effect: Effect.Effect<A, any, any>) => Effect.Effect<
 const DEFAULT_CMA_THRESHOLD = 1;
 const DEFAULT_SIGNATURE_INDEX = 0n;
 
-// The signature schemes verified to work through the ledger CMA path (`signData` and
-// `signatureVerifyingKey`), so the caller-supplied scheme is threaded through unchanged. Any other
-// scheme is rejected loudly rather than silently coerced.
-//
-// This is deliberately an explicit allowlist, NOT `SigningKey.SignatureKinds`: the constraint is
-// what the ledger primitives support, not what platform-js's type union happens to include. A new
-// scheme must be added here only once it is verified end-to-end against the ledger CMA path.
-const SUPPORTED_CMA_SIGNATURE_KINDS: ReadonlySet<SigningKey.SignatureKind> = new Set(['schnorr', 'ecdsa']);
-
-// Adapts a platform-js `SigningKey` to a ledger `SigningKey`. As of platform-js@3.0.0 both are
-// `{ tag: SignatureKind, value }` and structurally compatible; the onchain-runtime `SigningKey`
-// is identical too, so this serves both `signData` (ledger) and `signatureVerifyingKey`
-// (compact-runtime). The caller-supplied `tag` is preserved so ECDSA-tagged keys are not silently
-// treated as Schnorr; an unsupported scheme fails with a `ContractConfigurationError`.
-const asTaggedSigningKey = (
-  signingKey: SigningKey.SigningKey,
-  contractState?: ContractState
-): Either.Either<LedgerSigningKey, ContractConfigurationError.ContractConfigurationError> =>
-  SUPPORTED_CMA_SIGNATURE_KINDS.has(signingKey.tag)
-    ? Either.right({ tag: signingKey.tag, value: signingKey.value })
-    : Either.left(
-        ContractConfigurationError.make(
-          `Unsupported signature scheme '${signingKey.tag}' for a contract maintenance authority; ` +
-            `supported schemes are: ${[...SUPPORTED_CMA_SIGNATURE_KINDS].join(', ')}`,
-          contractState
-        )
-      );
-
-const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext => {
-  const stateValue = LedgerStateValue.decode(queryContext.state.state.encode());
-  const ledgerQueryContext = new LedgerQueryContext(new LedgerChargedState(stateValue), queryContext.address);
-  // The above method of converting to ledger query context only retains the state. So, we have to set the settable properties manually
-  ledgerQueryContext.block = queryContext.block;
-  ledgerQueryContext.effects = queryContext.effects;
-  return ledgerQueryContext;
-};
-
 // Partition the public transcripts of every call in the trace in a single batch.
 //
 // `partitionTranscripts` builds a caller->callee call graph across the whole batch by matching
@@ -320,24 +267,38 @@ const asLedgerQueryContext = (queryContext: QueryContext): LedgerQueryContext =>
 // no commitment and becomes the graph root. The returned array is in the same order as `trace`.
 const partitionAllTranscripts = (
   trace: readonly CallProofData[],
-  ledgerParameters: LedgerParameters | undefined
-): Either.Either<ContractExecutable.PartitionedTranscript[], Error> => {
-  const preTranscripts = trace.map(
-    (entry) =>
-      new PreTranscript(
-        Array.from(entry.finalQueryContext.comIndices).reduce(
-          (queryContext, comEntry) => queryContext.insertCommitment(...comEntry),
-          asLedgerQueryContext(entry.initialQueryContext)
-        ),
-        entry.publicTranscript,
-        entry.commCommData?.commComm
+  ledgerParameters: Ledger.LedgerParameters | undefined
+): Effect.Effect<ContractExecutable.PartitionedTranscript[], ContractRuntimeError.ContractRuntimeError> =>
+  Effect.gen(function* () {
+    // Each pre-transcript is built from the *initial* context (whose own commitments arrive with
+    // its `block`), then given the *final* context's commitments on top — the set the partitioner
+    // matches callers to callees on.
+    const preTranscripts = yield* Effect.forEach(trace, (entry) =>
+      Ledger.fromRuntimeQueryContext(entry.initialQueryContext).pipe(
+        Effect.map(
+          (initialContext) =>
+            new Ledger.PreTranscript(
+              Array.from(entry.finalQueryContext.comIndices).reduce(
+                (queryContext, comEntry) => queryContext.insertCommitment(...comEntry),
+                initialContext
+              ),
+              entry.publicTranscript,
+              entry.commCommData?.commComm
+            )
+        )
       )
-  );
-  const partitioned = partitionTranscripts(preTranscripts, ledgerParameters ?? LedgerParameters.initialParameters());
-  return partitioned.length === trace.length
-    ? Either.right(partitioned)
-    : Either.left(new Error(`Expected ${trace.length} transcript partition pairs, received: ${partitioned.length}`));
-};
+    );
+    const partitioned = yield* Effect.try({
+      try: () =>
+        Ledger.partitionTranscripts(preTranscripts, ledgerParameters ?? Ledger.LedgerParameters.initialParameters()),
+      catch: (err) => ContractRuntimeError.make('Unexpected error partitioning call transcripts', err)
+    });
+    return partitioned.length === trace.length
+      ? partitioned
+      : yield* ContractRuntimeError.make(
+          `Expected ${trace.length} transcript partition pairs, received: ${partitioned.length}`
+        );
+  });
 
 class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implements ContractExecutable<C, PS, E, R> {
   compiledContract: CompiledContract<C, PS>;
@@ -558,12 +519,10 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         Effect.gen(this, function* () {
           const { contractState } = contractContext;
           const [cma, signingKey] = yield* this.createMaintenanceAuthority(newSigningKey, contractState);
-          const ledger_cma = LedgerContractMaintenanceAuthority.deserialize(
-            cma.serialize()
-          ) as unknown as LedgerContractMaintenanceAuthority;
+          const ledger_cma = yield* Ledger.fromRuntimeMaintenanceAuthority(cma);
           const update = yield* this.createSignedMaintenanceUpdate(
             () => {
-              return Either.right([new ReplaceAuthority(ledger_cma)]);
+              return Either.right([new Ledger.ReplaceAuthority(ledger_cma)]);
             },
             keyConfig,
             contractContext
@@ -593,7 +552,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
         Effect.gen(this, function* () {
           return yield* this.createSignedMaintenanceUpdate(
             () => {
-              return Either.right([new VerifierKeyRemove(provableCircuitId, new ContractOperationVersion('v3'))]);
+              return Either.right([new Ledger.VerifierKeyRemove(provableCircuitId, Ledger.makeContractOperationVersion())]);
             },
             keyConfig,
             contractContext
@@ -617,7 +576,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
           return yield* this.createSignedMaintenanceUpdate(
             () => {
               return Either.right([
-                new VerifierKeyInsert(provableCircuitId, new ContractOperationVersionedVerifierKey('v3', verifierKey))
+                new Ledger.VerifierKeyInsert(provableCircuitId, Ledger.makeVersionedVerifierKey(verifierKey))
               ]);
             },
             keyConfig,
@@ -630,7 +589,7 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
   }
 
   protected createSignedMaintenanceUpdate(
-    createUpdateFn: () => Either.Either<SingleUpdate[], ContractConfigurationError.ContractConfigurationError>,
+    createUpdateFn: () => Either.Either<Ledger.SingleUpdate[], ContractConfigurationError.ContractConfigurationError>,
     keyConfig: Configuration.Configuration.Keys,
     contractContext: ContractExecutable.ContractContext
   ): Either.Either<ContractExecutable.MaintenanceResult, ContractConfigurationError.ContractConfigurationError> {
@@ -642,14 +601,18 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
       );
     }
     const signingKey = currentSigningKey.value;
-    const ledgerSigningKey = asTaggedSigningKey(signingKey, contractState);
+    const ledgerSigningKey = Ledger.fromPlatformSigningKey(signingKey, contractState);
     if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);
     const update = createUpdateFn();
     if (Either.isLeft(update)) return Either.left(update.left);
-    const maintenanceUpdate = new MaintenanceUpdate(address, update.right, contractState.maintenanceAuthority.counter);
-    let signature: ReturnType<typeof signData>;
+    const maintenanceUpdate = new Ledger.MaintenanceUpdate(
+      address,
+      update.right,
+      contractState.maintenanceAuthority.counter
+    );
+    let signature: ReturnType<typeof Ledger.signData>;
     try {
-      signature = signData(ledgerSigningKey.right, maintenanceUpdate.dataToSign);
+      signature = Ledger.signData(ledgerSigningKey.right, maintenanceUpdate.dataToSign);
     } catch (err: unknown) {
       return Either.left(
         ContractConfigurationError.make(
@@ -678,9 +641,16 @@ class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, R> implemen
   > {
     const signingKey = Option.match(key, {
       onSome: identity,
-      onNone: () => SigningKey.make(sampleSigningKey('schnorr').value)
+      // Tag the sampled key with the era's scheme too: `SigningKey.make` otherwise defaults the
+      // tag to platform-js's own constant, which would label an era's non-schnorr sample as
+      // schnorr and sign with the wrong scheme while still passing the allowlist check below.
+      onNone: () =>
+        SigningKey.make(
+          sampleSigningKey(Ledger.era.defaultCmaSignatureKind).value,
+          Ledger.era.defaultCmaSignatureKind
+        )
     });
-    const ledgerSigningKey = asTaggedSigningKey(signingKey, contractState);
+    const ledgerSigningKey = Ledger.fromPlatformSigningKey(signingKey, contractState);
     if (Either.isLeft(ledgerSigningKey)) return Either.left(ledgerSigningKey.left);
     try {
       return Either.right([

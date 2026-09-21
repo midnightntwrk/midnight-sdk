@@ -16,8 +16,9 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
-import { ContractState, type ContractStateProvider } from '@midnight-ntwrk/compact-runtime';
-import { ContractState as LedgerContractState } from '@midnightntwrk/ledger-v9';
+import { ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractState, type ContractStateProvider } from '@midnight-ntwrk/compact-runtime';
+import { Cause, Effect, Exit } from 'effect';
 
 /**
  * A {@link ContractStateProvider} that resolves contract states lazily from the file system.
@@ -61,9 +62,27 @@ export const make = (
       throw err;
     }
 
-    // Mirror the `circuit` command's `--input` deserialization: ledger-serialized bytes ->
-    // ledger `ContractState` -> runtime `ContractState`.
-    const ledgerContractState = LedgerContractState.deserialize(bytes);
-    return ContractState.deserialize(ledgerContractState.serialize());
+    // Mirror the `circuit` command's `--input` deserialization via the Ledger facade:
+    // ledger-serialized bytes -> ledger `ContractState` -> runtime `ContractState`. The
+    // conversion effect is fully synchronous, so it is run with `runSyncExit` at this Promise
+    // boundary; the exit is unwrapped so an unreadable state file rejects with the facade's
+    // `ContractRuntimeError` itself — naming the contract, the file, and the expected era —
+    // rather than a `FiberFailure` wrapper.
+    const exit = Effect.runSyncExit(
+      Ledger.contractStateFromBytes(bytes).pipe(
+        Effect.flatMap(Ledger.toRuntimeContractState),
+        Effect.mapError((err) =>
+          ContractRuntimeError.make(
+            `Failed to read contract state for '${address}' from '${filePath}' ` +
+              `(expected ledger era ${Ledger.era.ledger} encoding)`,
+            err
+          )
+        )
+      )
+    );
+    if (Exit.isFailure(exit)) {
+      throw Cause.squash(exit.cause);
+    }
+    return exit.value;
   }
 });

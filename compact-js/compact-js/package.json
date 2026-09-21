@@ -10,7 +10,9 @@
     ".": "./src/index.ts",
     "./effect": "./src/effect/index.ts",
     "./effect/*": "./src/effect/*.ts",
-    "./effect/internal/*": null
+    "./effect/internal/*": null,
+    "./v9": "./src/v9/index.ts",
+    "./v9/effect": "./src/v9/effect.ts"
   },
   "dependencies": {
     "@effect/platform": "^0.97.0",
@@ -29,7 +31,7 @@
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
-    "build": "yarn build-compact && yarn build-esm && yarn build-cjs && build-utils pack-v3",
+    "build": "yarn build-compact && yarn build-esm && yarn build-cjs && build-utils pack-v3 && yarn verify-exports",
     "build-esm": "tsc -b tsconfig.build.json",
     "build-cjs": "tsc -b tsconfig.cjs.json",
     "build-compact": "(shx --negate test -d ./test/contract/managed && yarn compact || true)",
@@ -42,7 +44,8 @@
     "compact-ccc-inner": "run-compactc ./test/contract/cccInner.compact ./test/contract/managed/cccInner",
     "compact-ccc-middle": "run-compactc ./test/contract/cccMiddle.compact ./test/contract/managed/cccMiddle",
     "compact-ccc-outer": "run-compactc ./test/contract/cccOuter.compact ./test/contract/managed/cccOuter",
-    "compact-ccc-self": "run-compactc ./test/contract/cccSelf.compact ./test/contract/managed/cccSelf"
+    "compact-ccc-self": "run-compactc ./test/contract/cccSelf.compact ./test/contract/managed/cccSelf",
+    "verify-exports": "node ../scripts/verify-exports.mjs ."
   },
   "files": [
     "dist/"
