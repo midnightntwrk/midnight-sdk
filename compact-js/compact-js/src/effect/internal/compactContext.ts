@@ -18,6 +18,7 @@ import { Effect, type Types } from 'effect';
 import type * as CompactContext from '../CompactContext.js';
 import type { CompiledContract } from '../CompiledContract.js';
 import { type Contract } from '../Contract.js';
+import * as ContractRuntimeError from '../ContractRuntimeError.js';
 
 // None of the declarations below carry an internal-marker JSDoc tag, deliberately.
 // `CompiledContract`'s public interface indexes by `TypeId` and holds a `Partial<Context<C>>`, so
@@ -39,12 +40,38 @@ export const getContractContext: <C extends Contract<PS>, PS>(
 ) => Types.Simplify<Required<Context<C>>> = <C extends Contract<PS>, PS>(compiledContract: CompiledContract<C, PS>) =>
   compiledContract[TypeId] as Required<Context<C>>;
 
+/**
+ * Instantiates the compactc-generated contract class from a {@link CompiledContract}.
+ *
+ * @remarks
+ * `Effect.try`, not `Effect.sync`, and the declared error channel is load-bearing. The generated
+ * constructor **throws** a `CompactError` when the supplied witnesses are missing, misspelled or
+ * not functions — an ordinary mistake in a hand-written `contract.config.ts`, not an invariant
+ * breach. Under `Effect.sync` that throw became a *defect* on an effect declared `Effect<C>`: it
+ * passed `ContractExecutable`'s `ContractExecutionError` channel, passed any consumer's `catchAll`
+ * over it, and in the CLI — which runs with `disableErrorReporting` — produced exit 1 with no
+ * output at all. The `Effect.mapError` that sat at the call site looked like the guard and could
+ * never fire, because it was mapping a `never`.
+ *
+ * The message names the contract and points at the witnesses, since those are the one part of a
+ * `CompiledContract` the caller supplies.
+ */
 export const createContract: <C extends Contract<PS>, PS>(
   compiledContract: CompiledContract<C, PS>
-) => Effect.Effect<C> = <C extends Contract<PS>, PS>(compiledContract: CompiledContract<C, PS>) =>
-  Effect.sync(() => {
-    const context = getContractContext(compiledContract);
+) => Effect.Effect<C, ContractRuntimeError.ContractRuntimeError> = <C extends Contract<PS>, PS>(
+  compiledContract: CompiledContract<C, PS>
+) =>
+  Effect.try({
+    try: () => {
+      const context = getContractContext(compiledContract);
 
-    if (!context.ctor) throw new Error('Invalid CompactContext (missing constructor)');
-    return new context.ctor(context.witnesses);
+      if (!context.ctor) throw new Error('the compiled contract carries no constructor');
+      return new context.ctor(context.witnesses);
+    },
+    catch: (err) =>
+      ContractRuntimeError.make(
+        `Failed to construct contract '${compiledContract.tag}'; check the witnesses supplied by ` +
+          'the contract configuration',
+        err
+      )
   });

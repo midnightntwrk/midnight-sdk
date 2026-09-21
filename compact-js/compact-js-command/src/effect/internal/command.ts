@@ -250,6 +250,28 @@ export const reportContractExecutionError: (
     yield* reportCausableError(err);
   });
 
+/**
+ * Reports a defect — a failure the command did not model — rather than letting it exit silently.
+ *
+ * @remarks
+ * The backstop for the whole CLI. `Effect.catchAll` covers the *failure* channel only, so a throw
+ * evaluated in an `Effect.gen` body passes every recovery this module installs and reaches
+ * `NodeRuntime.runMain({ disableErrorReporting: true })` in `src/index.ts`, which exits non-zero
+ * printing nothing. That is the worst outcome the CLI can produce: the user has no message, no exit
+ * context, and nothing to report.
+ *
+ * Individual defect sources are worth fixing at the source — and are, as they are found — but this
+ * exists so that the *next* one is a legible bug report instead of a silent exit. The wording
+ * separates "your input was wrong" from "this is our bug", because a defect is always the latter.
+ *
+ * @internal
+ */
+export const reportUnhandledDefect: (defect: unknown) => Effect.Effect<void, never> = (defect) =>
+  reportCausableError({
+    message: 'Internal error: the command failed in a way it does not handle. Please report this.',
+    cause: defect
+  });
+
 /** @internal */
 export type GlobalOptions = Command.Command.ParseConfig<typeof GlobalOptions>;
 /** @internal */
@@ -384,5 +406,9 @@ export const invocationHandler: <I>(
         Effect.catchAll(reportContractExecutionError)
       );
     }).pipe(
-      Effect.catchAll(reportContractConfigError)
+      Effect.catchAll(reportContractConfigError),
+      // Outermost, so it covers the handler, the config compilation and the era reconciliation
+      // alike. `catchAll` above it sees failures only; without this, a defect from any of them is
+      // an exit code and an empty terminal.
+      Effect.catchAllDefect(reportUnhandledDefect)
     );

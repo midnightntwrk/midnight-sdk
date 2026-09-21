@@ -19,6 +19,8 @@ import type { ContractState as LedgerV8ContractState } from '@midnightntwrk/ledg
 import type { ContractState as LedgerV9ContractState } from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'tstyche';
 
+import type * as V0_19 from '../../../src/effect/internal/runtime/v0_19.js';
+
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
@@ -76,12 +78,28 @@ describe('the era-pinned executables', () => {
   it('converts to the ledger package its era names', () => {
     // Anchored on the ledger packages themselves rather than on each other, so this stays red if
     // both entries drifted onto one era together.
-    expect<Awaited<ReturnType<typeof V8Entry.Ledger.contractStateFromBytes>> extends never ? true : false>()
-      .type.toBe<false>();
+    //
+    // An earlier assertion here read `Awaited<ReturnType<…contractStateFromBytes>> extends never`
+    // and could not fail: `Effect` is not `PromiseLike`, so `Awaited<Effect<A, E, R>>` is the
+    // `Effect` itself and is never `never`. The two below do the work it was meant to.
     expect<ReturnType<typeof V8Entry.Ledger.fromRuntimeContractState>>().type.not.toBe<
       ReturnType<typeof V9Entry.Ledger.fromRuntimeContractState>
     >();
     expect<LedgerV8ContractState>().type.not.toBe<LedgerV9ContractState>();
+  });
+
+  it('carries the contract-event types of its own era, not the build\'s bound one', () => {
+    // `ContractLog` reaches `LogEvent` through `effect/CompactRuntime.ts`, which resolves
+    // `internal/runtime/current.ts` — so unlike everything else on this entry it is *not* derived
+    // from a binding argument. While the bound era and this entry's era coincide nothing is
+    // visibly wrong; repoint `current.ts` at a later line and `/v9/effect` keeps exporting
+    // `ContractExecutable.CallResult.events` as 0.19's (correctly derived) while its `ContractLog`
+    // silently decodes against the new line's.
+    //
+    // Anchored on the *pinned* 0.19 binding rather than on the `@midnight-ntwrk/compact-runtime`
+    // package, which is the same module `current.ts` resolves and would therefore move with it.
+    // This goes red on the era swap, which is the moment the divergence would otherwise ship.
+    expect<V9Entry.ContractLog.LogEvent>().type.toBe<V0_19.LogEvent>();
   });
 
   it('exposes the maintenance surface on both eras', () => {

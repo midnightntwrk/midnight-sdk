@@ -924,8 +924,11 @@ export const makeExecutable = <
     }
 
     protected createContract(): Effect.Effect<C, ContractRuntimeError.ContractRuntimeError> {
+      // No `mapError` here any more: `createContract` fails with a `ContractRuntimeError` of its
+      // own, naming the contract and the witnesses. The mapping that used to sit here could never
+      // fire — the channel was `never` — and re-wrapping now would bury that message as a cause
+      // under a `String(err)` stringification of itself.
       return (this.contract ??= CompactContextInternal.createContract(this.compiledContract).pipe(
-        Effect.mapError((err: unknown) => ContractRuntimeError.make(String(err), err)),
         Effect.cached,
         Effect.runSync
       ));
