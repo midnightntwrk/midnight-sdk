@@ -92,7 +92,7 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     );
     yield* fs.writeFile(
       outputFilePath,
-      yield* InternalCommand.tryLedger('Failed to serialize the intent', () => intent.serialize())
+      yield* InternalCommand.serializeIntent(intent)
     );
   }).pipe(
     Effect.mapError(

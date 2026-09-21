@@ -15,6 +15,7 @@
 
 import { type ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import type * as v9EffectEntry from '@midnight-ntwrk/compact-js/v9/effect';
+import type { SignatureKind } from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import type {
   ContractOperation as LedgerContractOperation,
   SigningKey as LedgerSigningKey,
@@ -32,18 +33,46 @@ import { describe, expect, it } from 'tstyche';
  */
 describe('Ledger facade type surface', () => {
   it('re-exports the Era descriptor type', () => {
-    expect<Ledger.Era>().type.toBeAssignableFrom<{
+    // `toBe`, not `toBeAssignableFrom`: assignability ignores excess properties, so the source
+    // below would stay assignable even if `Era.runtime` were deleted outright or widened to
+    // `string`. The assertion would read like coverage while being unable to fail.
+    expect<Ledger.Era>().type.toBe<{
       readonly ledger: 9;
-      readonly supportsCmaSignatureKind: (kind: 'schnorr' | 'ecdsa') => boolean;
+      readonly runtime: '0.19';
+      readonly supportsCmaSignatureKind: (kind: SignatureKind) => boolean;
       readonly cmaSignatureKindsDescription: string;
-      readonly defaultCmaSignatureKind: 'schnorr';
+      readonly defaultCmaSignatureKind: SignatureKind;
     }>();
   });
+
+  it('fixes the runtime line from the ledger major rather than declaring the two independently', () => {
+    // `Era` is the union of per-major descriptors and `runtime` is an `EraPairing` lookup on the
+    // major, so a binding cannot declare ledger 9 alongside another era's line. Today the union is
+    // a singleton and this holds by accident; it is the shape that keeps holding once it is not.
+    expect<Ledger.Era['runtime']>().type.toBe<'0.19'>();
+  });
+
+  // NOTE: there is deliberately no negative pairing test here, and adding one is a trap. A
+  // counterexample needs a descriptor whose `runtime` is a *valid* `RuntimeLine` but the wrong one
+  // for its `ledger` — and while one era is bound, `RuntimeLine` is the singleton `'0.19'`, so
+  // every wrong line is also not a `RuntimeLine`. Such a test passes whether `Era` is the union of
+  // per-major descriptors or a flat `{ ledger: LedgerMajor; runtime: RuntimeLine }`: it looks like
+  // a guard against that "simplification" while catching nothing. (Verified by mutation.)
+  //
+  // What actually protects the pairing today is `Ledger.ts`'s `_SeamsArePaired` assertion, which
+  // is a build error rather than a test. Write the negative case here when a second era lands —
+  // that is the point at which it can fail.
 
   it('exposes the bound era major as a literal, not a widened number', () => {
     // `as const satisfies Era` in the binding keeps this a literal, so downstream code can branch
     // on the era at compile time and a typo'd era fails the build rather than a test.
     expect(Ledger.era.ledger).type.toBe<9>();
+  });
+
+  it('exposes the paired compact-runtime line as a literal too', () => {
+    // Same reason as the era major above: the pairing is a compile-time fact, so a binding that
+    // declares a line with no corresponding runtime binding fails the build.
+    expect(Ledger.era.runtime).type.toBe<'0.19'>();
   });
 
   it('re-exports ledger type-only names as the ledger package\'s own types', () => {

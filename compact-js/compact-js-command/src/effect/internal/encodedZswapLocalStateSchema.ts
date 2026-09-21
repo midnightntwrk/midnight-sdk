@@ -13,6 +13,7 @@
  * limitations under the License.
  */
 
+import { type CompactRuntime } from '@midnight-ntwrk/compact-js/effect';
 import * as Schema from 'effect/Schema';
 
 export const EncodedCoinPublicKeySchema = Schema.Struct({
@@ -42,15 +43,45 @@ export const EncodedRecipientSchema = Schema.Struct({
   right: EncodedContractAddressSchema
 });
 
+// `Schema.mutable` on the two collections: `Schema.Array` decodes to `readonly T[]`, which is the
+// only thing that kept this schema's output from being the runtime's own `EncodedZswapLocalState`.
 export const EncodedZswapLocalStateSchema = Schema.Struct({
   coinPublicKey: EncodedCoinPublicKeySchema,
   currentIndex: Schema.BigInt,
-  inputs: Schema.Array(EncodedQualifiedShieldedCoinInfoSchema),
-  outputs: Schema.Array(Schema.Struct({
+  inputs: Schema.mutable(Schema.Array(EncodedQualifiedShieldedCoinInfoSchema)),
+  outputs: Schema.mutable(Schema.Array(Schema.Struct({
     coinInfo: EncodedShieldedCoinInfoSchema,
     recipient: EncodedRecipientSchema
-  }))
+  })))
 });
+
+/** Erased at emit; exists only to fail the build if the two shapes below stop agreeing. */
+type AssertAssignable<A extends B, B> = A;
+
+/**
+ * Pins this schema's decoded type to the runtime's own `EncodedZswapLocalState`, which is what lets
+ * `circuitCommand` hand a decoded value straight to `CompactRuntime.decodeZswapLocalState` with no
+ * `as` cast. The cast that used to sit at that call site asserted the entire shape matched while
+ * only the array variance actually differed — and would have kept compiling if the schema and the
+ * runtime type genuinely diverged, which is the case worth catching. This fails the build instead.
+ */
+type _PinnedToRuntime = AssertAssignable<
+  typeof EncodedZswapLocalStateSchema.Type,
+  CompactRuntime.EncodedZswapLocalState
+>;
+
+/**
+ * The same pin in the other direction, for the encode path. `--output-zswap` feeds a value that
+ * comes *from* the runtime into `encodeZswapLocalStateObject`, and `Schema.Struct` defaults to
+ * `onExcessProperty: 'ignore'` — it **strips** unknown fields rather than rejecting them. Without
+ * this, a field added to the runtime's `EncodedZswapLocalState` would be silently dropped from
+ * every written state file, with the build still green; the loss only surfaces much later, when
+ * the file is read back through `--input-zswap` and the coin set is wrong.
+ */
+type _RuntimePinnedToSchema = AssertAssignable<
+  CompactRuntime.EncodedZswapLocalState,
+  typeof EncodedZswapLocalStateSchema.Type
+>;
 
 export const encodeZswapLocalStateObject = Schema.encodeUnknown(EncodedZswapLocalStateSchema);
 export const decodeZswapLocalStateObject = Schema.decodeUnknown(EncodedZswapLocalStateSchema);

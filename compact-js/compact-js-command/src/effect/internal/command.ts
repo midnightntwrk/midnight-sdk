@@ -19,7 +19,7 @@ import { type PlatformError } from '@effect/platform/Error';
 import { NodeContext } from '@effect/platform-node';
 import * as Ansi from '@effect/printer-ansi/Ansi';
 import * as Doc from '@effect/printer-ansi/AnsiDoc';
-import { type ContractExecutable, ContractExecutableRuntime, ContractRuntimeError, Ledger, type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractExecutable, ContractExecutableRuntime, type ContractRuntimeError, Ledger, type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, Duration, Effect, Layer } from 'effect';
@@ -54,21 +54,42 @@ const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) =>
  * the `Effect.mapError(...)` a command handler ends with *and*
  * {@link invocationHandler}'s `Effect.catchAll(reportContractExecutionError)` — the user gets a raw
  * fiber dump instead of the CLI's formatted report. Every ledger call made outside the `Ledger`
- * facade (which wraps its own) goes through here.
+ * facade (which wraps its own) goes through here. This is the facade's own
+ * {@link Ledger.tryConvert} under the name command handlers know it by, so there is exactly one
+ * copy of the boundary handling.
  *
- * @param message A message describing the operation, used as the failure's message.
- * @param evaluate A thunk that performs the ledger call.
- * @returns An `Effect` that yields the result of `evaluate`, failing with a
- * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects it.
+ * The compact-runtime seam has the same hazard and the same wrapper: reach for
+ * `CompactRuntime.tryRuntime` at a runtime call site rather than adding a third alias here.
  */
 export const tryLedger: <A>(
   message: string,
-  evaluate: () => A
-) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = (message, evaluate) =>
-  Effect.try({
-    try: evaluate,
-    catch: (err) => ContractRuntimeError.make(message, err)
-  });
+  evaluate: () => A extends PromiseLike<unknown> ? never : A
+) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = Ledger.tryConvert;
+
+/**
+ * Serializes a ledger `Intent`, ready for writing to a command's output file.
+ *
+ * @remarks
+ * Every command emits its result as a serialized intent; single-sourcing the wrapper (and its
+ * failure message) here keeps the handlers identical, the same way {@link newIntent} does for
+ * construction.
+ *
+ * Takes the intent type {@link newIntent} produces rather than a `{ serialize(): Uint8Array }`
+ * duck type: ledger contract states are serialized through {@link tryLedger} with the identical
+ * shape elsewhere in this package, so a structural parameter would accept one, write a contract
+ * state into the intent output file, and still report 'Failed to serialize the intent' — with
+ * nothing catching it until the file is deserialized as an `Intent` at submission. In a seam built
+ * to make era and type mismatches loud, this is the one signature that would let a wrong type
+ * through quietly.
+ *
+ * @param intent The intent to serialize.
+ * @returns An `Effect` that yields the serialized bytes, failing with a
+ * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects the serialization.
+ */
+export const serializeIntent: (
+  intent: ReturnType<typeof Ledger.Intent.new>
+) => Effect.Effect<Uint8Array, ContractRuntimeError.ContractRuntimeError> = (intent) =>
+  tryLedger('Failed to serialize the intent', () => intent.serialize());
 
 /**
  * Creates an empty ledger `Intent` with the command-wide TTL applied. Every command emits its
@@ -86,6 +107,20 @@ export const newIntent: () => Effect.Effect<
     Effect.flatMap((date) => tryLedger('Failed to create intent', () => Ledger.Intent.new(date)))
   );
 
+/**
+ * Renders a link in a cause chain as text.
+ *
+ * @remarks
+ * `Doc.text` throws on a non-string, and a cause is not necessarily an `Error`:
+ * `ContractExecutable.circuit` maps a rejected witness with `Effect.tryPromise({ catch: identity })`,
+ * so a witness that does `throw 'insufficient balance'` puts a bare string in the chain. The
+ * reporter is what turns a failure into output, so a throw *here* is the silent exit it exists to
+ * prevent — it escapes {@link invocationHandler}'s `catchAll` as a defect.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const messageOf = (errOrCause: any): string =>
+  typeof errOrCause?.message === 'string' ? errOrCause.message : String(errOrCause);
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const reportCausableError: (err: any) => Effect.Effect<void, never> =
   (err) => Effect.gen(function* () {
@@ -95,15 +130,15 @@ const reportCausableError: (err: any) => Effect.Effect<void, never> =
         if (Doc.isDoc(errOrDoc)) {
           return docs.push(errOrDoc);
         }
-        docs.push(Doc.text(errOrDoc.message));
-        if (errOrDoc.cause) {
+        docs.push(Doc.text(messageOf(errOrDoc)));
+        if (errOrDoc?.cause) {
           buildCauseDoc(errOrDoc.cause);
         }
       }
       buildCauseDoc(err.cause);
       return docs;
     }
-    let errorDoc: Doc.AnsiDoc = Doc.text(err.message);
+    let errorDoc: Doc.AnsiDoc = Doc.text(messageOf(err));
     if (err.cause) {
       errorDoc = errorDoc.pipe(
         Doc.catWithLineBreak(Doc.annotate(Doc.text('(cause)'), Ansi.italicized)),
