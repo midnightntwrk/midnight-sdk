@@ -26,7 +26,7 @@
 
 import { CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
 
-import { Contract as C_ } from '../../../../compact-js/test/contract/managed/counter/contract/index';
+import { Contract as C_ } from '../../../../compact-js/test/contract/managed/counter/contract/index.js';
 
 type PrivateState = {
   count: number;

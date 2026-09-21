@@ -30,7 +30,8 @@
     "effect": "^3.22.1",
     "json5": "^2.2.3",
     "ts-node": "^10.9.2",
-    "tslib": "^2.8.1"
+    "tslib": "^2.8.1",
+    "typescript": ">=5.0.0 <7.0.0"
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.19.0-rc.0",

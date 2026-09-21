@@ -51,11 +51,10 @@ describe('ConfigCompiler', () => {
             })
           });
         }).pipe(
-          Effect.provide(ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer))),
-          Effect.catchAll((err) => {
-            console.log(err);
-            return Effect.void
-          })
+          // Deliberately *not* wrapped in a `catchAll`: a failure to compile short-circuits before
+          // the expectations run, so swallowing it leaves a test that cannot fail — which is what
+          // hid `ts-node` being handed a TypeScript line it cannot drive.
+          Effect.provide(ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer)))
         ),
         30_000
       );
