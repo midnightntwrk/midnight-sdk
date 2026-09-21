@@ -23,6 +23,8 @@
     "build": "turbo run build",
     "clean": "turbo run clean",
     "test": "turbo run test",
+    "test-ledger-era-9": "turbo run test-ledger-era-9",
+    "test-ledger-era-8": "turbo run test-ledger-era-8",
     "package": "turbo run package",
     "lint": "eslint",
     "changeset": "changeset",
