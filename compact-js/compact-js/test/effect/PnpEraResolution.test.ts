@@ -93,6 +93,16 @@ const makePnpProject = (): string => {
       'enableGlobalCache: false',
       // The point of building from the committed lockfile: nothing here needs the network.
       'enableNetwork: false',
+      // Yarn turns hardened mode on by itself for a pull request on a public repo, and hardened
+      // mode means `--refresh-lockfile --check-resolutions` — re-resolving every descriptor against
+      // the registry. That is flatly incompatible with the line above, so leaving it to default
+      // makes this suite pass locally and fail in CI with `YN0080: Request to
+      // 'https://registry.yarnpkg.com/…' has been blocked because of your configuration settings`.
+      //
+      // Off rather than networked, because hardened mode guards against a PR tampering with the
+      // lockfile being installed, and this lockfile is a copy of the repo's own — already installed
+      // under hardened mode by the same CI job, minutes earlier.
+      'enableHardenedMode: false',
       `cacheFolder: ${join(MONOREPO_ROOT, '.yarn/cache')}`,
       `yarnPath: ${join(MONOREPO_ROOT, '.yarn/releases/yarn-4.10.3.cjs')}`,
       ''
@@ -101,7 +111,21 @@ const makePnpProject = (): string => {
 
   // `--mode=skip-build` because no postinstall output is needed: the assertions below read the WASM
   // packages' own `versionString`, which ships in the published artifact.
-  execFileSync('yarn', ['install', '--mode=skip-build'], { cwd: project, stdio: 'pipe' });
+  //
+  // `stdio: 'pipe'` keeps a successful install quiet, but it also means the thrown error says only
+  // `Command failed: yarn install --mode=skip-build` — yarn's actual diagnosis goes in the error's
+  // `stdout`/`stderr` and is dropped. Since the whole point of this suite is that a PnP project
+  // which cannot be built is a *failure* rather than a skip, that failure has to arrive with
+  // yarn's reason attached, or the next CI-only break costs a bisect to identify.
+  try {
+    execFileSync('yarn', ['install', '--mode=skip-build'], { cwd: project, stdio: 'pipe' });
+  } catch (cause) {
+    const { stdout, stderr } = cause as { stdout?: Buffer; stderr?: Buffer };
+    throw new Error(
+      `yarn install failed in the PnP project at ${project}\n${stdout?.toString() ?? ''}${stderr?.toString() ?? ''}`,
+      { cause }
+    );
+  }
   return project;
 };
 
