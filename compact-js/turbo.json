@@ -5,7 +5,14 @@
     "build": {
       "dependsOn": ["^build"],
       "outputLogs": "new-only",
-      "inputs": ["src/**/*.ts", "!src/**/*.test.ts", "src/**/*.compact"],
+      "inputs": [
+        "src/**/*.ts",
+        "!src/**/*.test.ts",
+        "src/**/*.compact",
+        "package.json",
+        "../scripts/fix-esm-only-exports.mjs",
+        "../scripts/verify-exports.mjs"
+      ],
       "outputs": ["dist/**", "build/**", "src/**/managed/**"]
     },
     "clean": {
@@ -21,7 +28,7 @@
     "test": {
       "outputLogs": "new-only",
       "dependsOn": ["^build"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts", "compose.yml"],
+      "inputs": ["src/**/*.ts", "test/**/*.ts", "compose.yml", "tstyche.json", "vitest.config.ts", "tsconfig*.json"],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
     },
     "package": {

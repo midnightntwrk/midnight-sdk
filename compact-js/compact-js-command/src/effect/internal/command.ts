@@ -19,10 +19,10 @@ import { type PlatformError } from '@effect/platform/Error';
 import { NodeContext } from '@effect/platform-node';
 import * as Ansi from '@effect/printer-ansi/Ansi';
 import * as Doc from '@effect/printer-ansi/AnsiDoc';
-import { type ContractExecutable, ContractExecutableRuntime,type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractExecutable, ContractExecutableRuntime, type ContractRuntimeError, Ledger, type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
-import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, type Duration, Effect, Layer } from 'effect';
+import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, Duration, Effect, Layer } from 'effect';
 
 import * as CommandConfigProvider from '../CommandConfigProvider.js';
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
@@ -31,14 +31,95 @@ import * as ConfigCompiler from '../ConfigCompiler.js';
 import type * as ConfigError from '../ConfigError.js';
 import * as InternalOptions from './options.js';
 
+/** How far into the future a generated intent's TTL is set. */
+const INTENT_TTL = Duration.minutes(10);
+
 /**
  * Applies a duration to the current date/time, returning a date/time that is in the future.
  *
  * @param duration A `Duration` describing how far into the future the returned date/time should be.
  * @returns An `Effect` that yields a `Date` that will be in the future from `duration`.
  */
-export const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) => 
+const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) =>
   DateTime.now.pipe(Effect.map((utcNow) => DateTime.toDate(DateTime.addDuration(utcNow, duration))));
+
+/**
+ * Wraps a call across the ledger (WASM) boundary so that a rejection becomes a typed failure
+ * rather than a defect.
+ *
+ * @remarks
+ * Ledger bindings signal rejection by throwing — `Intent.addMaintenanceUpdate()` throws
+ * `'expected instance of MaintenanceUpdate'` when handed a value built against a different WASM
+ * instance, for example. A throw inside `Effect.gen` becomes a defect, and a defect escapes both
+ * the `Effect.mapError(...)` a command handler ends with *and*
+ * {@link invocationHandler}'s `Effect.catchAll(reportContractExecutionError)` — the user gets a raw
+ * fiber dump instead of the CLI's formatted report. Every ledger call made outside the `Ledger`
+ * facade (which wraps its own) goes through here. This is the facade's own
+ * {@link Ledger.tryConvert} under the name command handlers know it by, so there is exactly one
+ * copy of the boundary handling.
+ *
+ * The compact-runtime seam has the same hazard and the same wrapper: reach for
+ * `CompactRuntime.tryRuntime` at a runtime call site rather than adding a third alias here.
+ */
+export const tryLedger: <A>(
+  message: string,
+  evaluate: () => A extends PromiseLike<unknown> ? never : A
+) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = Ledger.tryConvert;
+
+/**
+ * Serializes a ledger `Intent`, ready for writing to a command's output file.
+ *
+ * @remarks
+ * Every command emits its result as a serialized intent; single-sourcing the wrapper (and its
+ * failure message) here keeps the handlers identical, the same way {@link newIntent} does for
+ * construction.
+ *
+ * Takes the intent type {@link newIntent} produces rather than a `{ serialize(): Uint8Array }`
+ * duck type: ledger contract states are serialized through {@link tryLedger} with the identical
+ * shape elsewhere in this package, so a structural parameter would accept one, write a contract
+ * state into the intent output file, and still report 'Failed to serialize the intent' — with
+ * nothing catching it until the file is deserialized as an `Intent` at submission. In a seam built
+ * to make era and type mismatches loud, this is the one signature that would let a wrong type
+ * through quietly.
+ *
+ * @param intent The intent to serialize.
+ * @returns An `Effect` that yields the serialized bytes, failing with a
+ * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects the serialization.
+ */
+export const serializeIntent: (
+  intent: ReturnType<typeof Ledger.Intent.new>
+) => Effect.Effect<Uint8Array, ContractRuntimeError.ContractRuntimeError> = (intent) =>
+  tryLedger('Failed to serialize the intent', () => intent.serialize());
+
+/**
+ * Creates an empty ledger `Intent` with the command-wide TTL applied. Every command emits its
+ * result as an intent with the same TTL policy; single-sourcing it here keeps the default in one
+ * place.
+ *
+ * @returns An `Effect` that yields a new `Intent`, failing with a
+ * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects the construction.
+ */
+export const newIntent: () => Effect.Effect<
+  ReturnType<typeof Ledger.Intent.new>,
+  ContractRuntimeError.ContractRuntimeError
+> = () =>
+  ttl(INTENT_TTL).pipe(
+    Effect.flatMap((date) => tryLedger('Failed to create intent', () => Ledger.Intent.new(date)))
+  );
+
+/**
+ * Renders a link in a cause chain as text.
+ *
+ * @remarks
+ * `Doc.text` throws on a non-string, and a cause is not necessarily an `Error`:
+ * `ContractExecutable.circuit` maps a rejected witness with `Effect.tryPromise({ catch: identity })`,
+ * so a witness that does `throw 'insufficient balance'` puts a bare string in the chain. The
+ * reporter is what turns a failure into output, so a throw *here* is the silent exit it exists to
+ * prevent — it escapes {@link invocationHandler}'s `catchAll` as a defect.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const messageOf = (errOrCause: any): string =>
+  typeof errOrCause?.message === 'string' ? errOrCause.message : String(errOrCause);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const reportCausableError: (err: any) => Effect.Effect<void, never> =
@@ -49,15 +130,15 @@ const reportCausableError: (err: any) => Effect.Effect<void, never> =
         if (Doc.isDoc(errOrDoc)) {
           return docs.push(errOrDoc);
         }
-        docs.push(Doc.text(errOrDoc.message));
-        if (errOrDoc.cause) {
+        docs.push(Doc.text(messageOf(errOrDoc)));
+        if (errOrDoc?.cause) {
           buildCauseDoc(errOrDoc.cause);
         }
       }
       buildCauseDoc(err.cause);
       return docs;
     }
-    let errorDoc: Doc.AnsiDoc = Doc.text(err.message);
+    let errorDoc: Doc.AnsiDoc = Doc.text(messageOf(err));
     if (err.cause) {
       errorDoc = errorDoc.pipe(
         Doc.catWithLineBreak(Doc.annotate(Doc.text('(cause)'), Ansi.italicized)),
@@ -165,7 +246,8 @@ export type GlobalOptions = Command.Command.ParseConfig<typeof GlobalOptions>;
 /** @internal */
 export const GlobalOptions = {
   config: InternalOptions.config,
-  coinPublicKey: InternalOptions.coinPublicKey
+  coinPublicKey: InternalOptions.coinPublicKey,
+  ledgerEra: InternalOptions.ledgerEra
 }
 
 /**

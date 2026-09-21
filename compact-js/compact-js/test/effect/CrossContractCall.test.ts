@@ -22,7 +22,7 @@ import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ChargedState, ContractState, type ContractStateProvider } from '@midnight-ntwrk/compact-runtime';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
-import { ContractDeploy, ContractState as LedgerContractState, partitionTranscripts } from '@midnightntwrk/ledger-v9';
+import { ContractDeploy, ContractState as LedgerContractState, partitionTranscripts, PreTranscript } from '@midnightntwrk/ledger-v9';
 import { Cause, ConfigProvider, Effect, Exit, Layer, Option } from 'effect';
 import { vi } from 'vitest';
 
@@ -30,12 +30,21 @@ import { CCCInnerContract, CCCMiddleContract, CCCOuterContract, CCCSelfContract 
 import { ledger as cccInnerLedger } from '../contract/managed/cccInner/contract';
 import { ledger as cccSelfLedger } from '../contract/managed/cccSelf/contract';
 
-// Wrap `partitionTranscripts` so it delegates to the real implementation by default; individual
-// tests can override a single call (see the wrong-partition-count test below).
+// Wrap `partitionTranscripts` and `PreTranscript` so they delegate to the real implementation by
+// default; individual tests can override a single call (see the wrong-partition-count and
+// pre-transcript-throw tests below).
 vi.mock('@midnightntwrk/ledger-v9', async (importActual) => {
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await importActual<typeof import('@midnightntwrk/ledger-v9')>();
-  return { ...actual, partitionTranscripts: vi.fn(actual.partitionTranscripts) };
+  return {
+    ...actual,
+    partitionTranscripts: vi.fn(actual.partitionTranscripts),
+    // Not an arrow function: callers construct with `new`, so the default delegate must itself
+    // be constructible.
+    PreTranscript: vi.fn(function (...args: ConstructorParameters<typeof actual.PreTranscript>) {
+      return new actual.PreTranscript(...args);
+    })
+  };
 });
 
 // The fixtures form a three-level call chain: `outer` calls `middle`, which calls the `inner` leaf.
@@ -470,6 +479,28 @@ describe('cross-contract calls', () => {
 
       expect(ContractRuntimeError.isRuntimeError(error)).toBe(true);
       expect(String((error as ContractRuntimeError.ContractRuntimeError).cause)).toContain('transcript partition pairs');
+    })
+  );
+
+  it.effect('returns a ContractRuntimeError when pre-transcript construction throws', () =>
+    Effect.gen(function*() {
+      // Force the ledger to reject the pre-transcript construction for this run only — the same
+      // WASM-boundary throw a cross-instance `QueryContext` produces (`_assertClass`). The throw
+      // must surface as a typed failure, not escape `Effect.flip` as a defect.
+      vi.mocked(PreTranscript).mockImplementationOnce(function () {
+        throw new Error('expected instance of QueryContext');
+      });
+
+      const error = yield* Effect.flip(
+        middle.circuit(
+          Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
+          middleContext(resolveFromChain),
+          1n
+        )
+      );
+
+      expect(ContractRuntimeError.isRuntimeError(error)).toBe(true);
+      expect(String((error as ContractRuntimeError.ContractRuntimeError).cause)).toContain('building call pre-transcript');
     })
   );
 

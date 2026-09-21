@@ -15,15 +15,13 @@
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractExecutable, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Intent } from '@midnightntwrk/ledger-v9';
-import { type ConfigError, Duration, Effect, Option } from 'effect';
+import { type ConfigError, Effect, Option } from 'effect';
 
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import * as ContractState from './contractState.js';
 import * as InternalMaintainCommand from './maintainCommand.js';
 import * as InternalOptions from './options.js';
 
@@ -58,16 +56,21 @@ export const handler: (
     } = moduleSpec;
     const ledgerContractState = yield* fs
       .readFile(inputFilePath)
-      .pipe(Effect.flatMap(ContractState.asLedgerContractStateFromBytes));
+      .pipe(Effect.flatMap(Ledger.contractStateFromBytes));
     const result = yield* contractModule.contractExecutable.replaceContractMaintenanceAuthority(
       Option.some(SigningKey.make(newSigningKey)),
       {
         address,
-        contractState: yield* ContractState.asContractState(ledgerContractState)
+        contractState: yield* Ledger.toRuntimeContractState(ledgerContractState)
       }
     );
-    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addMaintenanceUpdate(
-      result.public.maintenanceUpdate
+    const emptyIntent = yield* InternalCommand.newIntent();
+    const intent = yield* InternalCommand.tryLedger(
+      'Failed to add the maintenance update to the intent',
+      () => emptyIntent.addMaintenanceUpdate(result.public.maintenanceUpdate)
     );
-    yield* fs.writeFile(outputFilePath, intent.serialize());
+    yield* fs.writeFile(
+      outputFilePath,
+      yield* InternalCommand.serializeIntent(intent)
+    );
   }).pipe(Effect.mapError((err) => ContractRuntimeError.make('Failed to apply maintenance operation', err)));

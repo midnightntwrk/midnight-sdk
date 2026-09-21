@@ -15,19 +15,13 @@
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
-import {
-  ContractDeploy,
-  Intent
-} from '@midnightntwrk/ledger-v9';
-import { type ConfigError, Duration, Effect, Option } from 'effect';
+import { CompactRuntime, type ContractExecutable, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
+import { type ConfigError, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import * as ContractState from './contractState.js';
 import { encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
 import * as InternalOptions from './options.js';
 
@@ -72,21 +66,39 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       contractModule.createInitialPrivateState(),
       ...(yield* argsParser.parseInitializationArgs(args))
     );
-    const ledgerContractState = yield* ContractState.asLedgerContractState(result.public.contractState);
-    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addDeploy(
-      new ContractDeploy(ledgerContractState)
+    const ledgerContractState = yield* Ledger.fromRuntimeContractState(result.public.contractState);
+    const emptyIntent = yield* InternalCommand.newIntent();
+    const intent = yield* InternalCommand.tryLedger(
+      'Failed to add the contract deployment to the intent',
+      () => emptyIntent.addDeploy(new Ledger.ContractDeploy(ledgerContractState))
     );
 
     // If the output public file path is provided, write the on-chain (public state) data to the specified file.
     if (Option.isSome(outputPublicFilePath)) {
-      yield* fs.writeFile(Option.getOrThrow(outputPublicFilePath), ledgerContractState.serialize());
+      yield* fs.writeFile(
+        Option.getOrThrow(outputPublicFilePath),
+        yield* InternalCommand.tryLedger(
+          'Failed to serialize the initial contract state',
+          () => ledgerContractState.serialize()
+        )
+      );
     }
-    yield* fs.writeFile(outputFilePath, intent.serialize());
+    yield* fs.writeFile(
+      outputFilePath,
+      yield* InternalCommand.serializeIntent(intent)
+    );
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.private.privateState));
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,
       JSON.stringify(
-        yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.private.zswapLocalState))
+        yield* encodeZswapLocalStateObject(
+          // As in `circuitCommand`: the intent file is already written above, so an unwrapped throw
+          // would be a defect leaving a partially-written output directory and reporting nothing.
+          yield* CompactRuntime.tryRuntime(
+            'Failed to encode the initial zswap local state',
+            () => CompactRuntime.encodeZswapLocalState(result.private.zswapLocalState)
+          )
+        )
       )
     );
   }).pipe(

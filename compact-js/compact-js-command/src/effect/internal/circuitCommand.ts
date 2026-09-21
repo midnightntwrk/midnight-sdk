@@ -17,28 +17,17 @@ import { join } from 'node:path';
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { Contract, type ContractExecutable, ContractKeyLocation, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import { type PlatformError } from '@effect/platform/Error';
+import { CompactRuntime, Contract, type ContractExecutable, ContractKeyLocation, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
-import { decodeZswapLocalState, type EncodedZswapLocalState,
-  encodeZswapLocalState, type StateValue } from '@midnight-ntwrk/compact-runtime';
-import {
-  ChargedState as LedgerChargedState,
-  communicationCommitmentRandomness,
-  ContractCallPrototype,
-  type ContractState as LedgerContractState,
-  Intent,
-  StateValue as LedgerStateValue,
-} from '@midnightntwrk/ledger-v9';
-import { Array, type ConfigError, Console, Duration, Effect, Option } from 'effect';
+import { Array, type ConfigError, Console, Effect, Option } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import * as ContractState from './contractState.js';
 import { decodeZswapLocalStateObject, encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
 import { stringifyCircuitOutput } from './json.js';
-import * as LedgerParameters from './ledgerParameters.js';
 import * as InternalOptions from './options.js';
 
 /** @internal */
@@ -49,6 +38,31 @@ export const Args = {
   circuitId: InternalArgs.circuitId,
   args: InternalArgs.contractArgs
 };
+
+/**
+ * Reads and parses a JSON input file, naming the file in the failure.
+ *
+ * @remarks
+ * `JSON.parse` throws, and both call sites below sit in an `Effect.gen` body or an `Effect.flatMap`
+ * callback where a throw is a *defect*: it escapes {@link InternalCommand.invocationHandler}'s
+ * `catchAll` and the CLI, running with `disableErrorReporting`, exits non-zero printing nothing.
+ * A truncated or empty input file is ordinary — this handler writes `--output-ps` *after*
+ * `--output`, so an interrupted run leaves exactly that state behind.
+ *
+ * @internal
+ */
+const readJsonFile = (
+  fs: FileSystem.FileSystem,
+  filePath: string
+): Effect.Effect<any, ContractRuntimeError.ContractRuntimeError | PlatformError> => // eslint-disable-line @typescript-eslint/no-explicit-any
+  fs.readFileString(filePath).pipe(
+    Effect.flatMap((str) =>
+      Effect.try({
+        try: () => JSON.parse(str),
+        catch: (err) => ContractRuntimeError.make(`'${filePath}' does not contain valid JSON`, err)
+      })
+    )
+  );
 
 /** @internal */
 export type Options = Command.Command.ParseConfig<typeof Options>;
@@ -110,19 +124,30 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const contractReflector = yield* CompiledContractReflection.CompiledContractReflection;
     const argsParser = yield* contractReflector.createArgumentParser(contractModule.contractExecutable.compiledContract);
     const ledgerContractState = yield* fs.readFile(inputFilePath).pipe(
-      Effect.flatMap(ContractState.asLedgerContractStateFromBytes)
+      Effect.flatMap(Ledger.contractStateFromBytes)
     );
-    const privateState = JSON.parse(yield* fs.readFileString(inputPrivateStateFilePath));
+    const privateState = yield* readJsonFile(fs, inputPrivateStateFilePath);
     const encodedZswapLocalState = Option.map(
       inputZswapLocalStateFilePath,
-      (filePath) => fs.readFileString(filePath).pipe(
-        Effect.flatMap((str) => decodeZswapLocalStateObject(JSON.parse(str))
-      ))
+      (filePath) => readJsonFile(fs, filePath).pipe(
+        Effect.flatMap(decodeZswapLocalStateObject),
+        // `EncodedZswapLocalStateSchema` validates shape only — no length constraint on the key or
+        // the coin nonces/colours, and `value` is any bigint — so a hand-edited or cross-network
+        // file passes it and is rejected by the runtime instead. The decode belongs here, where
+        // `filePath` is in scope to name in the failure; left unwrapped in the `Effect.gen` body
+        // below it would be a defect, and the CLI would exit non-zero printing nothing at all.
+        Effect.flatMap((encoded) =>
+          CompactRuntime.tryRuntime(
+            `Failed to decode the zswap local state read from '${filePath}'`,
+            () => CompactRuntime.decodeZswapLocalState(encoded)
+          )
+        )
+      )
     );
     const decodedLedgerParameters = Option.map(
       inputLedgerParamsFilePath,
       (filePath) => fs.readFile(filePath).pipe(
-        Effect.flatMap(LedgerParameters.asLedgerParameters)
+        Effect.flatMap(Ledger.parametersFromBytes)
       )
     );
 
@@ -134,10 +159,10 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
 
     const baseCircuitContext = {
       address,
-      contractState: yield* ContractState.asContractState(ledgerContractState),
+      contractState: yield* Ledger.toRuntimeContractState(ledgerContractState),
       privateState: privateState ?? contractModule.createInitialPrivateState(),
       zswapLocalState: Option.isSome(encodedZswapLocalState)
-        ? decodeZswapLocalState((yield* encodedZswapLocalState.value) as EncodedZswapLocalState)
+        ? yield* encodedZswapLocalState.value
         : undefined,
       ledgerParameters: Option.isSome(decodedLedgerParameters)
         ? yield* decodedLedgerParameters.value
@@ -168,17 +193,26 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const { intent, finalCalleeStates } = yield* Effect.reduce(
       result.calls,
       {
-        intent: Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))),
-        finalCalleeStates: new Map<string, { readonly ledgerState: LedgerContractState; readonly data: StateValue }>()
+        intent: yield* InternalCommand.newIntent(),
+        finalCalleeStates: new Map<string, { readonly ledgerState: Ledger.ContractState; readonly data: CompactRuntime.StateValue }>()
       },
       (acc, call) =>
         Effect.gen(function* () {
-          let callLedgerState: LedgerContractState;
+          let callLedgerState: Ledger.ContractState;
           if (call.contractAddress === address) {
             callLedgerState = ledgerContractState;
           } else if (Option.isSome(inputContractStatesDirPath)) {
-            const bytes = yield* fs.readFile(join(inputContractStatesDirPath.value, call.contractAddress));
-            callLedgerState = yield* ContractState.asLedgerContractStateFromBytes(bytes);
+            const filePath = join(inputContractStatesDirPath.value, call.contractAddress);
+            const bytes = yield* fs.readFile(filePath);
+            callLedgerState = yield* Ledger.contractStateFromBytes(bytes).pipe(
+              Effect.mapError((err) =>
+                ContractRuntimeError.make(
+                  `Failed to read contract state for '${call.contractAddress}' from '${filePath}' ` +
+                    `(expected ledger era ${Ledger.era.ledger} encoding)`,
+                  err
+                )
+              )
+            );
           } else {
             // A sub-call can only occur when a state provider (i.e. a contract-states directory) was
             // supplied, so this branch is unreachable in practice; fail loudly if it is reached.
@@ -187,29 +221,32 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
               `no --contract-states-dir was provided.`
             );
           }
-          const callOperation = yield* ContractState.operationForCircuit(callLedgerState, call.circuitId, call.contractAddress);
-          const nextIntent = acc.intent.addCall(new ContractCallPrototype(
-            call.contractAddress,
-            call.circuitId,
-            callOperation,
-            call.public.partitionedTranscript[0],
-            call.public.partitionedTranscript[1],
-            call.private.privateTranscriptOutputs,
-            call.private.input,
-            call.private.output,
-            Option.match(call.communicationCommitment, {
-              onSome: (c) => c.commCommRand,
-              onNone: () => communicationCommitmentRandomness()
-            }),
-            // The canonical key location routes the proof for this call to the key material of the
-            // specific deployed circuit (by contract address and verifier-key content), so that
-            // identically named circuits across contracts in one transaction cannot collide.
-            ContractKeyLocation.encodeContractKeyLocation({
-              contractAddress: call.contractAddress,
-              circuitId: call.circuitId,
-              verifierKeyHash: ContractKeyLocation.hashVerifierKey(callOperation.verifierKey)
-            })
-          ));
+          const callOperation = yield* Ledger.operationForCircuit(callLedgerState, call.circuitId, call.contractAddress);
+          const nextIntent = yield* InternalCommand.tryLedger(
+            `Failed to add the call to '${call.circuitId}' on '${call.contractAddress}' to the intent`,
+            () => acc.intent.addCall(new Ledger.ContractCallPrototype(
+              call.contractAddress,
+              call.circuitId,
+              callOperation,
+              call.public.partitionedTranscript[0],
+              call.public.partitionedTranscript[1],
+              call.private.privateTranscriptOutputs,
+              call.private.input,
+              call.private.output,
+              Option.match(call.communicationCommitment, {
+                onSome: (c) => c.commCommRand,
+                onNone: () => Ledger.communicationCommitmentRandomness()
+              }),
+              // The canonical key location routes the proof for this call to the key material of the
+              // specific deployed circuit (by contract address and verifier-key content), so that
+              // identically named circuits across contracts in one transaction cannot collide.
+              ContractKeyLocation.encodeContractKeyLocation({
+                contractAddress: call.contractAddress,
+                circuitId: call.circuitId,
+                verifierKeyHash: ContractKeyLocation.hashVerifierKey(callOperation.verifierKey)
+              })
+            ))
+          );
           // Record callee states only; the root's updated state is handled by `--output-oc`.
           const nextFinalCalleeStates = call.contractAddress === address
             ? acc.finalCalleeStates
@@ -232,10 +269,15 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
 
     // If the output public file path is provided, write the on-chain (public state) data to the specified file.
     if (Option.isSome(outputPublicFilePath)) {
-      ledgerContractState.data = new LedgerChargedState(
-        LedgerStateValue.decode(rootCall.public.contractState.encode())
+      const rootState = yield* Ledger.fromRuntimeStateValue(rootCall.public.contractState);
+      const rootStateBytes = yield* InternalCommand.tryLedger(
+        `Failed to serialize the updated contract state for '${address}'`,
+        () => {
+          ledgerContractState.data = new Ledger.ChargedState(rootState);
+          return ledgerContractState.serialize();
+        }
       );
-      yield* fs.writeFile(outputPublicFilePath.value, ledgerContractState.serialize());
+      yield* fs.writeFile(outputPublicFilePath.value, rootStateBytes);
     }
 
     // If an output contract-states directory is provided, write the updated ledger state of each
@@ -246,17 +288,34 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       const dir = outputContractStatesDirPath.value;
       yield* fs.makeDirectory(dir, { recursive: true });
       for (const [contractAddress, { ledgerState, data }] of finalCalleeStates) {
-        ledgerState.data = new LedgerChargedState(LedgerStateValue.decode(data.encode()));
-        yield* fs.writeFile(join(dir, contractAddress), ledgerState.serialize());
+        const calleeState = yield* Ledger.fromRuntimeStateValue(data);
+        const calleeStateBytes = yield* InternalCommand.tryLedger(
+          `Failed to serialize the updated contract state for '${contractAddress}'`,
+          () => {
+            ledgerState.data = new Ledger.ChargedState(calleeState);
+            return ledgerState.serialize();
+          }
+        );
+        yield* fs.writeFile(join(dir, contractAddress), calleeStateBytes);
       }
     }
     yield* fs.writeFileString(outputResultFilePath, stringifyCircuitOutput(result.result));
-    yield* fs.writeFile(outputFilePath, intent.serialize());
+    yield* fs.writeFile(
+      outputFilePath,
+      yield* InternalCommand.serializeIntent(intent)
+    );
     yield* fs.writeFileString(outputPrivateStateFilePath, JSON.stringify(result.privateState));
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,
       JSON.stringify(
-        yield* encodeZswapLocalStateObject(encodeZswapLocalState(result.zswapLocalState))
+        yield* encodeZswapLocalStateObject(
+          // The intent file is already written at this point, so an unwrapped throw here would be
+          // a defect that leaves a partially-written output directory and reports nothing at all.
+          yield* CompactRuntime.tryRuntime(
+            'Failed to encode the zswap local state produced by the circuit',
+            () => CompactRuntime.encodeZswapLocalState(result.zswapLocalState)
+          )
+        )
       )
     );
     // Contract log events (MIP-0002) are non-consensus output; only write them when a destination

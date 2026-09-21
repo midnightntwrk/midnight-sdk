@@ -15,14 +15,12 @@
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { Contract, type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { Intent } from '@midnightntwrk/ledger-v9';
-import { type ConfigError, Duration, Effect, Option } from 'effect';
+import { Contract, type ContractExecutable, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
+import { type ConfigError, Effect, Option } from 'effect';
 
 import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import * as ContractState from './contractState.js';
 import * as InternalMaintainCommand from './maintainCommand.js';
 import * as InternalOptions from './options.js';
 
@@ -70,11 +68,11 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
     const fs = yield* FileSystem.FileSystem;
     const { module: { default: contractModule } } = moduleSpec;
     const ledgerContractState = yield* fs.readFile(inputFilePath).pipe(
-      Effect.flatMap(ContractState.asLedgerContractStateFromBytes)
+      Effect.flatMap(Ledger.contractStateFromBytes)
     );
     const contractContext: ContractExecutable.ContractExecutable.ContractContext = {
       address,
-      contractState: yield* ContractState.asContractState(ledgerContractState)
+      contractState: yield* Ledger.toRuntimeContractState(ledgerContractState)
     }
     const result = yield* Option.match(verifierKeyPath, {
       onSome: (filePath) => fs.readFile(filePath).pipe(
@@ -87,9 +85,15 @@ export const handler: (inputs: Args & Options, moduleSpec: ConfigCompiler.Module
       ),
       onNone: () => removeCircuit(contractModule.contractExecutable, Contract.ProvableCircuitId(circuitId), contractContext)
     });
-    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10)))
-      .addMaintenanceUpdate(result.public.maintenanceUpdate);
-    yield* fs.writeFile(outputFilePath, intent.serialize());
+    const emptyIntent = yield* InternalCommand.newIntent();
+    const intent = yield* InternalCommand.tryLedger(
+      'Failed to add the maintenance update to the intent',
+      () => emptyIntent.addMaintenanceUpdate(result.public.maintenanceUpdate)
+    );
+    yield* fs.writeFile(
+      outputFilePath,
+      yield* InternalCommand.serializeIntent(intent)
+    );
   }).pipe(
     Effect.mapError(
       (err) => ContractRuntimeError.make('Failed to apply maintenance operation', err)
