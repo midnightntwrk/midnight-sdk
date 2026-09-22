@@ -153,11 +153,11 @@ export interface ExecutionContextParams<PrivateState, ContractState, EncodedZswa
    * the public result — so without it every execution produces a `block` that differs on each run
    * and no consumer can record a fixture (midnight-sdk#403).
    *
-   * Deliberately **not** reachable from `ContractExecutable.circuit`: the public `CircuitContext`
-   * has no `time`, and `internal/executable.ts` builds this parameter object itself, so nothing
-   * sources the field today. That is a decision, not the oversight #403 describes — do not "finish"
-   * it by threading a clock through `CircuitContext` without agreeing that surface first. Until
-   * then this is reachable only by a caller driving `createExecutionContext` directly.
+   * `ContractExecutable.circuit` supplies this from the effect's own `Clock`, converting from
+   * milliseconds at the call site. That is why there is no `time` on the public `CircuitContext`:
+   * `Clock` is a default Effect service, so a consumer pins the value with a layer and pays no new
+   * API for it, while the live clock reproduces the previous behaviour exactly. Add a per-call
+   * member only if something needs a *different* time per call — recording a fixture does not.
    */
   readonly time?: number | undefined;
 }

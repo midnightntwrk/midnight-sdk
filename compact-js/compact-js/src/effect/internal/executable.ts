@@ -38,7 +38,7 @@ import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Effect, Either, type Layer, Option } from 'effect';
+import { Clock, Effect, Either, type Layer, Option } from 'effect';
 import { dual, identity } from 'effect/Function';
 import { type Pipeable, pipeArguments } from 'effect/Pipeable';
 
@@ -47,7 +47,7 @@ import * as Contract from '../Contract.js';
 import * as ContractConfigurationError from '../ContractConfigurationError.js';
 import { validateEvents } from '../ContractEventValidator.js';
 import * as ContractRuntimeError from '../ContractRuntimeError.js';
-import { ZKConfiguration,type ZKConfiguration as ZKConfigurationService } from '../ZKConfiguration.js';
+import { ZKConfiguration, type ZKConfiguration as ZKConfigurationService } from '../ZKConfiguration.js';
 import { type ZKConfigurationReadError } from '../ZKConfigurationReadError.js';
 import { tryBoundary } from './boundary.js';
 import * as CompactContextInternal from './compactContext.js';
@@ -227,10 +227,10 @@ export type DeployResult<L extends ExecutableLedger, R extends ExecutableRuntime
   readonly private: DeployResultPrivate<L, R, PS>;
 };
 
-export type PartitionedTranscript<
-  L extends ExecutableLedger,
-  R extends ExecutableRuntime
-> = ExecutableTypes<L, R>['PartitionedTranscript'];
+export type PartitionedTranscript<L extends ExecutableLedger, R extends ExecutableRuntime> = ExecutableTypes<
+  L,
+  R
+>['PartitionedTranscript'];
 
 /**
  * The public half of one contract call: its post-execution state, its transcript, that transcript's
@@ -459,9 +459,14 @@ export const makeExecutable = <
           );
     });
 
-  class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, Rq>
-    implements ContractExecutable<L, R, C, PS, E, Rq>
-  {
+  class ContractExecutableImpl<C extends Contract.Contract<PS>, PS, E, Rq> implements ContractExecutable<
+    L,
+    R,
+    C,
+    PS,
+    E,
+    Rq
+  > {
     compiledContract: CompiledContract<C, PS>;
     transform: Transform<E, Rq>;
     // Read off the binding this factory was applied to, so `provide`'s rebuilt instance carries the
@@ -641,9 +646,10 @@ export const makeExecutable = <
     ): Effect.Effect<CallResult<L, R, C, PS, K>, E, Rq> {
       return Effect.all({
         keyConfig: Configuration.Keys,
-        contract: this.createContract()
+        contract: this.createContract(),
+        nowMillis: Clock.currentTimeMillis
       }).pipe(
-        Effect.flatMap(({ keyConfig, contract }) =>
+        Effect.flatMap(({ keyConfig, contract, nowMillis }) =>
           Effect.tryPromise({
             try: async () => {
               // Narrowed to *this executable's* era, for the same reason `initialize` narrows the
@@ -672,7 +678,9 @@ export const makeExecutable = <
                 contractState: circuitContext.contractState,
                 privateState: circuitContext.privateState,
                 stateProvider: circuitContext.stateProvider,
-                parentBlockHash: circuitContext.parentBlockHash
+                parentBlockHash: circuitContext.parentBlockHash,
+                // Seconds, not milliseconds — the unit both lines' `time` parameter takes.
+                time: Math.floor(nowMillis / 1_000)
               } as never);
               return runtime.readExecution((await circuit(runtimeContext, ...args)) as never);
             },
@@ -851,7 +859,10 @@ export const makeExecutable = <
             return yield* this.createSignedMaintenanceUpdate(
               () => {
                 return Either.right([
-                  new ledger.VerifierKeyRemove(provableCircuitId as never, ledger.makeContractOperationVersion() as never)
+                  new ledger.VerifierKeyRemove(
+                    provableCircuitId as never,
+                    ledger.makeContractOperationVersion() as never
+                  )
                 ]);
               },
               keyConfig,
@@ -1042,9 +1053,7 @@ export const makeExecutable = <
           new runtime.ContractMaintenanceAuthority(
             [runtime.signatureVerifyingKey(ledgerSigningKey.right as never)] as never,
             DEFAULT_CMA_THRESHOLD as never,
-            (contractState
-              ? authorityCounterOf(contractState) + 1n
-              : 0n) as never
+            (contractState ? authorityCounterOf(contractState) + 1n : 0n) as never
           ) as Types['ContractMaintenanceAuthority'],
           signingKey
         ]);
@@ -1092,7 +1101,9 @@ export const makeExecutable = <
    * @category combinators
    */
   const provide: {
-    <LA, LE, LR>(layer: Layer.Layer<LA, LE, LR>): <C extends Contract.Contract<PS>, PS, E, Rq>(
+    <LA, LE, LR>(
+      layer: Layer.Layer<LA, LE, LR>
+    ): <C extends Contract.Contract<PS>, PS, E, Rq>(
       self: ContractExecutable<L, R, C, PS, E, Rq>
     ) => ContractExecutable<L, R, C, PS, E | LE, LR | Exclude<Rq, LA>>;
     <C extends Contract.Contract<PS>, PS, E, Rq, LA, LE, LR>(
