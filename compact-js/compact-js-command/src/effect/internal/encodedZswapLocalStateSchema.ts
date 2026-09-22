@@ -42,15 +42,35 @@ export const EncodedRecipientSchema = Schema.Struct({
   right: EncodedContractAddressSchema
 });
 
+// `Schema.mutable` on the two collections: `Schema.Array` decodes to `readonly T[]`, which is the
+// only thing that kept this schema's output from being the runtime's own `EncodedZswapLocalState`.
 export const EncodedZswapLocalStateSchema = Schema.Struct({
   coinPublicKey: EncodedCoinPublicKeySchema,
   currentIndex: Schema.BigInt,
-  inputs: Schema.Array(EncodedQualifiedShieldedCoinInfoSchema),
-  outputs: Schema.Array(Schema.Struct({
+  inputs: Schema.mutable(Schema.Array(EncodedQualifiedShieldedCoinInfoSchema)),
+  outputs: Schema.mutable(Schema.Array(Schema.Struct({
     coinInfo: EncodedShieldedCoinInfoSchema,
     recipient: EncodedRecipientSchema
-  }))
+  })))
 });
+
+/**
+ * This schema's decoded type — the shape the commands hand to, and receive from, an era's
+ * compact-runtime zswap codec.
+ *
+ * @remarks
+ * Every check that used to sit here against `CompactRuntime.EncodedZswapLocalState` has moved into
+ * `internal/era/binding.ts`, which states them once per era the CLI can select rather than once
+ * against whichever line the build happens to bind: the two assignability pins as the *parameter*
+ * and *return* types of `CommandRuntime`'s zswap members (parameters contravariantly, returns
+ * covariantly), and the key-set comparison as `AssertNoZswapKeyDrift`.
+ *
+ * Why the encode direction matters is unchanged and worth keeping in view: `Schema.Struct` defaults
+ * to `onExcessProperty: 'ignore'`, so a field added to a line's encoded zswap state would be
+ * silently stripped from every written `--output-zswap` file, surfacing only when the file is read
+ * back and the coin set is wrong.
+ */
+export type EncodedZswapLocalStateSchema = typeof EncodedZswapLocalStateSchema.Type;
 
 export const encodeZswapLocalStateObject = Schema.encodeUnknown(EncodedZswapLocalStateSchema);
 export const decodeZswapLocalStateObject = Schema.decodeUnknown(EncodedZswapLocalStateSchema);

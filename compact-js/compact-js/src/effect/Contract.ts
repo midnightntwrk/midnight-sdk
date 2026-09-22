@@ -21,23 +21,94 @@
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import type {
-  CircuitContext,
-  CircuitResults,
-  ConstructorContext,
-  ConstructorResult,
-  WitnessContext
-} from '@midnight-ntwrk/compact-runtime';
 import { Brand } from 'effect';
+
+/**
+ * The context a Compact witness receives.
+ *
+ * @remarks
+ * Declared here rather than re-exported from the {@link CompactRuntime} seam, and stated exactly:
+ * compact-runtime 0.16 and 0.19 declare this identically (`ContractAddress` is `string` on both
+ * onchain-runtime majors), so naming the shape costs no precision and keeps this module off the
+ * seam — see the note on {@link Contract}.
+ */
+export interface WitnessContext<L, PS> {
+  readonly ledger: L;
+  readonly privateState: PS;
+  readonly contractAddress: string;
+}
+
+/**
+ * The context a Compact circuit receives — deliberately opaque.
+ *
+ * @remarks
+ * This is the one shape that genuinely differs between runtime lines: 0.16 passes a flat, single
+ * contract frame (`currentPrivateState`, `currentQueryContext`, `currentZswapLocalState`) and 0.19
+ * passes a call tree (`callContext`, `queryContexts`, `callProofDataTrace`, `events`). The two
+ * share no member, so no structural type describes both, and naming either one pins the spine to
+ * an era.
+ *
+ * It is a *parameter* type, so `any` rather than `unknown`: parameters are contravariant, and a
+ * circuit that accepts its own line's context must remain assignable to this signature. `unknown`
+ * would reject every real contract. Nothing in compact-js reads a circuit context through this
+ * type — the executable builds one through its era's `createExecutionContext` and hands it straight
+ * back to the circuit — so the looseness is confined to the description of a value this package
+ * only ever passes through.
+ */
+export type CircuitContext = any;
+
+/**
+ * What a Compact circuit resolves to, as much of it as is era-free.
+ *
+ * @remarks
+ * A *return* type, so it is stated as the structural minimum both lines satisfy rather than as
+ * `any`: `result` is the value callers actually want, and returning it is what makes
+ * {@link Contract.CircuitReturnType} work on either era. The rest of the era's results object
+ * (0.16's `proofData`, both lines' `context` and `gasCost`) is intentionally not described here —
+ * it is read by the era's `readExecution`, which is typed against the binding that produced it.
+ */
+export interface CircuitResults<U> {
+  readonly result: U;
+}
+
+/**
+ * What a Compact contract's constructor resolves to, as much of it as is era-free.
+ *
+ * @remarks
+ * `currentPrivateState` is named because it is the only anchor that keeps `PS` inferable from a
+ * contract with no witnesses; the contract state and Zswap local state it sits beside are era
+ * types, so they are left to the executable's binding.
+ */
+export interface ConstructorResult<PS> {
+  readonly currentPrivateState: PS;
+}
+
+/**
+ * A value, or a promise of one.
+ *
+ * @remarks
+ * The second thing about a compiled contract that varies by era, alongside the circuit context.
+ * compactc 0.31.1 (Compact 0.23, the ledger 8 / runtime 0.16 pairing) generates **synchronous**
+ * circuits and `initialState`; 0.34 generates `Promise`-returning ones. Diff the two `.d.ts` files
+ * a single `counter.compact` produces — `test/contract/managed-v8/counter/contract/index.d.ts`
+ * against `test/contract/managed/counter/contract/index.d.ts` — and that is the entire difference.
+ *
+ * So the spine says "settles to", not "resolves to". Naming `Promise` here is what previously kept
+ * a real ledger 8 artifact from satisfying `Contract<PS>` at all — `Witnesses<C>` collapsed to
+ * `never` and `CompiledContract.make` was uncallable — even after the era-varying *types* were
+ * removed. Reading a result through the union costs nothing: everything in compact-js that calls a
+ * circuit or the constructor already `await`s it, and `await` on a non-promise is the value.
+ */
+export type Awaitable<A> = A | Promise<A>;
 
 export type Witness<PS, U = any> = (context: WitnessContext<U, PS>, ...args: any[]) => [PS, U];
 export type Witnesses<PS> = Record<string, Witness<PS>>;
 
-export type Circuit<PS, U = any> = (context: CircuitContext<PS>, ...args: any[]) => Promise<CircuitResults<PS, U>>;
-export type Circuits<PS> = Record<string, Circuit<PS>>;
+export type Circuit<U = any> = (context: CircuitContext, ...args: any[]) => Awaitable<CircuitResults<U>>;
+export type Circuits = Record<string, Circuit>;
 
-export type ProvableCircuit<PS, U = any> = (context: CircuitContext<PS>, ...args: any[]) => Promise<CircuitResults<PS, U>>;
-export type ProvableCircuits<PS> = Record<string, ProvableCircuit<PS>>;
+export type ProvableCircuit<U = any> = (context: CircuitContext, ...args: any[]) => Awaitable<CircuitResults<U>>;
+export type ProvableCircuits = Record<string, ProvableCircuit>;
 
 export type VerifierKey = Uint8Array & Brand.Brand<'VerifierKey'>;
 export const VerifierKey = Brand.nominal<VerifierKey>();
@@ -52,13 +123,30 @@ export const ProvableCircuitId = <C extends Contract.Any>(
   id: Brand.Brand.Unbranded<ProvableCircuitId<C>>
 ): ProvableCircuitId<C> => ProvableCircuitId_(id);
 
+/**
+ * The shape of a contract executable, as `compactc` generates it.
+ *
+ * @remarks
+ * Stated **era-free**: nothing in this module reaches the {@link CompactRuntime} or {@link Ledger}
+ * seams, so one description covers a contract compiled for any ledger era compact-js binds, and the
+ * era-pinned entries (`/v8/effect`, `/v9/effect`) hand back the same type rather than each other's.
+ *
+ * That is not a loosening for its own sake. The era is a property of the *executable* — which
+ * binding builds the circuit context, partitions transcripts, converts states and signs maintenance
+ * updates — not of the contract description, and a compiled artifact's own `.d.ts` imports
+ * `@midnight-ntwrk/compact-runtime` by bare specifier, so its era is decided by how that resolves
+ * where the artifact lives and not by which compact-js entry the application imported. A spine that
+ * named one line's `CircuitContext` could only ever agree with contracts compiled for that line
+ * (midnight-sdk#387/#388). `test/typetests/effect/Contract.tst.ts` pins both eras against this
+ * type.
+ */
 export interface Contract<PS, W extends Witnesses<PS> = Witnesses<PS>> {
   witnesses: W;
 
-  circuits: Circuits<PS>;
-  provableCircuits: ProvableCircuits<PS>;
+  circuits: Circuits;
+  provableCircuits: ProvableCircuits;
 
-  initialState(context: ConstructorContext<PS>, ...args: any[]): Promise<ConstructorResult<PS>>;
+  initialState(context: any, ...args: any[]): Awaitable<ConstructorResult<PS>>;
 }
 
 export declare namespace Contract {
@@ -69,16 +157,18 @@ export declare namespace Contract {
   // eslint-disable-next-line @typescript-eslint/no-shadow
   export type Witnesses<C> = C extends Contract<any, infer W> ? (keyof W extends never ? never : W) : never;
 
+  // The leading element is matched as `any` rather than by name: it is the era's constructor
+  // context, and the point here is only to drop it and keep what follows.
   export type InitializeParameters<C extends Contract<any>> =
-    Parameters<C['initialState']> extends [ConstructorContext<any>, ...infer A] ? A : never;
+    Parameters<C['initialState']> extends [any, ...infer A] ? A : never;
 
   export type ProvableCircuitId<C extends Contract<any>> = keyof C['provableCircuits'] & string;
 
   export type CircuitParameters<C extends Contract<any>, K extends ProvableCircuitId<C>> =
-    Parameters<C['provableCircuits'][K]> extends [CircuitContext<any>, ...infer A] ? A : never;
+    Parameters<C['provableCircuits'][K]> extends [any, ...infer A] ? A : never;
 
   export type CircuitReturnType<C extends Contract<any>, K extends ProvableCircuitId<C>> =
-    Awaited<ReturnType<C['provableCircuits'][K]>> extends CircuitResults<any, infer U> ? U : never;
+    Awaited<ReturnType<C['provableCircuits'][K]>> extends CircuitResults<infer U> ? U : never;
 }
 
 export const getProvableCircuitIds: <C extends Contract.Any>(contract: C) => ProvableCircuitId<C>[] = (contract) =>

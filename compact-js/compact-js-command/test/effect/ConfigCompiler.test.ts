@@ -20,9 +20,14 @@ import { describe, expect,it } from '@effect/vitest';
 import { ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
 import { Effect, Layer } from 'effect';
 
-import { ensureRemovePath } from './cleanup.js';
+import { useConfigFixture } from './configFixture.js';
 
-const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
+// Test files run in parallel, and compiling a fixture writes a sibling `.js` next to it, so this
+// file compiles its own copy rather than racing the command tests over one pair of paths.
+const COUNTER_CONFIG_FILEPATH = useConfigFixture(
+  resolve(import.meta.dirname, '../contract/counter/contract.config.ts'),
+  'config-compiler'
+);
 
 describe('ConfigCompiler', () => {
   describe('layer', () => {
@@ -46,12 +51,10 @@ describe('ConfigCompiler', () => {
             })
           });
         }).pipe(
-          Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
-          Effect.provide(ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer))),
-          Effect.catchAll((err) => {
-            console.log(err);
-            return Effect.void
-          })
+          // Deliberately *not* wrapped in a `catchAll`: a failure to compile short-circuits before
+          // the expectations run, so swallowing it leaves a test that cannot fail — which is what
+          // hid `ts-node` being handed a TypeScript line it cannot drive.
+          Effect.provide(ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer)))
         ),
         30_000
       );

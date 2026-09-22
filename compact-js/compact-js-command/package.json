@@ -1,6 +1,6 @@
 {
   "name": "@midnight-ntwrk/compact-js-command",
-  "version": "2.5.5-rc.8",
+  "version": "3.0.0-rc.0",
   "description": "Command line utilities for working with smart contracts compiled with the Compact language",
   "type": "module",
   "exports": {
@@ -25,14 +25,17 @@
     "@effect/workflow": "^0.19.0",
     "@midnight-ntwrk/compact-js": "workspace:^",
     "@midnight-ntwrk/compact-js-node": "workspace:^",
-    "@midnight-ntwrk/compact-runtime": "0.19.0-rc.0",
     "@midnight-ntwrk/platform-js": "^3.0.0",
     "@midnight-ntwrk/wallet-sdk-address-format": "3.1.0",
-    "@midnightntwrk/ledger-v9": "^1.0.0-rc.3",
     "effect": "^3.22.1",
     "json5": "^2.2.3",
     "ts-node": "^10.9.2",
-    "tslib": "^2.8.1"
+    "tslib": "^2.8.1",
+    "typescript": ">=5.0.0 <7.0.0"
+  },
+  "devDependencies": {
+    "@midnight-ntwrk/compact-runtime": "0.19.0-rc.0",
+    "@midnightntwrk/ledger-v9": "^1.0.0-rc.4"
   },
   "repository": {
     "type": "git",
@@ -42,10 +45,14 @@
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
-    "build": "yarn build-esm && build-utils pack-v3",
+    "build": "yarn build-esm && build-utils pack-v3 && yarn fix-exports && yarn verify-exports",
     "build-esm": "tsc -b tsconfig.build.json",
     "clean": "shx rm -rf ./build ./dist ./.tsbuildinfo ./reports ./coverage",
-    "test": "npx vitest run",
+    "test": "yarn test-ledger-era-9 && yarn test-ledger-era-8",
+    "test-ledger-era-9": "npx vitest run",
+    "test-ledger-era-8": "npx vitest run --config vitest.era8.config.ts",
+    "fix-exports": "node ../scripts/fix-esm-only-exports.mjs .",
+    "verify-exports": "node ../scripts/verify-exports.mjs .",
     "cmd": "NODE_OPTIONS='--loader ts-node/esm --no-warnings' ts-node ./src/index.ts",
     "package": "shx rm -rf ./dist/src && node ../scripts/resolve-workspace-protocol.mjs ./dist/package.json && (cd ./dist; npm pack)"
   },

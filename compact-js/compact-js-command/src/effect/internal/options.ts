@@ -13,11 +13,13 @@
  * limitations under the License.
  */
 
-import { type Command, Options } from '@effect/cli';
+import { type Command, HelpDoc, Options, ValidationError } from '@effect/cli';
 import { Path } from '@effect/platform';
 import * as CoinPublicKey from '@midnight-ntwrk/platform-js/effect/CoinPublicKey';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { ConfigProvider, Effect, Option, Schema } from 'effect';
+
+import * as InternalEras from './era/eras.js';
 
 /**
  * Resolves an optional filesystem path against the platform `Path` service while preserving
@@ -39,6 +41,49 @@ export const config = Options.file('config', { exists: 'either' }).pipe(
   Options.withAlias('c'),
   Options.withDefault('contract.config.ts'),
   Options.mapEffect((filePath) => Path.Path.pipe(Effect.map((path) => path.resolve(filePath))))
+);
+
+/**
+ * Selects the ledger era an invocation targets — genuinely selects it, rather than checking it.
+ *
+ * @remarks
+ * The parsed value reaches `invocationHandler`, which resolves it through
+ * `internal/era/registry.ts` to that era's application of the four handler factories. Every ledger
+ * and compact-runtime call the chosen handler makes — intent construction, state decoding, the
+ * conversions, the cross-contract state provider — belongs to the era named here, because the
+ * handlers take their era as an argument the way `compact-js`'s `internal/executable.ts` does
+ * (midnight-sdk#387/#388).
+ *
+ * Selecting an era is only half of an invocation's era, and the CLI does not own the other half.
+ * The executable comes from the user's `contract.config.ts`, whose own import (`/v8/effect` or
+ * `/v9/effect`) fixes *its* era; `invocationHandler` compares the two and fails by name when they
+ * disagree, rather than letting the mismatch surface as a WASM rejection later on.
+ *
+ * An era outside {@link InternalEras.SELECTABLE_LEDGER_ERAS} is still rejected at parse time: this
+ * build has no facade for it, and quietly running some other era's execution is the mislabelling
+ * the era work exists to prevent.
+ *
+ * @internal
+ */
+export const ledgerEra = Options.integer('ledger-era').pipe(
+  Options.withDescription(
+    `The ledger era to target (${InternalEras.SELECTABLE_LEDGER_ERAS.join(', ')}). Defaults to ` +
+      `${InternalEras.DEFAULT_LEDGER_ERA}, the era this build binds. The contract configuration's ` +
+      'executable must be built for the same era.'
+  ),
+  Options.mapEffect((era) =>
+    InternalEras.isSelectableLedgerEra(era)
+      ? Effect.succeed(era)
+      : Effect.fail(
+          ValidationError.invalidValue(
+            HelpDoc.p(
+              `ledger era ${era} is not supported by this command; this build selects between ` +
+                `${InternalEras.SELECTABLE_LEDGER_ERAS.join(', ')}`
+            )
+          )
+        )
+  ),
+  Options.withDefault(InternalEras.DEFAULT_LEDGER_ERA)
 );
 
 /** @internal */

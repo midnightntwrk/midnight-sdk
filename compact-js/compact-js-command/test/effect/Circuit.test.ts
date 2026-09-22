@@ -17,9 +17,9 @@ import { resolve } from 'node:path';
 
 import { Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
-import { circuitCommand, ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
+import { circuitCommand } from '@midnight-ntwrk/compact-js-command/effect';
+import { encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
 import {
   type ContractCall,
   Intent,
@@ -28,29 +28,60 @@ import {
   type PreProof,
   type SignatureEnabled
 } from '@midnightntwrk/ledger-v9';
-import { Console, Effect, Layer } from 'effect';
+import { Effect } from 'effect';
+import { afterEach, vi } from 'vitest';
 
 import { ensureRemovePath } from './cleanup.js';
+import { useConfigFixture } from './configFixture.js';
 import * as MockConsole from './MockConsole.js';
+import { testLayer } from './testLayer.js';
 
-const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
+// Wrap `encodeZswapLocalState` so it delegates to the real implementation by default; one test
+// below overrides a single call. The compact-runtime seam re-exports this binding, so mocking the
+// package reaches `CompactRuntime.encodeZswapLocalState` inside the command handler too.
+vi.mock('@midnight-ntwrk/compact-runtime', async (importActual) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  const actual = await importActual<typeof import('@midnight-ntwrk/compact-runtime')>();
+  return { ...actual, encodeZswapLocalState: vi.fn(actual.encodeZswapLocalState) };
+});
+
+// Captured before any test queues an override, so `afterEach` can restore the delegating default:
+// neither `mockClear` nor `vi.restoreAllMocks()` drains a `mockImplementationOnce` queue, so a test
+// that failed before consuming its throw would leave it armed for the next one.
+const delegatingEncodeZswapLocalState = vi.mocked(encodeZswapLocalState).getMockImplementation()!;
+
+afterEach(() => {
+  vi.mocked(encodeZswapLocalState).mockReset();
+  vi.mocked(encodeZswapLocalState).mockImplementation(delegatingEncodeZswapLocalState);
+});
+
+// Test files run in parallel, so each owns a distinct path for every artefact it writes — the
+// config fixture (which is transpiled to a sibling `.js` before import) as much as the outputs
+// below: a shared name lets one file's cleanup delete another's artefact mid-read.
+const COUNTER_CONFIG_FILEPATH = useConfigFixture(
+  resolve(import.meta.dirname, '../contract/counter/contract.config.ts'),
+  'circuit'
+);
 const COUNTER_STATE_FILEPATH = resolve(import.meta.dirname, '../contract/counter/state.bin');
 const COUNTER_LEDGER_PARAMS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/ledger_parameters.bin');
-const COUNTER_OUTPUT_OC_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_onchain.bin');
+const COUNTER_OUTPUT_OC_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit_onchain.bin');
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.bin');
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.json');
-const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_zswap.json');
+const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit_zswap.json');
 const COUNTER_RESULT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/result.json');
 const COUNTER_OUTPUT_EVENTS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_events.json');
+const COUNTER_INPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/input_circuit_zswap.json');
+const COUNTER_NULL_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/null_circuit_ps.json');
 
-const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext | FileSystem.FileSystem> =
-  Effect.gen(function* () {
-    const console = yield* MockConsole.make;
-    return Layer.mergeAll(
-      Console.setConsole(console),
-      ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer))
-    );
-  }).pipe(Layer.unwrapEffect);
+// Passes `EncodedZswapLocalStateSchema` — which validates shape only — and is then rejected by the
+// runtime, which requires a 32-byte coin public key. This is the shape of a hand-edited or
+// cross-network state file.
+const SHORT_KEY_ZSWAP_LOCAL_STATE = {
+  coinPublicKey: { bytes: new Array<number>(31).fill(0) },
+  currentIndex: '0',
+  inputs: [],
+  outputs: []
+};
 
 describe('Circuit Command', () => {
   it.effect(
@@ -131,13 +162,202 @@ describe('Circuit Command', () => {
         expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_PS_FILEPATH))).toMatchObject({ count: 101 });
         expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_EVENTS_FILEPATH))).toEqual([]);
       }).pipe(
-        Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
         Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_EVENTS_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
+    30_000
+  );
+
+  it.effect(
+    'reports a runtime rejection of the --input-zswap file instead of dying silently',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
+        yield* fs.writeFileString(COUNTER_INPUT_ZSWAP_FILEPATH, JSON.stringify(SHORT_KEY_ZSWAP_LOCAL_STATE));
+
+        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+
+        yield* cli([
+          'node', 'circuit.ts',
+          '-c', COUNTER_CONFIG_FILEPATH,
+          '--input', COUNTER_STATE_FILEPATH,
+          '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--input-zswap', COUNTER_INPUT_ZSWAP_FILEPATH,
+          '--output', COUNTER_OUTPUT_FILEPATH,
+          '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
+          '--output-result', COUNTER_RESULT_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
+        ]);
+
+        // Unwrapped, the runtime's throw is a defect: `invocationHandler`'s `catchAll` cannot see
+        // it and the CLI runs with `disableErrorReporting`, so the process exits 1 printing
+        // nothing — the user gets no hint that their state file is at fault. The report naming the
+        // file is the behaviour under test.
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.length).toBeGreaterThan(0);
+        expect(lines.join('\n')).toContain(COUNTER_INPUT_ZSWAP_FILEPATH);
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_INPUT_ZSWAP_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
+    30_000
+  );
+
+  it.effect(
+    'reports a malformed --input-ps file instead of dying silently',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        // The state an interrupted run leaves behind: this handler writes `--output-ps` after
+        // `--output`, so a truncated private-state file is a reachable, not exotic, input.
+        yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, '{ "count": 10');
+
+        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+
+        yield* cli([
+          'node', 'circuit.ts',
+          '-c', COUNTER_CONFIG_FILEPATH,
+          '--input', COUNTER_STATE_FILEPATH,
+          '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output', COUNTER_OUTPUT_FILEPATH,
+          '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-result', COUNTER_RESULT_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.length).toBeGreaterThan(0);
+        expect(lines.join('\n')).toContain(COUNTER_OUTPUT_PS_FILEPATH);
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
+    30_000
+  );
+
+  it.effect(
+    'reports an --input-ps file holding JSON null instead of silently resetting the private state',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        // `JSON.parse('null')` does not throw — it returns `null`, which is indistinguishable from
+        // "no file supplied" to a `??`. `--input-ps` is required, so a `null` payload is never the
+        // user asking for a fresh state: it is what this command writes when a circuit yields an
+        // undefined private state, read back on the next invocation. Substituting
+        // `createInitialPrivateState()` runs the circuit against an empty state and emits a
+        // well-formed, wrong intent with a zero exit code — the failure only surfaces on chain.
+        yield* fs.writeFileString(COUNTER_NULL_PS_FILEPATH, 'null');
+
+        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+
+        yield* cli([
+          'node', 'circuit.ts',
+          '-c', COUNTER_CONFIG_FILEPATH,
+          '--input', COUNTER_STATE_FILEPATH,
+          '--input-ps', COUNTER_NULL_PS_FILEPATH,
+          '--output', COUNTER_OUTPUT_FILEPATH,
+          '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
+          '--output-result', COUNTER_RESULT_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.join('\n')).toContain(COUNTER_NULL_PS_FILEPATH);
+        // The circuit must not have run: no intent on disk to submit.
+        expect(yield* fs.exists(COUNTER_OUTPUT_FILEPATH)).toBe(false);
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_NULL_PS_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
+    30_000
+  );
+
+  it.effect(
+    'reports a malformed --input-zswap file instead of dying silently',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
+        yield* fs.writeFileString(COUNTER_INPUT_ZSWAP_FILEPATH, 'not json at all');
+
+        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+
+        yield* cli([
+          'node', 'circuit.ts',
+          '-c', COUNTER_CONFIG_FILEPATH,
+          '--input', COUNTER_STATE_FILEPATH,
+          '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--input-zswap', COUNTER_INPUT_ZSWAP_FILEPATH,
+          '--output', COUNTER_OUTPUT_FILEPATH,
+          '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-result', COUNTER_RESULT_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.length).toBeGreaterThan(0);
+        expect(lines.join('\n')).toContain(COUNTER_INPUT_ZSWAP_FILEPATH);
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_INPUT_ZSWAP_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
+    30_000
+  );
+
+  it.effect(
+    'reports a runtime rejection when encoding the resulting zswap local state, after the intent is written',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        yield* fs.writeFileString(COUNTER_OUTPUT_PS_FILEPATH, JSON.stringify({ count: 100 }));
+        // This guard sits *after* the intent file is on disk, which makes it the worst failure mode
+        // in the command's blast radius: unwrapped, the throw is a defect, the CLI (running with
+        // `disableErrorReporting`) exits non-zero printing nothing, and the user is left with a
+        // half-written output directory and no indication of why.
+        vi.mocked(encodeZswapLocalState).mockImplementationOnce(() => {
+          throw new Error('expected instance of ZswapLocalState');
+        });
+
+        const cli = Command.run(circuitCommand, { name: 'circuit', version: '0.0.0' });
+
+        yield* cli([
+          'node', 'circuit.ts',
+          '-c', COUNTER_CONFIG_FILEPATH,
+          '--input', COUNTER_STATE_FILEPATH,
+          '--input-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output', COUNTER_OUTPUT_FILEPATH,
+          '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH,
+          '--output-result', COUNTER_RESULT_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a', 'increment'
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.join('\n')).toContain('Failed to encode the zswap local state produced by the circuit');
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_RESULT_FILEPATH)),
         Effect.provide(testLayer)
       ),
     30_000
@@ -174,7 +394,6 @@ describe('Circuit Command', () => {
       const entryPoint = calls[0].entryPoint;
       expect(typeof entryPoint === 'string' ? entryPoint : new TextDecoder().decode(entryPoint)).toBe('increment');
     }).pipe(
-      Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
@@ -228,7 +447,6 @@ describe('Circuit Command', () => {
         expect(lines.length).toBe(0);
         expect(JSON.parse(yield* fs.readFileString(COUNTER_OUTPUT_PS_FILEPATH))).toMatchObject({ count: 101 });
       }).pipe(
-        Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
         Effect.ensuring(ensureRemovePath(COUNTER_LEDGER_PARAMS_FILEPATH)),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),

@@ -22,7 +22,7 @@ import { FileSystem } from '@effect/platform';
 import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
 import { CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
-import { circuitCommand, ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
+import { circuitCommand } from '@midnight-ntwrk/compact-js-command/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState as RuntimeContractState } from '@midnight-ntwrk/compact-runtime';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
@@ -35,13 +35,14 @@ import {
   type PreProof,
   type SignatureEnabled
 } from '@midnightntwrk/ledger-v9';
-import { ConfigProvider, Console, Effect, Layer } from 'effect';
+import { ConfigProvider, Effect, Layer } from 'effect';
 import { afterAll, beforeAll } from 'vitest';
 
 import { Contract as CCCInner_, ledger as innerLedger } from '../../../compact-js/test/contract/managed/cccInner/contract/index';
 import { Contract as CCCMiddle_ } from '../../../compact-js/test/contract/managed/cccMiddle/contract/index';
 import { ensureRemovePath } from './cleanup.js';
 import * as MockConsole from './MockConsole.js';
+import { testLayer } from './testLayer.js';
 
 // The CCC fixtures are untyped test contracts; pin their private state to `undefined`, mirroring
 // `compact-js/test/contract/index.ts`. Importing the managed declaration files (rather than that
@@ -91,15 +92,6 @@ const middleExecutable = CompiledContract.make<CCCMiddleContract>('CCCMiddle', C
   CompiledContract.withCompiledFileAssets(CCC_MIDDLE_ASSETS_PATH),
   ContractExecutable.make
 );
-
-const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext | FileSystem.FileSystem> =
-  Effect.gen(function* () {
-    const console = yield* MockConsole.make;
-    return Layer.mergeAll(
-      Console.setConsole(console),
-      ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer))
-    );
-  }).pipe(Layer.unwrapEffect);
 
 // A `cccMiddle` (root) and the `cccInner` it targets, deployed once for the whole file. Deploying is
 // the expensive part (proving), and the resulting initial states never change, so each test reuses

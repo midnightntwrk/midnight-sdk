@@ -16,29 +16,46 @@
 import { resolve } from 'node:path';
 
 import { Command } from '@effect/cli';
-import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
 import { deployCommand } from '@midnight-ntwrk/compact-js-command/effect';
-import { ConfigCompiler } from '@midnight-ntwrk/compact-js-command/effect';
-import { Console,Effect, Layer } from 'effect';
+import { encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { Effect } from 'effect';
+import { afterEach, vi } from 'vitest';
 
 import { ensureRemovePath } from './cleanup.js';
+import { useConfigFixture } from './configFixture.js';
 import * as MockConsole from './MockConsole.js';
+import { testLayer } from './testLayer.js';
 
-const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
+// Wrap `encodeZswapLocalState` so it delegates to the real implementation by default; one test
+// below overrides a single call. The compact-runtime seam re-exports this binding, so mocking the
+// package reaches `CompactRuntime.encodeZswapLocalState` inside the command handler too.
+vi.mock('@midnight-ntwrk/compact-runtime', async (importActual) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  const actual = await importActual<typeof import('@midnight-ntwrk/compact-runtime')>();
+  return { ...actual, encodeZswapLocalState: vi.fn(actual.encodeZswapLocalState) };
+});
+
+// Captured before any test queues an override, so `afterEach` can restore the delegating default:
+// neither `mockClear` nor `vi.restoreAllMocks()` drains a `mockImplementationOnce` queue.
+const delegatingEncodeZswapLocalState = vi.mocked(encodeZswapLocalState).getMockImplementation()!;
+
+afterEach(() => {
+  vi.mocked(encodeZswapLocalState).mockReset();
+  vi.mocked(encodeZswapLocalState).mockImplementation(delegatingEncodeZswapLocalState);
+});
+
+// Test files run in parallel, so each owns a distinct path for every artefact it writes — the
+// config fixture (which is transpiled to a sibling `.js` before import) as much as the outputs
+// below: a shared name lets one file's cleanup delete another's artefact mid-read.
+const COUNTER_CONFIG_FILEPATH = useConfigFixture(
+  resolve(import.meta.dirname, '../contract/counter/contract.config.ts'),
+  'deploy'
+);
 const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy.bin');
-const COUNTER_OUTPUT_OC_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_onchain.bin');
+const COUNTER_OUTPUT_OC_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy_onchain.bin');
 const COUNTER_OUTPUT_PS_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy.json');
-const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_zswap.json');
-
-const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext> =
-  Effect.gen(function* () {
-    const console = yield* MockConsole.make;
-    return Layer.mergeAll(
-      Console.setConsole(console),
-      ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer)),
-    );
-  }).pipe(Layer.unwrapEffect);
+const COUNTER_OUTPUT_ZSWAP_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_deploy_zswap.json');
 
 describe('Deploy Command', () => {
   it.effect('should report success with valid setup', () =>
@@ -58,13 +75,44 @@ describe('Deploy Command', () => {
 
       expect(lines.length).toBe(0);
     }).pipe(
-      Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
       Effect.provide(testLayer)
     ),
+    30_000
+  );
+
+  it.effect(
+    'reports a runtime rejection when encoding the initial zswap local state, after the intent is written',
+    () =>
+      Effect.gen(function* () {
+        // The intent file is written before this encode, so unwrapped the throw is a defect: the
+        // CLI exits non-zero printing nothing and leaves a partially-written output directory.
+        vi.mocked(encodeZswapLocalState).mockImplementationOnce(() => {
+          throw new Error('expected instance of ZswapLocalState');
+        });
+
+        const cli = Command.run(deployCommand, { name: 'deploy', version: '0.0.0' });
+
+        yield* cli([
+          'node', 'deploy.ts',
+          '-c', COUNTER_CONFIG_FILEPATH,
+          '--output', COUNTER_OUTPUT_FILEPATH,
+          '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+
+        expect(lines.join('\n')).toContain('Failed to encode the initial zswap local state');
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
     30_000
   );
 });

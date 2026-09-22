@@ -5,9 +5,13 @@
   "private": true,
   "packageManager": "yarn@4.18.0",
   "resolutions": {
-    "effect": "^3.22.1"
+    "effect": "^3.22.1",
+    "@midnight-ntwrk/onchain-runtime-v3": "https://registry.npmjs.org/@midnight-ntwrk/onchain-runtime-v3/-/onchain-runtime-v3-3.1.1.tgz"
   },
-  "repository": "git@github.com:midnight-ntwrk/artifacts",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/midnightntwrk/midnight-sdk.git"
+  },
   "engines": {
     "node": ">=22"
   },
@@ -19,6 +23,8 @@
     "build": "turbo run build",
     "clean": "turbo run clean",
     "test": "turbo run test",
+    "test-ledger-era-9": "turbo run test-ledger-era-9",
+    "test-ledger-era-8": "turbo run test-ledger-era-8",
     "package": "turbo run package",
     "lint": "eslint",
     "changeset": "changeset",
@@ -32,7 +38,7 @@
   },
   "devDependencies": {
     "@changesets/changelog-github": "^1.0.0",
-    "@changesets/cli": "^3.0.0",
+    "@changesets/cli": "^3.0.3",
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
     "@effect/build-utils": "^0.8.9",
@@ -47,10 +53,10 @@
     "@eslint/js": "^10.0.1",
     "@midnight-ntwrk/compact-js-node": "workspace:*",
     "@midnight-ntwrk/midnight-js-compact": "5.0.0-beta.3",
-    "@tsconfig/node22": "^22.0.5",
-    "@types/node": "^26.2.0",
-    "@vitest/coverage-v8": "^4.1.10",
-    "@vitest/ui": "^4.1.10",
+    "@tsconfig/node22": "^22.0.6",
+    "@types/node": "^26.6.2",
+    "@vitest/coverage-v8": "^4.1.11",
+    "@vitest/ui": "^4.1.11",
     "conventional-changelog-cli": "^5.0.0",
     "eslint": "^10.8.1",
     "eslint-config-prettier": "^10.1.8",
@@ -61,10 +67,10 @@
     "eslint-plugin-unused-imports": "^4.4.1",
     "husky": "^9.0.0",
     "shx": "^0.4.0",
-    "tstyche": "^7.2.2",
+    "tstyche": "^7.2.5",
     "turbo": "^2.10.10",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.67.0",
-    "vitest": "^4.1.10"
+    "typescript-eslint": "^8.70.0",
+    "vitest": "^4.1.11"
   }
 }

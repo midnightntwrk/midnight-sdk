@@ -16,7 +16,7 @@
 import { resolve } from 'node:path';
 
 import { NodeContext } from '@effect/platform-node';
-import { beforeEach, describe, expect, it } from '@effect/vitest';
+import { afterEach, beforeEach, describe, expect, it } from '@effect/vitest';
 import { CompiledContract, Contract, ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import {
@@ -28,7 +28,7 @@ import {
 } from '@midnight-ntwrk/compact-runtime';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
-import { ContractDeploy, ContractState as LedgerContractState, partitionTranscripts } from '@midnightntwrk/ledger-v9';
+import { ContractDeploy, ContractState as LedgerContractState, partitionTranscripts, PreTranscript } from '@midnightntwrk/ledger-v9';
 import { Cause, ConfigProvider, Effect, Exit, Layer, Option } from 'effect';
 import { vi } from 'vitest';
 
@@ -37,13 +37,26 @@ import * as cccInnerModule from '../contract/managed/cccInner/contract';
 import * as cccMiddleModule from '../contract/managed/cccMiddle/contract';
 import * as cccSelfModule from '../contract/managed/cccSelf/contract';
 
-// Wrap `partitionTranscripts` so it delegates to the real implementation by default; individual
-// tests can override a single call (see the wrong-partition-count test below).
+// Wrap `partitionTranscripts` and `PreTranscript` so they delegate to the real implementation by
+// default; individual tests can override a single call (see the wrong-partition-count and
+// pre-transcript-throw tests below).
 vi.mock('@midnightntwrk/ledger-v9', async (importActual) => {
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await importActual<typeof import('@midnightntwrk/ledger-v9')>();
-  return { ...actual, partitionTranscripts: vi.fn(actual.partitionTranscripts) };
+  return {
+    ...actual,
+    partitionTranscripts: vi.fn(actual.partitionTranscripts),
+    // Not an arrow function: callers construct with `new`, so the default delegate must itself
+    // be constructible.
+    PreTranscript: vi.fn(function (...args: ConstructorParameters<typeof actual.PreTranscript>) {
+      return new actual.PreTranscript(...args);
+    })
+  };
 });
+
+// Captured before any test queues an override, so `afterEach` can restore the delegating defaults.
+const delegatingPartitionTranscripts = vi.mocked(partitionTranscripts).getMockImplementation()!;
+const delegatingPreTranscript = vi.mocked(PreTranscript).getMockImplementation()!;
 
 // The fixtures form a three-level call chain: `outer` calls `middle`, which calls the `inner` leaf.
 const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
@@ -135,6 +148,19 @@ describe('cross-contract calls', () => {
   let middleDeploy: ContractDeploy;
   let chainStates: Map<string, ContractState>;
   let chainModules: Map<string, Module>;
+
+  // Two tests below queue one-shot implementations on these mocks. Nothing else drains those
+  // queues: no vitest config here sets `restoreMocks`, `clearMocks` or `mockReset`, and
+  // `vi.restoreAllMocks()` does not reach a `vi.fn` — so an effect that fails before consuming its
+  // queued implementation would leave it armed, and it would detonate in whichever test ran next as
+  // a confusing failure in an unrelated case. `mockReset` drains the queue but also drops the
+  // delegating implementation, so both are put back.
+  afterEach(() => {
+    vi.mocked(partitionTranscripts).mockReset();
+    vi.mocked(partitionTranscripts).mockImplementation(delegatingPartitionTranscripts);
+    vi.mocked(PreTranscript).mockReset();
+    vi.mocked(PreTranscript).mockImplementation(delegatingPreTranscript);
+  });
 
   beforeEach(async () => {
     inner = innerExecutable.pipe(ContractExecutable.provide(testLayer(CCC_INNER_ASSETS_PATH)));
@@ -532,6 +558,28 @@ describe('cross-contract calls', () => {
 
       expect(ContractRuntimeError.isRuntimeError(error)).toBe(true);
       expect(String((error as ContractRuntimeError.ContractRuntimeError).cause)).toContain('transcript partition pairs');
+    })
+  );
+
+  it.effect('returns a ContractRuntimeError when pre-transcript construction throws', () =>
+    Effect.gen(function*() {
+      // Force the ledger to reject the pre-transcript construction for this run only — the same
+      // WASM-boundary throw a cross-instance `QueryContext` produces (`_assertClass`). The throw
+      // must surface as a typed failure, not escape `Effect.flip` as a defect.
+      vi.mocked(PreTranscript).mockImplementationOnce(function () {
+        throw new Error('expected instance of QueryContext');
+      });
+
+      const error = yield* Effect.flip(
+        middle.circuit(
+          Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
+          middleContext(resolveFromChain),
+          1n
+        )
+      );
+
+      expect(ContractRuntimeError.isRuntimeError(error)).toBe(true);
+      expect(String((error as ContractRuntimeError.ContractRuntimeError).cause)).toContain('building call pre-transcript');
     })
   );
 
