@@ -344,6 +344,63 @@ describe('cross-contract calls', () => {
     })
   );
 
+  it.effect('reports each call\'s own block context, effects, and commitment indices', () =>
+    Effect.gen(function*() {
+      const result = yield* middle.circuit(
+        Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
+        middleContext(resolveFromChain),
+        1n
+      );
+
+      for (const call of result.calls) {
+        // The block-level call context belongs to the contract the call ran against, not to the
+        // root — which is what makes these usable per call rather than per execution.
+        expect(call.public.block.ownAddress).toBe(call.contractAddress);
+        expect(typeof call.public.block.secondsSinceEpoch).toBe('bigint');
+        expect(Array.isArray(call.public.effects.claimedNullifiers)).toBe(true);
+        expect(call.public.comIndices).toBeInstanceOf(Map);
+        // Plain data, unlike `public.contractState` (a live WASM handle that `structuredClone`
+        // reduces to `{ __wbg_ptr }`). Being plain data is what lets these cross an era seam at
+        // all, which is the whole premise of midnight-sdk#400.
+        expect(() => structuredClone(call.public.block)).not.toThrow();
+        expect(() => structuredClone(call.public.effects)).not.toThrow();
+        expect(() => structuredClone(call.public.comIndices)).not.toThrow();
+      }
+    })
+  );
+
+  it.effect('exposes the inputs each call\'s transcript was partitioned from', () =>
+    Effect.gen(function*() {
+      const result = yield* middle.circuit(
+        Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
+        middleContext(resolveFromChain),
+        1n
+      );
+
+      // The claim behind midnight-sdk#400 is not that the three values exist but that they are the
+      // ones *this* partition consumed — a consumer re-partitioning in another ledger era gets a
+      // different answer otherwise. So they are read back off the `PreTranscript`s the executable
+      // actually built; `PreTranscript` is a delegating mock in this suite, so its call arguments
+      // are the real query contexts.
+      const contexts = vi.mocked(PreTranscript).mock.calls.map(([context]) => context);
+      expect(contexts).toHaveLength(result.calls.length);
+
+      result.calls.forEach((call, i) => {
+        const context = contexts[i]!;
+        // `block` and `effects` are copied straight off the pre-execution query context, so they
+        // are exactly what the pre-transcript's context carries.
+        expect(call.public.block).toEqual(context.block);
+        expect(call.public.effects).toEqual(context.effects);
+        // `comIndices` is the *post*-execution context's, folded onto the pre-execution one by
+        // `insertCommitment` — so the exposed map is contained in the pre-transcript's context
+        // rather than equal to it.
+        for (const [commitment, index] of call.public.comIndices) {
+          expect(context.comIndices.get(commitment)).toBe(index);
+        }
+      });
+    })
+  );
+
   it.effect('returns a ContractRuntimeError when the state provider cannot find a callee state', () =>
     Effect.gen(function*() {
       const error = yield* Effect.flip(

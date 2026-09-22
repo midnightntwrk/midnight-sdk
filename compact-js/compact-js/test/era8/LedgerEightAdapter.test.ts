@@ -152,6 +152,39 @@ describeWithFixture('ledger 8 execution adapter', () => {
     expect(execution.zswapLocalState).toBeDefined();
   });
 
+  // midnight-sdk#403. Without a settable clock every execution stamps `block.secondsSinceEpoch`
+  // with `Date.now()`, so anything derived from `block` — which midnight-sdk#400 puts on the public
+  // result — differs on every run and cannot be recorded as a fixture. 0.16 takes `time` in the
+  // seventh positional slot, after the two this binding still leaves at their defaults.
+  //
+  // The unit is **seconds** since the epoch, not milliseconds: both lines default it to
+  // `Math.floor(Date.now() / 1_000)`. These tests are where that is stated.
+  const contextParams = () => ({
+    circuitId: CIRCUIT_ID,
+    address: sampleContractAddress(),
+    zswapLocalState: V0_16.emptyZswapLocalState('0'.repeat(64)),
+    contractState: new V0_16.ContractState(),
+    privateState: { count: 0 }
+  });
+
+  it('stamps the block clock with the given time rather than the wall clock', () => {
+    const FIXED_TIME = 1_700_000_000;
+
+    const context = V0_16.createExecutionContext({ ...contextParams(), time: FIXED_TIME });
+
+    expect(context.currentQueryContext.block.secondsSinceEpoch).toBe(BigInt(FIXED_TIME));
+  });
+
+  it('falls back to the wall clock when no time is given', () => {
+    const before = BigInt(Math.floor(Date.now() / 1_000));
+
+    const context = V0_16.createExecutionContext(contextParams());
+
+    // Threading the parameter must not change the default, which is what keeps this additive for
+    // every existing caller.
+    expect(context.currentQueryContext.block.secondsSinceEpoch).toBeGreaterThanOrEqual(before);
+  });
+
   it('refuses a cross-contract state provider rather than ignoring it', async () => {
     // The dangerous failure mode: silently dropping the provider would make a cross-contract call
     // look like it succeeded against stale state. 0.16 has no `crossContractCall` at all, so this

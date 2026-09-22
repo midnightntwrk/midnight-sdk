@@ -139,6 +139,76 @@ describeWithFixture('a ledger 8 contract through the `/v8/effect` executable', (
     expect(result.privateState).toMatchObject({ count: 1 });
   });
 
+  it('exposes the inputs its transcript was partitioned from', async () => {
+    const executable = await loadExecutable();
+    const deployed = await Effect.runPromise(executable.initialize({ count: 0 }));
+    const address = ContractAddress.ContractAddress(sampleContractAddress());
+
+    const result = await Effect.runPromise(
+      executable.circuit('increment', {
+        address,
+        contractState: deployed.public.contractState,
+        privateState: deployed.private.privateState
+      })
+    );
+
+    // midnight-sdk#400: the values needed to rebuild this call's pre-transcript in a *different*
+    // ledger era. Present on ledger 8 for the same reason as on ledger 9 — every era carries them
+    // on its query context — so this is era-neutral surface rather than an era-gated capability
+    // like contract events.
+    const call = result.calls[0]!;
+    expect(call.public.block.ownAddress).toBe(address);
+    expect(typeof call.public.block.secondsSinceEpoch).toBe('bigint');
+    expect(Array.isArray(call.public.effects.claimedNullifiers)).toBe(true);
+    expect(call.public.comIndices).toBeInstanceOf(Map);
+    // Plain data, unlike `public.contractState` (a live WASM handle) — which is what lets these
+    // cross an era seam at all.
+    expect(() => structuredClone(call.public.block)).not.toThrow();
+    expect(() => structuredClone(call.public.effects)).not.toThrow();
+  });
+
+  it('re-partitions to the same transcript from the exposed inputs alone', async () => {
+    const executable = await loadExecutable();
+    const deployed = await Effect.runPromise(executable.initialize({ count: 0 }));
+    const address = ContractAddress.ContractAddress(sampleContractAddress());
+    // Converted *before* the circuit runs: the 0.16 context mutates its state in place, and this
+    // is the pre-execution ledger state a consumer holds from the chain rather than from the call
+    // result (`public.contractState` is the post-execution one).
+    const initialState = await Effect.runPromise(Ledger.fromRuntimeContractState(deployed.public.contractState));
+
+    const result = await Effect.runPromise(
+      executable.circuit('increment', {
+        address,
+        contractState: deployed.public.contractState,
+        privateState: deployed.private.privateState
+      })
+    );
+    const call = result.calls[0]!;
+
+    // midnight-sdk#400's actual use case, done entirely through the public entry: rebuild the
+    // pre-transcript from the exposed values and re-run the partitioner. Reproducing
+    // `partitionedTranscript` is what proves the exposed set is *sufficient* — asserting the three
+    // fields are present would not.
+    const queryContext = new Ledger.QueryContext(initialState.data, address);
+    queryContext.block = call.public.block;
+    queryContext.effects = call.public.effects;
+    const withCommitments = [...call.public.comIndices].reduce(
+      (context, [commitment, index]) => context.insertCommitment(commitment, index),
+      queryContext
+    );
+
+    const [rebuilt] = Ledger.partitionTranscripts(
+      [new Ledger.PreTranscript(withCommitments, call.public.publicTranscript)],
+      Ledger.LedgerParameters.initialParameters()
+    );
+
+    // Recombined first, so neither assertion can pass vacuously on two undefined halves: the
+    // rebuilt partition has to account for the whole transcript before matching the original.
+    expect([...(rebuilt?.[0]?.program ?? []), ...(rebuilt?.[1]?.program ?? [])]).toEqual(call.public.publicTranscript);
+    expect(rebuilt?.[0]?.program).toEqual(call.public.partitionedTranscript[0]?.program);
+    expect(rebuilt?.[1]?.program).toEqual(call.public.partitionedTranscript[1]?.program);
+  });
+
   it('emits no events on an era that cannot emit them', async () => {
     const executable = await loadExecutable();
     const deployed = await Effect.runPromise(executable.initialize({ count: 0 }));

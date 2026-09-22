@@ -48,11 +48,26 @@ import {
   type ExecutionView
 } from './execution.js';
 
+// `CallContext`, `Effects` and `CoinCommitment` are the types of the partition inputs
+// `ContractCallPublic` exposes (midnight-sdk#400) — `block`, `effects`, and the key type of the
+// `comIndices` map. Without them a consumer receives the three values but cannot name what it
+// received, and has to import the era package around the seam to declare them — which is what the
+// facade exists to prevent. `EncodedStateValue` is not one of those: it is the encoded form a
+// `StateValue` round-trips through and the shape a contract event's payload arrives in, listed here
+// for consumers decoding either.
+//
+// `CallContext` here is **onchain-runtime-v4's** block-level context, not circuit-context.ts's
+// `CallContext<PS>`: compact-runtime's `index.d.ts` exports both, and the explicit named re-export
+// takes precedence over the `export *`, so this is the one the name resolves to. That is the one
+// wanted — the other is the runtime's own per-call frame, which never reaches compact-js's surface.
+// `CompactRuntime.tst.ts` pins which of the two resolves, so reordering those exports fails there.
 export {
   type AlignedValue,
+  type CallContext,
   type CallProofData,
   type CircuitContext,
   type CircuitResults,
+  type CoinCommitment,
   type CommunicationCommitmentData,
   CompactError,
   type ConstructorContext,
@@ -63,7 +78,9 @@ export {
   createCircuitContext,
   createConstructorContext,
   decodeZswapLocalState,
+  type Effects,
   emptyZswapLocalState,
+  type EncodedStateValue,
   type EncodedZswapLocalState,
   encodeZswapLocalState,
   type LogEvent,
@@ -128,9 +145,9 @@ export type Execution<Result, PrivateState> = ExecutionView<
  *
  * @remarks
  * A direct pass-through: 0.19 *is* the call-tree model the era-neutral view is modelled on, so this
- * only reorders named parameters into `createCircuitContext`'s positional ones. The gaps
- * (`gasLimit`, `costModel`, `time`) keep the runtime's own defaults, exactly as the previous
- * inline call site did.
+ * only reorders named parameters into `createCircuitContext`'s positional ones. The remaining gaps
+ * (`gasLimit`, `costModel`, `reentrancyGuard`) keep the runtime's own defaults, exactly as the
+ * previous inline call site did.
  *
  * @category execution
  */
@@ -146,7 +163,7 @@ export const createExecutionContext = <PS>(
     params.stateProvider,
     undefined,
     undefined,
-    undefined,
+    params.time,
     params.parentBlockHash
   );
 

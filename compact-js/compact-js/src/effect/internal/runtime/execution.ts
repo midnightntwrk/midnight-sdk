@@ -78,6 +78,34 @@ export interface CallProofDataView<QueryContext, AlignedValue, Op, EncodedZswapL
 }
 
 /**
+ * The members of a line's query context that a call's transcript partition is built from.
+ *
+ * @remarks
+ * `ContractExecutable` republishes these three on every `ContractCallPublic` so a consumer can redo
+ * the partition itself — in a *different* ledger era, which is the case that matters. Across a
+ * hard-fork window a call executes on one era and composes on the next, so the partition that came
+ * out of the executing era is the wrong one, and the inputs needed to redo it in the right one were
+ * unreachable (midnight-sdk#400).
+ *
+ * Declared here structurally rather than taken from either line, and asserted against both by
+ * `conformance.ts`, because the public members are *derived* from {@link CallProofDataView}'s query
+ * context: a derivation that misses resolves to `never`, which is assignable to everything — so
+ * every call site would still compile and the member would simply be unusable. This is what turns
+ * that silent collapse into a build failure.
+ *
+ * All three are plain data on every line compact-js binds, which is what lets them cross an era
+ * seam at all; the query context they are read off is not.
+ */
+export interface PartitionInputs {
+  /** The block-level call context. Read from the **pre**-execution context. */
+  readonly block: unknown;
+  /** The contract-external effects the call declared. Read from the **pre**-execution context. */
+  readonly effects: unknown;
+  /** The commitment indices the call discovered. Read from the **post**-execution context. */
+  readonly comIndices: unknown;
+}
+
+/**
  * The result of executing one root circuit, as `ContractExecutable` consumes it.
  *
  * @remarks
@@ -116,4 +144,20 @@ export interface ExecutionContextParams<PrivateState, ContractState, EncodedZswa
   readonly privateState: PrivateState;
   readonly stateProvider?: ContractStateProvider | undefined;
   readonly parentBlockHash?: string | undefined;
+  /**
+   * The execution clock, in **seconds** since the Unix epoch — not milliseconds. Defaults to the
+   * wall clock (`Math.floor(Date.now() / 1_000)`) on both lines, so omitting it changes nothing.
+   *
+   * @remarks
+   * Lands in the query context's `block.secondsSinceEpoch`, which {@link PartitionInputs} puts on
+   * the public result — so without it every execution produces a `block` that differs on each run
+   * and no consumer can record a fixture (midnight-sdk#403).
+   *
+   * Deliberately **not** reachable from `ContractExecutable.circuit`: the public `CircuitContext`
+   * has no `time`, and `internal/executable.ts` builds this parameter object itself, so nothing
+   * sources the field today. That is a decision, not the oversight #403 describes — do not "finish"
+   * it by threading a clock through `CircuitContext` without agreeing that surface first. Until
+   * then this is reachable only by a caller driving `createExecutionContext` directly.
+   */
+  readonly time?: number | undefined;
 }
