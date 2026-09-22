@@ -20,10 +20,14 @@
  * by editing call sites (midnight-sdk#387). ESLint enforces this (`no-restricted-imports`); tests
  * are exempt by design, since some must compare ledger module identity.
  */
-import { type SignatureKind } from '@midnight-ntwrk/platform-js/effect/SigningKey';
+import {
+  type SignatureKind,
+  type SigningKey as PlatformSigningKey
+} from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import {
   ContractOperationVersion,
-  ContractOperationVersionedVerifierKey
+  ContractOperationVersionedVerifierKey,
+  type SigningKey as LedgerSigningKey
 } from '@midnightntwrk/ledger-v9';
 
 import { type Era } from '../era.js';
@@ -105,3 +109,23 @@ export const makeContractOperationVersion = (): ContractOperationVersion =>
  */
 export const makeVersionedVerifierKey = (verifierKey: Uint8Array): ContractOperationVersionedVerifierKey =>
   new ContractOperationVersionedVerifierKey(CONTRACT_OPERATION_VERSION, verifierKey);
+
+/**
+ * Adapts a platform-js signing key to ledger 9's `SigningKey`.
+ *
+ * @remarks
+ * Ledger 9 keys are tagged (`{ tag, value }`) and, as of platform-js@3.0.0, structurally identical
+ * to platform-js's — so this is a field copy rather than a conversion. It is still the binding's
+ * job: ledger 8 represents the same key as a bare hex string, so an era-neutral facade cannot know
+ * the shape. The caller-supplied `tag` is preserved so an ECDSA-tagged key is never silently
+ * treated as Schnorr.
+ *
+ * Scheme admissibility is *not* checked here — that is era-neutral policy and stays in
+ * `Ledger.fromPlatformSigningKey`, which consults {@link era}'s allowlist before calling this.
+ *
+ * @category constructors
+ */
+export const makeSigningKey = (signingKey: PlatformSigningKey): LedgerSigningKey => ({
+  tag: signingKey.tag,
+  value: signingKey.value
+});

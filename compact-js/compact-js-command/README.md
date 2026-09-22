@@ -29,7 +29,10 @@ An example configuration file for the canonical "Counter" contract is shown belo
 
 ```ts
 import { CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
-import { Contract as C_ } from './<path>/managed/counter/contract/index.cjs';
+// `compactc` emits `contract/index.js`. The extension is required: Compact.js transpiles this file
+// and then imports the result with plain Node ESM, which does no extension guessing for relative
+// specifiers.
+import { Contract as C_ } from './<path>/managed/counter/contract/index.js';
 
 // The type of private state to use in contract execution.
 type PrivateState = {

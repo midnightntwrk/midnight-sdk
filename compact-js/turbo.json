@@ -28,8 +28,43 @@
     "test": {
       "outputLogs": "new-only",
       "dependsOn": ["^build"],
-      "inputs": ["src/**/*.ts", "test/**/*.ts", "compose.yml", "tstyche.json", "vitest.config.ts", "tsconfig*.json"],
+      "inputs": [
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "compose.yml",
+        "tstyche.json",
+        "vitest.config.ts",
+        "vitest.era8.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
+    },
+    "test-ledger-era-9": {
+      "outputLogs": "new-only",
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "compose.yml",
+        "tstyche.json",
+        "vitest.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "outputs": ["reports/**", "coverage/**", "logs/**"]
+    },
+    "test-ledger-era-8": {
+      "outputLogs": "new-only",
+      "dependsOn": ["^build"],
+      "inputs": [
+        "src/**/*.ts",
+        "test/**/*.ts",
+        "vitest.era8.config.ts",
+        "tsconfig*.json",
+        "package.json"
+      ],
+      "outputs": ["reports/**", "logs/**"]
     },
     "package": {
       "cache": false,

@@ -16,7 +16,7 @@
 import { resolve } from 'node:path';
 
 import { NodeContext } from '@effect/platform-node';
-import { beforeEach, describe, expect, it } from '@effect/vitest';
+import { afterEach, beforeEach, describe, expect, it } from '@effect/vitest';
 import { CompiledContract, Contract, ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ChargedState, ContractState, type ContractStateProvider } from '@midnight-ntwrk/compact-runtime';
@@ -46,6 +46,10 @@ vi.mock('@midnightntwrk/ledger-v9', async (importActual) => {
     })
   };
 });
+
+// Captured before any test queues an override, so `afterEach` can restore the delegating defaults.
+const delegatingPartitionTranscripts = vi.mocked(partitionTranscripts).getMockImplementation()!;
+const delegatingPreTranscript = vi.mocked(PreTranscript).getMockImplementation()!;
 
 // The fixtures form a three-level call chain: `outer` calls `middle`, which calls the `inner` leaf.
 const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
@@ -128,6 +132,19 @@ describe('cross-contract calls', () => {
   let innerDeploy: ContractDeploy;
   let middleDeploy: ContractDeploy;
   let chainStates: Map<string, ContractState>;
+
+  // Two tests below queue one-shot implementations on these mocks. Nothing else drains those
+  // queues: no vitest config here sets `restoreMocks`, `clearMocks` or `mockReset`, and
+  // `vi.restoreAllMocks()` does not reach a `vi.fn` — so an effect that fails before consuming its
+  // queued implementation would leave it armed, and it would detonate in whichever test ran next as
+  // a confusing failure in an unrelated case. `mockReset` drains the queue but also drops the
+  // delegating implementation, so both are put back.
+  afterEach(() => {
+    vi.mocked(partitionTranscripts).mockReset();
+    vi.mocked(partitionTranscripts).mockImplementation(delegatingPartitionTranscripts);
+    vi.mocked(PreTranscript).mockReset();
+    vi.mocked(PreTranscript).mockImplementation(delegatingPreTranscript);
+  });
 
   beforeEach(async () => {
     inner = innerExecutable.pipe(ContractExecutable.provide(testLayer(CCC_INNER_ASSETS_PATH)));

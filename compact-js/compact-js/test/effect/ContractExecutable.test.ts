@@ -23,6 +23,7 @@ import {
   ContractExecutable,
   Ledger} from '@midnight-ntwrk/compact-js/effect';
 import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
+import * as ContractRuntimeError from '@midnight-ntwrk/compact-js/effect/ContractRuntimeError';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
@@ -36,7 +37,7 @@ import {
   type VerifierKeyRemove,
   verifySignature
 } from '@midnightntwrk/ledger-v9';
-import { ConfigProvider, Effect, Layer, Option } from 'effect';
+import { Cause, ConfigProvider, Effect, Exit, Layer, Option } from 'effect';
 
 import { CounterContract } from '../contract';
 
@@ -73,6 +74,38 @@ describe('ContractExecutable', () => {
   );
 
   describe('initialize', () => {
+    it.effect('fails rather than dies when the configured witnesses are wrong', () =>
+      Effect.gen(function* () {
+        // The generated `Contract` constructor *throws* a `CompactError` when a witness is missing
+        // or misspelled — an ordinary mistake in a hand-written `contract.config.ts`. That call sat
+        // in an `Effect.sync` declared with no error channel, so the throw became a **defect**: it
+        // passed this method's declared `ContractExecutionError`, passed any consumer's `catchAll`
+        // over it, and in the CLI (which runs with `disableErrorReporting`) produced exit 1 with no
+        // output at all. `Exit.isFailure` alone would not catch the regression — a die is also a
+        // failure — so this asserts the error reached the *typed channel*.
+        const misspelled = CompiledContract.make<CounterContract>('Counter', CounterContract).pipe(
+          CompiledContract.withWitnesses({
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            private_incremnt: ({ privateState }: any) => [{ count: privateState.count + 1 }, []]
+          } as never),
+          CompiledContract.withCompiledFileAssets(COUNTER_ASSETS_PATH),
+          ContractExecutable.make,
+          ContractExecutable.provide(testLayer(new Map([['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY]])))
+        );
+
+        const exit = yield* Effect.exit(misspelled.initialize(initialPS));
+
+        expect(Exit.isFailure(exit)).toBe(true);
+        const failure = Exit.isFailure(exit) ? Cause.failureOption(exit.cause) : Option.none();
+        expect(Option.isSome(failure)).toBe(true);
+        expect(ContractRuntimeError.isRuntimeError(Option.getOrThrow(failure))).toBe(true);
+        // The message must name the contract and point at the configuration, since the witnesses
+        // are the one thing the caller supplied.
+        expect(String(Option.getOrThrow(failure))).toMatch(/Counter/);
+        expect(String(Option.getOrThrow(failure))).toMatch(/witness/i);
+      })
+    );
+
     it.effect('should initialize a new instance', () =>
       Effect.gen(function* () {
         const contract = counterContract.pipe(
@@ -84,6 +117,29 @@ describe('ContractExecutable', () => {
         expect(result.public.contractState.data).toBeDefined();
         expect(result.private.signingKey).toBeDefined();
         expect(result.private.privateState).toMatchObject(initialPS);
+      })
+    );
+
+    it.effect('samples a signing key tagged with the era default when none is configured', () =>
+      Effect.gen(function* () {
+        const contract = counterContract.pipe(
+          ContractExecutable.provide(testLayer(new Map([['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY]])))
+        );
+        const result = yield* contract.initialize(initialPS);
+        const signingKey = result.private.signingKey;
+
+        // The sampled key must carry the era's own default scheme and its bare hex value. Both
+        // halves are era-varying at the runtime seam — onchain-runtime-v3 samples an untagged hex
+        // string, v4 a `{ tag, value }` pair — so this is what pins the sampling path while the
+        // seam absorbs that difference. The pre-existing test above only asserts `toBeDefined`,
+        // which a dropped tag or a stringified key object would both survive.
+        expect(signingKey.tag).toEqual(Ledger.era.defaultCmaSignatureKind);
+        expect(signingKey.value).toMatch(/^[0-9a-f]+$/);
+
+        // ...and it must be the key the on-chain maintenance authority was actually built from.
+        const committee = asLedgerContractState(result.public.contractState).maintenanceAuthority.committee;
+        expect(committee).toHaveLength(1);
+        expect(committee[0].tag).toEqual(Ledger.era.defaultCmaSignatureKind);
       })
     );
 

@@ -18,9 +18,31 @@
  * ledger era this entry targets — ledger 9 — not this package's own version. Same API as
  * `@midnight-ntwrk/compact-js/effect`.
  *
- * Until the era-scoped build wiring lands (midnight-sdk#388), this entry aliases the package's
- * *current* era binding — ledger 9 today — and `test/effect/LedgerEra.test.ts` guards that the
- * alias resolves era 9. When the current era advances, this entry must be rebound to a pinned
- * ledger 9 binding rather than left following `current`.
+ * This entry **binds ledger 9 itself** (`internal/era/v9Ledger.ts` and `internal/runtime/v0_19.ts`),
+ * rather than re-exporting the facades. It used to do the latter, which made it an alias for
+ * whatever `internal/ledger/current.ts` bound: advancing that turned `/v9` into an entry for a
+ * different era, with nothing to catch it — the `/v9`-versus-root parity tests were comparing an
+ * alias with its own target. The unsuffixed `@midnight-ntwrk/compact-js/effect` keeps that
+ * follow-the-build-era behaviour, which is what it is *for*; the two agree today and are meant to
+ * diverge the first time `current.ts` advances.
+ *
+ * Composed from named modules rather than by re-exporting `../effect/index.js`, so what a ledger 9
+ * entry includes is visible here:
+ *
+ * - `eraFreeSurface.ts` — the core every era entry shares, the same object instances on both.
+ * - `contractEventsSurface.ts` — ledger 9 only. A ledger 8 entry omits *this* module and takes the
+ *   era-free core alone (`src/v8/effect.ts`), which is the shape #388 asks for: a member that
+ *   cannot exist on an older era is absent rather than present and failing.
+ * - its own `Ledger` and `CompactRuntime` bindings, plus `ContractExecutable` — see below.
  */
-export * from '../effect/index.js';
+export * from '../effect/internal/contractEventsSurface.js';
+export * as Ledger from '../effect/internal/era/v9Ledger.js';
+export * as CompactRuntime from '../effect/internal/era/v9Runtime.js';
+export * from '../effect/internal/eraFreeSurface.js';
+
+// `ContractExecutable` is this entry's own application of `internal/executable.ts` to the ledger 9
+// pair, not a re-export of `effect/ContractExecutable.ts`. That module applies the same factory to
+// the *bound* facades, so re-exporting it would have made this entry follow a `current.ts` swap —
+// the trap CLAUDE.md's era-swap checklist calls out at step 5. It needed a build-time assertion to
+// catch; now it cannot happen, because the era arrives as an argument here.
+export * as ContractExecutable from '../effect/internal/era/v9Executable.js';

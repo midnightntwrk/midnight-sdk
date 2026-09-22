@@ -13,22 +13,24 @@
  * limitations under the License.
  */
 
-export * as CompactContext from './CompactContext.js';
-export * as CompactRuntime from './CompactRuntime.js';
-export * as CompiledContract from './CompiledContract.js';
-export * as Contract from './Contract.js';
-export * as ContractConfigurationError from './ContractConfigurationError.js';
-export * as ContractEventStore from './ContractEventStore.js';
-export * as ContractEventValidationError from './ContractEventValidationError.js';
-export * from './ContractEventValidator.js';
-export * as ContractExecutable from './ContractExecutable.js';
-export * as ContractExecutableRuntime from './ContractExecutableRuntime.js';
-export * as ContractKeyLocation from './ContractKeyLocation.js';
-export * as ContractLog from './ContractLog.js';
-export * as ContractRuntimeError from './ContractRuntimeError.js';
-export * as Ledger from './Ledger.js';
-export * as MalformedHexPrefixError from './MalformedHexPrefixError.js';
-export * as ZKConfiguration from './ZKConfiguration.js';
-export * as ZKConfigurationReadError from './ZKConfigurationReadError.js';
-export * as ZKManifest from './ZKManifest.js';
-export * as ZKManifestError from './ZKManifestError.js';
+/**
+ * The unsuffixed `/effect` entry, which targets whichever era this build is bound to — ledger 9
+ * today.
+ *
+ * @remarks
+ * Composed from the two capability levels rather than listing modules directly, so that an
+ * era-scoped entry can take only the levels its runtime line supports
+ * (midnight-sdk#387/#388):
+ *
+ * - `eraNeutralSurface` — everything any bound era can provide.
+ * - `contractEventsSurface` — contract events, which are era-impossible below ledger 9 (see that
+ *   module for why) and so are absent from an older era's entry rather than present and failing
+ *   at run time.
+ *
+ * The composed surface is identical to what this entry exported before the split;
+ * `LedgerEra.test.ts` pins both that equivalence and the split itself. When the bound era
+ * advances past a level, drop the corresponding line here — do not re-add modules individually,
+ * or the levels stop describing the eras.
+ */
+export * from './internal/contractEventsSurface.js';
+export * from './internal/eraNeutralSurface.js';

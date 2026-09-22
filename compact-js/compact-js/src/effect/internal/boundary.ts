@@ -47,8 +47,16 @@ import * as ContractRuntimeError from '../ContractRuntimeError.js';
  * @param evaluate A synchronous thunk that performs the boundary call.
  * @returns An `Effect` that yields the result of `evaluate`, failing with a
  * {@link ContractRuntimeError.ContractRuntimeError} if the boundary rejects it.
- * @internal
  */
+// Deliberately carries no internal-marker JSDoc tag. The builds run with `stripInternal`, and both
+// facades re-export this declaration by reference (`Ledger.tryConvert` is the alias re-exported
+// from `conversions.ts`), so the marker deletes it from the emitted `.d.ts` and leaves those public
+// names pointing at nothing. Privacy comes from `package.json` `exports` blocking
+// `./effect/internal/*` instead, which is a packaging fact rather than a typing one.
+//
+// Note the marker is honoured in *any* leading comment, including a `//` one that only mentions it
+// — which is why this note spells it out rather than naming the tag. `verify-exports` compares the
+// ESM emit's exports against the typings and fails the build if a declaration goes missing.
 export const tryBoundary: <A>(
   message: string,
   evaluate: () => A extends PromiseLike<unknown> ? never : A

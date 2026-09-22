@@ -19,16 +19,17 @@ import { type PlatformError } from '@effect/platform/Error';
 import { NodeContext } from '@effect/platform-node';
 import * as Ansi from '@effect/printer-ansi/Ansi';
 import * as Doc from '@effect/printer-ansi/AnsiDoc';
-import { type ContractExecutable, ContractExecutableRuntime, type ContractRuntimeError, Ledger, type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
+import { type ContractExecutable, ContractExecutableRuntime, type ContractRuntimeError, type ZKConfiguration } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import { ConfigError as EffectConfigError, type ConfigProvider, Console, DateTime, Duration, Effect, Layer } from 'effect';
 
-import * as CommandConfigProvider from '../CommandConfigProvider.js';
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import * as ConfigCompilationError from '../ConfigCompilationError.js';
 import * as ConfigCompiler from '../ConfigCompiler.js';
-import type * as ConfigError from '../ConfigError.js';
+import * as ConfigError from '../ConfigError.js';
+import * as CommandConfigProvider from './commandConfigProvider.js';
+import type * as EraBinding from './era/binding.js';
 import * as InternalOptions from './options.js';
 
 /** How far into the future a generated intent's TTL is set. */
@@ -44,68 +45,86 @@ const ttl: (duration: Duration.Duration) => Effect.Effect<Date> = (duration) =>
   DateTime.now.pipe(Effect.map((utcNow) => DateTime.toDate(DateTime.addDuration(utcNow, duration))));
 
 /**
- * Wraps a call across the ledger (WASM) boundary so that a rejection becomes a typed failure
- * rather than a defect.
+ * The intent operations every command shares, instantiated for one era.
  *
  * @remarks
- * Ledger bindings signal rejection by throwing — `Intent.addMaintenanceUpdate()` throws
- * `'expected instance of MaintenanceUpdate'` when handed a value built against a different WASM
- * instance, for example. A throw inside `Effect.gen` becomes a defect, and a defect escapes both
- * the `Effect.mapError(...)` a command handler ends with *and*
- * {@link invocationHandler}'s `Effect.catchAll(reportContractExecutionError)` — the user gets a raw
- * fiber dump instead of the CLI's formatted report. Every ledger call made outside the `Ledger`
- * facade (which wraps its own) goes through here. This is the facade's own
- * {@link Ledger.tryConvert} under the name command handlers know it by, so there is exactly one
- * copy of the boundary handling.
+ * `tryLedger` is the era's own `Ledger.tryConvert` under the name the command handlers know it by,
+ * so there is exactly one copy of the boundary handling. Ledger bindings signal rejection by
+ * *throwing* — `Intent.addMaintenanceUpdate()` throws `'expected instance of MaintenanceUpdate'`
+ * when handed a value built against a different WASM instance, which is exactly what a config and a
+ * `--ledger-era` that disagree produce. A throw inside `Effect.gen` becomes a defect, and a defect
+ * escapes both the `Effect.mapError(...)` a handler ends with *and* {@link invocationHandler}'s
+ * `Effect.catchAll(reportContractExecutionError)`: the user gets a raw fiber dump instead of the
+ * CLI's formatted report. Every ledger call made outside the facade goes through here.
  *
- * The compact-runtime seam has the same hazard and the same wrapper: reach for
- * `CompactRuntime.tryRuntime` at a runtime call site rather than adding a third alias here.
+ * The compact-runtime seam has the same hazard and the same wrapper: reach for the era's
+ * `CompactRuntime.tryRuntime` at a runtime call site rather than adding a third alias.
  */
-export const tryLedger: <A>(
-  message: string,
-  evaluate: () => A extends PromiseLike<unknown> ? never : A
-) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError> = Ledger.tryConvert;
+export interface Intents {
+  readonly tryLedger: <A>(
+    message: string,
+    evaluate: () => A extends PromiseLike<unknown> ? never : A
+  ) => Effect.Effect<A, ContractRuntimeError.ContractRuntimeError>;
+
+  /**
+   * Creates an empty ledger `Intent` with the command-wide TTL applied. Every command emits its
+   * result as an intent with the same TTL policy; single-sourcing it here keeps the default in one
+   * place.
+   */
+  readonly newIntent: () => Effect.Effect<
+    EraBinding.CommandIntent,
+    ContractRuntimeError.ContractRuntimeError
+  >;
+
+  /**
+   * Serializes a ledger `Intent`, ready for writing to a command's output file.
+   *
+   * @remarks
+   * Takes {@link EraBinding.CommandIntent} rather than a bare `{ serialize(): Uint8Array }` duck
+   * type: ledger contract states are serialized through `tryLedger` with that identical shape
+   * elsewhere in this package, so a structural parameter would accept one, write a contract state
+   * into the intent output file, and still report 'Failed to serialize the intent' — with nothing
+   * catching it until the file is deserialized as an `Intent` at submission. In a seam built to
+   * make era and type mismatches loud, this is the one signature that would let a wrong type
+   * through quietly. `CommandIntent` also demands the three `add*` members, so a contract state
+   * does not satisfy it.
+   */
+  readonly serializeIntent: (
+    intent: EraBinding.CommandIntent
+  ) => Effect.Effect<Uint8Array, ContractRuntimeError.ContractRuntimeError>;
+}
 
 /**
- * Serializes a ledger `Intent`, ready for writing to a command's output file.
+ * Builds the shared intent operations for one era.
+ *
+ * @param ledger The era's `Ledger` facade — `@midnight-ntwrk/compact-js/v8/effect`'s or
+ * `/v9/effect`'s. The era arrives as an argument here exactly as it does in `compact-js`'s
+ * `internal/executable.ts`; nothing in this module names one.
+ *
+ * @internal
+ */
+export const makeIntents: (ledger: EraBinding.CommandLedger) => Intents = (ledger) => {
+  const tryLedger: Intents['tryLedger'] = ledger.tryConvert;
+
+  return {
+    tryLedger,
+    newIntent: () =>
+      ttl(INTENT_TTL).pipe(
+        Effect.flatMap((date) => tryLedger('Failed to create intent', () => ledger.Intent.new(date)))
+      ),
+    serializeIntent: (intent) => tryLedger('Failed to serialize the intent', () => intent.serialize())
+  };
+};
+
+/**
+ * How many links of a cause chain are rendered before the walk gives up.
  *
  * @remarks
- * Every command emits its result as a serialized intent; single-sourcing the wrapper (and its
- * failure message) here keeps the handlers identical, the same way {@link newIntent} does for
- * construction.
- *
- * Takes the intent type {@link newIntent} produces rather than a `{ serialize(): Uint8Array }`
- * duck type: ledger contract states are serialized through {@link tryLedger} with the identical
- * shape elsewhere in this package, so a structural parameter would accept one, write a contract
- * state into the intent output file, and still report 'Failed to serialize the intent' — with
- * nothing catching it until the file is deserialized as an `Intent` at submission. In a seam built
- * to make era and type mismatches loud, this is the one signature that would let a wrong type
- * through quietly.
- *
- * @param intent The intent to serialize.
- * @returns An `Effect` that yields the serialized bytes, failing with a
- * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects the serialization.
+ * A cap rather than a cycle guard alone: a chain can be unbounded without repeating an object
+ * (each link freshly wrapping the last), and a report long enough to scroll the real failure off
+ * the terminal is no more use than one that overflows the stack.
  */
-export const serializeIntent: (
-  intent: ReturnType<typeof Ledger.Intent.new>
-) => Effect.Effect<Uint8Array, ContractRuntimeError.ContractRuntimeError> = (intent) =>
-  tryLedger('Failed to serialize the intent', () => intent.serialize());
-
-/**
- * Creates an empty ledger `Intent` with the command-wide TTL applied. Every command emits its
- * result as an intent with the same TTL policy; single-sourcing it here keeps the default in one
- * place.
- *
- * @returns An `Effect` that yields a new `Intent`, failing with a
- * {@link ContractRuntimeError.ContractRuntimeError} if the ledger rejects the construction.
- */
-export const newIntent: () => Effect.Effect<
-  ReturnType<typeof Ledger.Intent.new>,
-  ContractRuntimeError.ContractRuntimeError
-> = () =>
-  ttl(INTENT_TTL).pipe(
-    Effect.flatMap((date) => tryLedger('Failed to create intent', () => Ledger.Intent.new(date)))
-  );
+const MAX_CAUSE_DEPTH = 16;
 
 /**
  * Renders a link in a cause chain as text.
@@ -116,26 +135,65 @@ export const newIntent: () => Effect.Effect<
  * so a witness that does `throw 'insufficient balance'` puts a bare string in the chain. The
  * reporter is what turns a failure into output, so a throw *here* is the silent exit it exists to
  * prevent — it escapes {@link invocationHandler}'s `catchAll` as a defect.
+ *
+ * Hence the `try`: `String(x)` is not total. A null-prototype object — which is what a witness
+ * rejecting with `Object.create(null)` puts in the chain — throws
+ * `TypeError: Cannot convert object to primitive value`, as does any value whose `toString` throws.
+ * `JSON.stringify` is preferred over `String` for objects because `String({ code: 42 })` is
+ * `'[object Object]'`: a printed line with no diagnostic content, which reports the failure while
+ * losing the only part of it that identifies the fault.
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const messageOf = (errOrCause: any): string =>
-  typeof errOrCause?.message === 'string' ? errOrCause.message : String(errOrCause);
+const messageOf = (errOrCause: any): string => {
+  if (typeof errOrCause?.message === 'string') {
+    return errOrCause.message;
+  }
+  try {
+    return errOrCause !== null && typeof errOrCause === 'object'
+      ? (JSON.stringify(errOrCause) ?? Object.prototype.toString.call(errOrCause))
+      : String(errOrCause);
+  } catch {
+    // Unserializable (cyclic, a throwing getter, a bigint field) or unprintable. The tag is poor
+    // output, but it is output: the alternative is a defect in the one function that cannot fail.
+    return Object.prototype.toString.call(errOrCause);
+  }
+};
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const reportCausableError: (err: any) => Effect.Effect<void, never> =
   (err) => Effect.gen(function* () {
     const buildCauseDocs = () => {
       const docs: Doc.Doc<unknown>[] = [];
-      const buildCauseDoc = (errOrDoc: any) => { // eslint-disable-line @typescript-eslint/no-explicit-any
+      // A cause chain is user-supplied data, not a structure this package controls: wrapping an
+      // error in its own cause is an ordinary mistake, and the walk's only terminating condition is
+      // a falsy `.cause`. Unbounded, that recurses until the stack gives out — a defect inside the
+      // reporter, which is precisely the silent exit it exists to prevent.
+      const seen = new WeakSet<object>();
+      const buildCauseDoc = (errOrDoc: any, depth: number): void => { // eslint-disable-line @typescript-eslint/no-explicit-any
         if (Doc.isDoc(errOrDoc)) {
-          return docs.push(errOrDoc);
+          docs.push(errOrDoc);
+          return;
+        }
+        if (errOrDoc !== null && typeof errOrDoc === 'object') {
+          if (seen.has(errOrDoc)) {
+            docs.push(Doc.text('(cause chain is circular)'));
+            return;
+          }
+          seen.add(errOrDoc);
         }
         docs.push(Doc.text(messageOf(errOrDoc)));
         if (errOrDoc?.cause) {
-          buildCauseDoc(errOrDoc.cause);
+          if (depth >= MAX_CAUSE_DEPTH) {
+            docs.push(Doc.text(`(cause chain truncated at ${MAX_CAUSE_DEPTH} entries)`));
+            return;
+          }
+          buildCauseDoc(errOrDoc.cause, depth + 1);
         }
       }
-      buildCauseDoc(err.cause);
+      if (err !== null && typeof err === 'object') {
+        seen.add(err);
+      }
+      buildCauseDoc(err.cause, 1);
       return docs;
     }
     let errorDoc: Doc.AnsiDoc = Doc.text(messageOf(err));
@@ -241,6 +299,28 @@ export const reportContractExecutionError: (
     yield* reportCausableError(err);
   });
 
+/**
+ * Reports a defect — a failure the command did not model — rather than letting it exit silently.
+ *
+ * @remarks
+ * The backstop for the whole CLI. `Effect.catchAll` covers the *failure* channel only, so a throw
+ * evaluated in an `Effect.gen` body passes every recovery this module installs and reaches
+ * `NodeRuntime.runMain({ disableErrorReporting: true })` in `src/index.ts`, which exits non-zero
+ * printing nothing. That is the worst outcome the CLI can produce: the user has no message, no exit
+ * context, and nothing to report.
+ *
+ * Individual defect sources are worth fixing at the source — and are, as they are found — but this
+ * exists so that the *next* one is a legible bug report instead of a silent exit. The wording
+ * separates "your input was wrong" from "this is our bug", because a defect is always the latter.
+ *
+ * @internal
+ */
+export const reportUnhandledDefect: (defect: unknown) => Effect.Effect<void, never> = (defect) =>
+  reportCausableError({
+    message: 'Internal error: the command failed in a way it does not handle. Please report this.',
+    cause: defect
+  });
+
 /** @internal */
 export type GlobalOptions = Command.Command.ParseConfig<typeof GlobalOptions>;
 /** @internal */
@@ -270,20 +350,79 @@ export const layer: (configProvider: ConfigProvider.ConfigProvider, zkBaseFolder
     );
 
 /**
- * Creates an appropriate runtime for a command handler.
+ * A command handler, once an era has been selected for it.
  *
- * @param handler A handler function that executes a command based on its received command line inputs and
- * compiled configuration module.
- * @returns An `Effect` that adapts `handler` by compiling the configured configuration file, and invoking
- * `handler` within an appropriate `ContractExecutableRuntime`.
+ * @internal
+ */
+export type CommandHandler<I> = (
+  inputs: I & GlobalOptions,
+  module: ConfigCompiler.ConfigCompiler.ModuleSpec
+) => Effect.Effect<
+  void,
+  ContractExecutable.ContractExecutionError | EffectConfigError.ConfigError,
+  | Path.Path
+  | FileSystem.FileSystem
+  | CompiledContractReflection.CompiledContractReflection
+  // The executable's own services. Declared rather than fictionalised away: `ModuleSpec` used to
+  // type the executable with no requirements at all, which only held because a dynamically
+  // imported module is never checked against its declared shape. `invocationHandler` discharges
+  // them with the `ContractExecutableRuntime` it builds from the configuration's ZK assets and
+  // keys, which is the one place that can.
+  | ContractExecutable.ContractExecutable.Context
+>;
+
+/**
+ * Fails when the era `--ledger-era` selected and the era the configuration's executable was built
+ * for are not the same.
+ *
+ * @remarks
+ * There are two era choices in play and the CLI only makes one of them. `--ledger-era` picks the
+ * era of the intents, state files and conversions the command produces; the *executable's* era was
+ * fixed by the import at the top of `contract.config.ts` (`/v8/effect` or `/v9/effect`). Left
+ * unreconciled, a disagreement surfaces several conversions later as a WASM rejection — `expected
+ * instance of ContractState` — whose message names neither era and points at neither decision.
+ *
+ * An executable from a compact-js older than `ContractExecutable.era` reports `undefined`; that is
+ * treated as "unknown", not as a mismatch, so a configuration that worked before this check existed
+ * still works. Such a mismatch still fails, just at the boundary and with the older message.
+ */
+const checkEra = (
+  configFilePath: string,
+  selected: number,
+  executable: { readonly era?: { readonly ledger: number } }
+): Effect.Effect<void, ConfigError.ConfigError> =>
+  executable.era === undefined || executable.era.ledger === selected
+    ? Effect.void
+    : ConfigError.make(
+        `The contract configuration '${configFilePath}' builds its executable against ledger era ` +
+          `${executable.era.ledger}, but --ledger-era selected ${selected}. Import ` +
+          `'@midnight-ntwrk/compact-js/v${selected}/effect' in the configuration, or run with ` +
+          `--ledger-era ${executable.era.ledger}.`
+      );
+
+/**
+ * Creates an appropriate runtime for a command handler, having first resolved the era the
+ * invocation selected.
+ *
+ * @remarks
+ * The parameter is a *selector* rather than a handler because the handler is era-specific: each
+ * command module is a factory applied once per era (`internal/era/v8.ts`, `internal/era/v9.ts`),
+ * and this is where `--ledger-era` stops being a validated-then-discarded option and becomes the
+ * choice of which of those applications runs.
+ *
+ * It takes the era as a *number* and resolves nothing itself, so this module does not import the
+ * era registry. That keeps the graph acyclic — the registry imports the command modules, which
+ * import this one — and leaves `effect/index.ts`, which is downstream of all of them, as the single
+ * place where a command is tied to the handler it wants.
+ *
+ * @param handlerForEra Picks this command's handler for the selected ledger era, e.g.
+ * `(era) => EraRegistry.forLedgerEra(era).circuit`.
+ * @returns An `Effect` that adapts the selected handler by compiling the configured configuration
+ * file, reconciling its era against the selected one, and invoking the handler within an
+ * appropriate `ContractExecutableRuntime`.
  */
 export const invocationHandler: <I>(
-  handler: (inputs: I & GlobalOptions, module: ConfigCompiler.ConfigCompiler.ModuleSpec) =>
-    Effect.Effect<
-      void,
-      ContractExecutable.ContractExecutionError | EffectConfigError.ConfigError,
-      Path.Path | FileSystem.FileSystem | CompiledContractReflection.CompiledContractReflection
-    >
+  handlerForEra: (ledgerEra: number) => CommandHandler<I>
 ) =>
   (inputs: I & GlobalOptions) =>
     Effect.Effect<
@@ -291,10 +430,16 @@ export const invocationHandler: <I>(
       ConfigError.ConfigError | EffectConfigError.ConfigError,
       Path.Path | FileSystem.FileSystem | ConfigCompiler.ConfigCompiler
     > =
-    (handler) => (inputs) => Effect.gen(function* () {
+    (handlerForEra) => (inputs) => Effect.gen(function* () {
+      // Option parsing has already rejected any era this build has no command set for, so the
+      // selector below cannot fail to resolve one.
+      const handler = handlerForEra(inputs.ledgerEra);
       const configCompiler = yield* ConfigCompiler.ConfigCompiler;
       const moduleSpec = yield* configCompiler.compile(inputs.config);
       const { moduleImportDirectoryPath, module: { default: contractModule } } = moduleSpec;
+
+      yield* checkEra(inputs.config, inputs.ledgerEra, contractModule.contractExecutable);
+
       const contractRuntime = ContractExecutableRuntime.make(
         layer(
           CommandConfigProvider.make(contractModule.config ?? {}, InternalOptions.asConfigProvider(inputs)),
@@ -310,5 +455,9 @@ export const invocationHandler: <I>(
         Effect.catchAll(reportContractExecutionError)
       );
     }).pipe(
-      Effect.catchAll(reportContractConfigError)
+      Effect.catchAll(reportContractConfigError),
+      // Outermost, so it covers the handler, the config compilation and the era reconciliation
+      // alike. `catchAll` above it sees failures only; without this, a defect from any of them is
+      // an exit code and an empty terminal.
+      Effect.catchAllDefect(reportUnhandledDefect)
     );

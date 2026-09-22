@@ -29,14 +29,89 @@ the contract and its circuits more convenient, and TypeScript idiomatic.
 ## Ledger eras
 
 The version suffix on an era-pinned entry names the **ledger era** it targets, not this package's
-own version: `@midnight-ntwrk/compact-js/v9` (and `/v9/effect`) targets **ledger 9**.
+own version: `@midnight-ntwrk/compact-js/v9` (and `/v9/effect`) targets **ledger 9**, and
+`/v8` (with `/v8/effect`) targets **ledger 8**.
+
+The bound era is inspectable at run time via `Ledger.era`, from any entry.
+
+### What each entry gives you
+
+| Entry | Ledger era | compact-runtime | Surface |
+| --- | --- | --- | --- |
+| `.` / `./effect` | the build's bound era (ledger 9 today) | 0.19 | Full |
+| `/v9` / `/v9/effect` | ledger 9 | 0.19 | Full |
+| `/v8` / `/v8/effect` | ledger 8 | 0.16 | `Ledger` and `CompactRuntime` seams only |
+
+`/v8/effect` binds ledger 8 directly rather than following the package's bound era, so the two
+era facades can be live in one process.
 
 > [!NOTE]
-> The era-pinned entries are currently aliases of the unsuffixed ones — this release binds a
-> single era for the whole package. Importing `/v9/effect` records your intent in the import
-> graph, but does not yet isolate you from a change of the package's bound era.
+> `/v9` and the unsuffixed entries still resolve the package's *bound* era. They agree today
+> because that era is ledger 9; when it advances, `/v9` must be repointed at a pinned ledger 9
+> binding the way `/v8` is pinned now.
 
-The bound era is inspectable at run time via `Ledger.era`, from `./effect` or `/v9/effect`.
+### Running both eras in one process
+
+This works, and it is mostly not a compact-js concern — which is the important thing to understand
+before designing around it.
+
+Every contract `compactc` emits begins with the same two lines, differing only in the version:
+
+```js
+import * as __compactRuntime from '@midnight-ntwrk/compact-runtime';
+__compactRuntime.checkRuntimeVersion('0.16.0');
+```
+
+That is a **bare specifier in generated code**, and `checkRuntimeVersion` refuses any other minor
+version. So a contract's era is decided by *how that specifier resolves where the contract file
+lives* — not by which compact-js entry your application imported. Importing `/v8/effect` cannot
+change it, because an entry point has no reach into generated code's imports.
+
+The pattern, therefore: give each era's contracts a **resolution scope** whose
+`@midnight-ntwrk/compact-runtime` is that era's line. Any of these does it:
+
+- a nested `node_modules` beside that era's artifacts (Node resolves bare specifiers by walking up
+  from the importing file);
+- a bundler alias scoped to that directory;
+- a separate workspace or package per era, each pinning its own runtime.
+
+Pin `@midnight-ntwrk/compact-js` the same way in that scope if you want the full executable surface
+for that era, rather than just the seams `/v8/effect` gives you.
+
+Two things are easy to get wrong:
+
+- **Copy the artifacts into the scope; do not symlink them.** Node resolves a module to its real
+  path before resolving *its* imports, so a symlinked artifact resolves its runtime from the
+  original location and fails the version check.
+- **The scope needs its own `package.json` with `"type": "module"`**, or the emitted ESM is parsed
+  as CommonJS.
+
+A scope is additive — it redirects only what resolves from inside it, leaving your application's own
+runtime untouched. `test/effect/DualEraResolution.test.ts` builds one and executes an era 8 and an
+era 9 circuit in the same process; read it as the executable version of this section.
+
+### Ledger 8 limitations
+
+Two kinds, worth keeping apart.
+
+**Era-impossible — these will never exist on ledger 8.** Contract events and cross-contract calls.
+onchain-runtime-v3's `log` payload carries no emitting-contract address or versioning and nothing
+accumulates them, and there is no `crossContractCall` at all. `createExecutionContext` *rejects* a
+cross-contract state provider rather than ignoring it.
+
+**Scope-pinned rather than entry-pinned.** `ContractExecutable`, `CompiledContract` and the
+configuration services are not exported from `/v8/effect`. They resolve the `Ledger` and
+`CompactRuntime` facades by module path, so they follow the package's bound era, and exporting them
+under `/v8` would hand back ledger-9-bound objects from a path named v8.
+
+This is deliberate rather than a gap. Executing a ledger 8 contract already requires a ledger 8
+resolution scope — see the section above, it is forced by the generated artifact — and inside that
+scope compact-js is pinned to ledger 8 too, so the executable is era-correct with no extra
+machinery. `/v8/effect` covers what is useful *without* a dedicated scope: decoding and converting
+ledger 8 state alongside ledger 9, in one process, which is what cross-era history reads need.
+
+Ledger 8 execution itself is verified: the suite compiles `counter.compact` with compactc 0.31.1 and
+runs a circuit on the 0.16 line.
 
 ## Contract log events
 

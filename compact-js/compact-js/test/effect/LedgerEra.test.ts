@@ -16,10 +16,26 @@
 import * as rootEntry from '@midnight-ntwrk/compact-js';
 import * as effectEntry from '@midnight-ntwrk/compact-js/effect';
 import { Ledger } from '@midnight-ntwrk/compact-js/effect';
+import * as v8EffectEntry from '@midnight-ntwrk/compact-js/v8/effect';
 import * as v9Entry from '@midnight-ntwrk/compact-js/v9';
 import * as v9EffectEntry from '@midnight-ntwrk/compact-js/v9/effect';
 import { ContractState, LedgerParameters } from '@midnightntwrk/ledger-v9';
 import { describe, expect, it } from 'vitest';
+
+import * as eraFreeSurface from '../../src/effect/internal/eraFreeSurface.js';
+import * as eraNeutralSurface from '../../src/effect/internal/eraNeutralSurface.js';
+
+// Contract events are a ledger 9 feature: compact-runtime 0.16 has no `LogEvent`, no per-context
+// event accumulation, and onchain-runtime-v3's `log` payload is a bare `EncodedStateValue` with no
+// emitting-contract address. #388 requires such a member to be *absent* from an older era's entry,
+// not present and failing at run time.
+const CONTRACT_EVENT_EXPORTS = [
+  'ContractEventStore',
+  'ContractEventValidationError',
+  'ContractLog',
+  // `ContractEventValidator` is star-exported rather than namespaced, so its member is named here.
+  'validateEvents'
+];
 
 describe('Ledger era seam', () => {
   it('describes the ledger 9 era', () => {
@@ -43,17 +59,44 @@ describe('Ledger era seam', () => {
 });
 
 describe('era-pinned entries', () => {
-  // The two key-parity checks below cannot distinguish the entries: `/v9` currently IS the root
-  // module re-exported, so the key sets match by construction (and type-only exports are erased
-  // from `Object.keys` entirely). What they do prove is that the new `exports` subpaths exist,
-  // are spelled correctly, and resolve — a typo in the exports map is the regression they catch.
-  // Era pinning itself is asserted independently in the last test.
-  it('`/v9` exposes the same API as the unsuffixed root', () => {
-    expect(Object.keys(v9Entry).sort()).toEqual(Object.keys(rootEntry).sort());
+  it('`/v9` mirrors `/v9/effect`, not the unsuffixed root', () => {
+    // This asserted key-parity with the *root* entry, which could never go red: `/v9` was
+    // `export * from '../index.js'`, so the two sides were literally the same module. That alias
+    // is the regression the era-pinned entries exist to prevent — the root barrel resolves both
+    // seams' `current.ts`, so repointing it at ledger 10 would have made `/v9` a ledger 10 entry
+    // with nothing to catch it, while `/v9/effect` (already pinned) stayed on ledger 9. `/v8`
+    // states the intended shape: an era entry mirrors its own `/effect` twin.
+    expect(Object.keys(v9Entry).sort()).toEqual(Object.keys(v9EffectEntry).sort());
+    // Object identity, so re-aliasing this entry to the root fails here even while the bound era
+    // still happens to be 9 and every key-set comparison would agree.
+    expect(v9Entry.Ledger).toBe(v9EffectEntry.Ledger);
+    expect(v9Entry.Ledger).not.toBe(effectEntry.Ledger);
   });
 
   it('`/v9/effect` exposes the same API as `/effect`', () => {
     expect(Object.keys(v9EffectEntry).sort()).toEqual(Object.keys(effectEntry).sort());
+  });
+
+  it('the unsuffixed root follows the bound era, which is what it is for', () => {
+    // `/v9` no longer aliases the root, so this is what pins the distinction between them. The
+    // root is deliberately "whichever era this build bound" and must keep resolving through
+    // `current.ts`; an era entry must not. Asserted by object identity rather than by era number,
+    // because both say 9 today and will not the first time `current.ts` advances — which is the
+    // moment these two are supposed to diverge.
+    expect(rootEntry.ContractExecutable).toBe(effectEntry.ContractExecutable);
+    expect(v9Entry.ContractExecutable).not.toBe(effectEntry.ContractExecutable);
+  });
+
+  it('`/v9/effect` binds ledger 9 itself rather than following the build\'s bound era', () => {
+    // The regression this catches: while `/v9/effect` re-exported `Ledger.ts`, it resolved through
+    // `internal/ledger/current.ts` — so repointing that at ledger 10 turned `/v9` into a ledger 10
+    // entry with no build error and no test failure, because every `/v9`-vs-root comparison was
+    // then comparing an alias with its own target. A namespace object distinct from the root
+    // entry's is the observable evidence that this entry carries its own binding; the class
+    // identity asserted below shows the two still agree on the era today.
+    expect((v9EffectEntry as typeof effectEntry).Ledger).not.toBe(effectEntry.Ledger);
+    expect((v9EffectEntry as typeof effectEntry).Ledger.era.ledger).toBe(9);
+    expect((v9EffectEntry as typeof effectEntry).Ledger.era.runtime).toBe('0.19');
   });
 
   it('`/v9/effect` resolves the ledger 9 package', () => {
@@ -64,5 +107,87 @@ describe('era-pinned entries', () => {
     // to catch.
     expect((v9EffectEntry as typeof effectEntry).Ledger.ContractState).toBe(ContractState);
     expect((v9EffectEntry as typeof effectEntry).Ledger.LedgerParameters).toBe(LedgerParameters);
+  });
+
+  it('offers the boundary wrapper on both seams of every era entry', () => {
+    // Both era entries used to export the bare runtime *binding* as `CompactRuntime`, so the one
+    // member that makes a WASM rejection a typed failure rather than a defect was missing from the
+    // era-pinned paths while the unsuffixed entry had it. One function object across both seams and
+    // both eras — identity, not just presence, because a second copy would drift.
+    for (const entry of [effectEntry, v9EffectEntry, v8EffectEntry]) {
+      expect(entry.CompactRuntime.tryRuntime).toBe(entry.Ledger.tryConvert);
+    }
+  });
+});
+
+describe('the ledger 8 entry', () => {
+  it('pins ledger 8 and its paired 0.16 runtime', () => {
+    expect(v8EffectEntry.Ledger.era.ledger).toBe(8);
+    expect(v8EffectEntry.Ledger.era.runtime).toBe('0.16');
+    expect(v8EffectEntry.CompactRuntime.line).toBe('0.16');
+  });
+
+  it('exposes every era-free module, so era-agnostic code compiles against either entry', () => {
+    // #388's "identical public API wherever the era permits". These modules reach neither facade
+    // at runtime — verified in the built output, not assumed — so withholding them made `/v8`
+    // narrower than the era requires.
+    const keys = new Set(Object.keys(v8EffectEntry));
+    for (const name of Object.keys(eraFreeSurface)) {
+      expect(keys).toContain(name);
+    }
+  });
+
+  it('omits contract events, which ledger 8 cannot emit', () => {
+    const keys = Object.keys(v8EffectEntry);
+    for (const name of CONTRACT_EVENT_EXPORTS) {
+      expect(keys).not.toContain(name);
+    }
+  });
+
+  it('executes contracts, through its own era pair rather than the bound one', () => {
+    // This entry used to omit `ContractExecutable` entirely: it was the one public module written
+    // against the facades, so it resolved whichever era `current.ts` bound and would have handed
+    // back ledger-9 objects from a path named v8. It is now `internal/executable.ts` applied to the
+    // ledger 8 pair — so it is present, and it is a *different application* from the bound entry's.
+    // Identity is the assertion that catches a regression to a re-export; a `toBeTypeOf('function')`
+    // would pass on the very mistake this replaces.
+    expect(v8EffectEntry.ContractExecutable.make).toBeTypeOf('function');
+    expect(v8EffectEntry.ContractExecutable.make).not.toBe(effectEntry.ContractExecutable.make);
+  });
+
+  it('gives each era entry its own executable, pinned rather than following the build', () => {
+    // `/v9` too: it re-exported `effect/ContractExecutable.js` and needed a build-time assertion to
+    // notice when `current.ts` moved underneath it. Both entries now carry their era in the
+    // application itself, so all three `make`s are distinct objects.
+    const makes = [effectEntry, v9EffectEntry, v8EffectEntry].map((entry) => entry.ContractExecutable.make);
+    expect(new Set(makes).size).toBe(3);
+  });
+});
+
+describe('era capability split', () => {
+  it('keeps contract events out of the era-neutral surface', () => {
+    // The surface a ledger 8 entry would compose. If an event module leaks in here, that entry
+    // stops being buildable at all (its runtime line has no `LogEvent`) — the failure mode this
+    // split exists to prevent.
+    const keys = Object.keys(eraNeutralSurface);
+    for (const name of CONTRACT_EVENT_EXPORTS) {
+      expect(keys).not.toContain(name);
+    }
+  });
+
+  it('exposes contract events on the ledger 9 entry', () => {
+    const keys = Object.keys(v9EffectEntry);
+    for (const name of CONTRACT_EVENT_EXPORTS) {
+      expect(keys).toContain(name);
+    }
+  });
+
+  it('composes the ledger 9 entry from the era-neutral surface plus the event surface', () => {
+    // Guards the split from drifting apart: every era-neutral export must still be reachable from
+    // the era entry, so splitting the barrel cannot silently drop a member from the public API.
+    const entryKeys = new Set(Object.keys(v9EffectEntry));
+    for (const name of Object.keys(eraNeutralSurface)) {
+      expect(entryKeys).toContain(name);
+    }
   });
 });

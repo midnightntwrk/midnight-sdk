@@ -17,7 +17,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import { ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState as RuntimeContractState } from '@midnight-ntwrk/compact-runtime';
 import { ContractOperation, ContractState as LedgerContractState } from '@midnightntwrk/ledger-v9';
@@ -65,6 +65,35 @@ describe('FileSystemContractStateProvider', () => {
     expect(state).toBeInstanceOf(RuntimeContractState);
     expect(serializedEqual(state!.serialize(), bytes)).toBe(true);
     expect(state!.operations()).toContain('getV');
+  });
+
+  it('decodes through a caller-supplied era rather than the build\'s bound one', async () => {
+    const bytes = stateBytesWith('getV');
+    writeFileSync(join(baseDir, ADDRESS), bytes);
+    const decoded: string[] = [];
+
+    // Cross-contract calls are a ledger 9+ capability, so there is only one era that can use this
+    // provider *today* — which is exactly why the coupling is easy to miss. The provider used to
+    // reach `Ledger` directly, so it always spoke whichever era `current.ts` bound: the first time
+    // that advances, a consumer holding the retained era through `/v9/effect` would be handed
+    // states from the *new* era by a provider they passed to the old era's circuit context.
+    // Supplying the era makes the caller's choice reach the decode.
+    const era = {
+      era: { ledger: 9 },
+      contractStateFromBytes: (raw: Uint8Array) => {
+        decoded.push('fromBytes');
+        return Ledger.contractStateFromBytes(raw);
+      },
+      toRuntimeContractState: Ledger.toRuntimeContractState
+    };
+
+    const state = await FileSystemContractStateProvider.make(baseDir, { ledger: era }).getContractState(
+      ZERO_BLOCK_HASH,
+      ADDRESS
+    );
+
+    expect(decoded).toEqual(['fromBytes']);
+    expect(serializedEqual(state!.serialize(), bytes)).toBe(true);
   });
 
   it('returns undefined when the contract state file is missing', async () => {
