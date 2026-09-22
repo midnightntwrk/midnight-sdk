@@ -47,7 +47,6 @@ type Assert<_T extends true> = void;
 // union of message literals and fails the build quoting the relationship that broke.
 type AssertNoViolations<_V extends never> = void;
 
-// --- compact-runtime 0.16 (ledger 8 era; spike, not bound by `current.ts`) ----------------------
 type _V0_16Conforms = Assert<Extends<typeof V0_16, RuntimeBinding>>;
 type _V0_16NoViolations = AssertNoViolations<RuntimeBindingViolations<typeof V0_16>>;
 // Asserted FALSE deliberately — see the capability note above. Do not "fix" this to `true`.

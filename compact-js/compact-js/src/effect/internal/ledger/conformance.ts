@@ -52,7 +52,6 @@ type Assert<_T extends true> = void;
 // union of message literals and fails the build quoting the relationship that broke.
 type AssertNoViolations<_V extends never> = void;
 
-// --- ledger 8 (spike; not bound by `current.ts`) ------------------------------------------------
 type _V8Conforms = Assert<Extends<typeof V8, LedgerBinding>>;
 type _V8NoViolations = AssertNoViolations<LedgerBindingViolations<typeof V8>>;
 // Ledger 8 keys are BIP-340 only, so the era represents a signing key as a bare hex string. Pinned

@@ -14,15 +14,7 @@
  */
 
 /**
- * The compact-runtime 0.16 binding — the runtime half of the ledger 8 era, and **spike status**
- * (midnight-sdk#387 phase 3).
- *
- * @remarks
- * Paired with `internal/ledger/v8.ts`: ledger 8 ↔ compact-runtime 0.16 ↔ onchain-runtime-v3 ↔
- * compactc 0.31.x. Neither half is meaningful alone. Like its ledger twin this is not reachable
- * from any entry — `current.ts` still binds 0.19, and there is no `/v8` subpath — but
- * `conformance.ts` checks it on every build so it cannot rot before it is switched on.
- *
+
  * It satisfies {@link RuntimeBinding} (the era-neutral core) and deliberately **not**
  * {@link CallTreeRuntimeBinding}. That is not an omission to be filled in later: the 0.16
  * execution model is a single flat frame, and the call-tree members simply do not exist on this
@@ -46,14 +38,6 @@
  * `compact-types`, `casts`, `built-ins`, `utils`, `error`, `constants`, `witness`, `version` — is
  * identical to 0.19 apart from the onchain-runtime-v3 → v4 import swap, which is why the core
  * contract below is satisfiable at all.
- *
- * `checkRuntimeVersion` hard-fails across minors while the major is 0, so contracts compiled for
- * 0.19 can never run on this line: binding this era for real needs its own compiled fixtures
- * (compactc 0.31.1, Compact language 0.23.0), not a recompile of the current set.
- *
- * The package is reached through the `compact-runtime-ledger8` npm alias so that one dependency
- * tree can hold both lines, and the alias resolves the public npmjs tarball rather than the
- * GitHub Packages copy the `@midnight-ntwrk` scope routing would otherwise pick.
  */
 import { type SignatureKind } from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import {
@@ -73,11 +57,7 @@ import {
 } from 'compact-runtime-ledger8';
 
 import { type RuntimeLine } from '../era.js';
-import {
-  type CallProofDataView,
-  type ExecutionContextParams,
-  type ExecutionView
-} from './execution.js';
+import { type CallProofDataView, type ExecutionContextParams, type ExecutionView } from './execution.js';
 
 export {
   type AlignedValue,
@@ -124,11 +104,7 @@ export {
  * can go. `RuntimeBinding.tst.ts` pins the relationship on both lines.
  */
 const ContractMaintenanceAuthority = RuntimeContractMaintenanceAuthority as unknown as {
-  new (
-    committee: SignatureVerifyingKey[],
-    threshold: number,
-    counter?: bigint
-  ): RuntimeContractMaintenanceAuthority;
+  new (committee: SignatureVerifyingKey[], threshold: number, counter?: bigint): RuntimeContractMaintenanceAuthority;
   deserialize(raw: Uint8Array): RuntimeContractMaintenanceAuthority;
 };
 

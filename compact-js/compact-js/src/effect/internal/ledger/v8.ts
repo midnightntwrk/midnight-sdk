@@ -14,15 +14,6 @@
  */
 
 /**
- * The ledger 8 era binding — **spike status** (midnight-sdk#387 phase 3).
- *
- * @remarks
- * This exists to answer the ledger-8 feasibility question on #388 by *building* rather than by
- * reading `.d.ts` diffs: written against the same {@link LedgerBinding} contract as `v9.ts`, so
- * every missing name or changed signature surfaces as a compile error here. It is NOT reachable
- * from any entry — `current.ts` still binds v9, and there is no `/v8` subpath — and it is not
- * paired with a compact-runtime 0.16 binding yet (that half needs GitHub Packages credentials).
- *
  * Findings so far, from the surface comparison against `@midnightntwrk/ledger-v8@8.1.2`:
  *
  * - All 24 names the facade re-exports are present on v8; nothing was added between v8 and v9 that
