@@ -113,6 +113,6 @@ describe('CompactRuntime facade type surface', () => {
     // the caller gets an unhandled rejection. The doctrine is "every boundary call goes through
     // the wrapper", so the next person extending a call to an async API reaches for this function
     // — it has to refuse rather than silently mis-handle it.
-    expect(CompactRuntime.tryRuntime('', async () => 1)).type.toRaiseError();
+    expect(CompactRuntime.tryRuntime).type.not.toBeCallableWith('', async () => 1);
   });
 });

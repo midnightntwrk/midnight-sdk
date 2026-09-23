@@ -18,8 +18,6 @@ import type * as Era9Runtime from '@midnight-ntwrk/compact-runtime';
 import type * as Era8Runtime from 'compact-runtime-ledger8';
 import { describe, expect, it } from 'tstyche';
 
- 
-
 /**
  * The **era-free contract spine** (midnight-sdk#387/#388).
  *
@@ -149,40 +147,34 @@ describe('the contract spine — inference', () => {
     expect<Contract.Contract.PrivateState<Era8Contract>>().type.toBe<PrivateState>();
   });
 
-  it('recovers a circuit\'s arguments from either era', () => {
+  it("recovers a circuit's arguments from either era", () => {
     // `CircuitParameters` drops the leading context and keeps the rest; it is what the CLI and
     // `ContractExecutable.circuit` type their arguments by, so it has to survive the era split.
     expect<Contract.Contract.CircuitParameters<Era9Contract, 'increment'>>().type.toBe<[bigint]>();
     expect<Contract.Contract.CircuitParameters<Era8Contract, 'increment'>>().type.toBe<[bigint]>();
   });
 
-  it('recovers a circuit\'s result type from either era', () => {
+  it("recovers a circuit's result type from either era", () => {
     expect<Contract.Contract.CircuitReturnType<Era9Contract, 'increment'>>().type.toBe<bigint>();
     expect<Contract.Contract.CircuitReturnType<Era8Contract, 'increment'>>().type.toBe<bigint>();
   });
 
   it('recovers both from a *branded* circuit id, which is the only kind the executable takes', () => {
-    // midnight-sdk#402. Both helpers index `provableCircuits` with the key they are handed, and the
-    // key `ContractExecutable.circuit` hands them is the branded one — `ProvableCircuitId` is a
-    // nominal brand, so the index arrives as `'increment' & Brand<'ProvableCircuitId'>` rather than
-    // the plain literal, and an indexed access by an intersection does not resolve to the declared
-    // method. Both helpers therefore collapsed: arguments to `unknown[]` (unchecked at every call
-    // site that follows the documented API — `getProvableCircuitIds()` and `ProvableCircuitId()`
-    // both hand back branded ids) and the result to `unknown`.
-    //
-    // The zero-argument case is pinned alongside because consumers key an options type off
-    // `CircuitParameters<…> extends []` to decide whether to require an `args` member at all, and a
-    // brand-stripping fix must not turn `[]` into something that no longer matches.
-    expect<Contract.Contract.CircuitParameters<Era9Contract, Contract.ProvableCircuitId<Era9Contract>>>()
-      .type.toBe<[bigint]>();
-    expect<Contract.Contract.CircuitParameters<Era8Contract, Contract.ProvableCircuitId<Era8Contract>>>()
-      .type.toBe<[bigint]>();
-    expect<Contract.Contract.CircuitReturnType<Era9Contract, Contract.ProvableCircuitId<Era9Contract>>>()
-      .type.toBe<bigint>();
-    expect<Contract.Contract.CircuitReturnType<Era8Contract, Contract.ProvableCircuitId<Era8Contract>>>()
-      .type.toBe<bigint>();
-    expect<Contract.Contract.CircuitParameters<Era9NullaryContract, Contract.ProvableCircuitId<Era9NullaryContract>>>()
-      .type.toBe<[]>();
+    expect<Contract.Contract.CircuitParameters<Era9Contract, Contract.ProvableCircuitId<Era9Contract>>>().type.toBe<
+      [bigint]
+    >();
+    expect<Contract.Contract.CircuitParameters<Era8Contract, Contract.ProvableCircuitId<Era8Contract>>>().type.toBe<
+      [bigint]
+    >();
+    expect<
+      Contract.Contract.CircuitReturnType<Era9Contract, Contract.ProvableCircuitId<Era9Contract>>
+    >().type.toBe<bigint>();
+    expect<
+      Contract.Contract.CircuitReturnType<Era8Contract, Contract.ProvableCircuitId<Era8Contract>>
+    >().type.toBe<bigint>();
+    expect<
+      Contract.Contract.CircuitParameters<Era9NullaryContract, Contract.ProvableCircuitId<Era9NullaryContract>>
+    >().type.toBe<[]>();
   });
 
   it('recovers the constructor arguments from either era', () => {

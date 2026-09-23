@@ -109,49 +109,32 @@ describe('ContractExecutable', () => {
     });
 
     describe('circuit arguments', () => {
-      // `counter.compact` gives the three shapes that matter here: `increment` and `reset` take
-      // nothing beyond the context, `decrement` takes a `bigint`.
       const id = Contract.ProvableCircuitId<MockCounterContract>('decrement');
 
       it('should accept arguments the contract declares', () => {
-        expect(contractExecutable.circuit(id, {} as any, 1n)).type.not.toRaiseError();
-        expect(contractExecutable.circuit(id, {} as any)).type.not.toRaiseError();
+        expect(contractExecutable.circuit).type.toBeCallableWith(id, {} as any, 1n);
+        expect(contractExecutable.circuit).type.toBeCallableWith(id, {} as any);
       });
 
       it('should reject arguments no circuit declares', () => {
-        // midnight-sdk#402: this compiled. `CircuitParameters` was indexing `provableCircuits` with
-        // the *branded* id and collapsing to `unknown[]`, so the rest parameter accepted anything —
-        // and `getProvableCircuitIds()` and `ProvableCircuitId()` hand back nothing but branded ids,
-        // which is to say every call site following the documented API was unchecked.
-        expect(contractExecutable.circuit(id, {} as any, 'nonsense')).type.toRaiseError();
-        expect(contractExecutable.circuit(id, {} as any, 1n, 'extra', null)).type.toRaiseError();
+        expect(contractExecutable.circuit).type.not.toBeCallableWith(id, {} as any, 'nonsense');
+        expect(contractExecutable.circuit).type.not.toBeCallableWith(id, {} as any, 1n, 'extra', null);
       });
 
       it('should check against every circuit when the id is not narrowed to one', () => {
-        // What an un-narrowed id can buy, and the limit of it. `ProvableCircuitId<C>(…)` is typed by
-        // `C` alone, so its result is the brand over the *union* of the contract's circuit names,
-        // `K` infers as that union, and `CircuitParameters` distributes to a union of argument
-        // tuples. So `decrement`'s `bigint` is checked, but `increment`'s empty tuple is in the
-        // union too and is accepted for a `decrement` id.
-        expect(contractExecutable.circuit(id, {} as any)).type.not.toRaiseError();
+        expect(contractExecutable.circuit).type.toBeCallableWith(id, {} as any);
       });
 
       it('should check against one circuit when the id names one', () => {
-        // Supplying `K` as well narrows the brand to the single literal, and the arguments with it.
-        // TypeScript does not infer *some* type arguments — naming `C` alone leaves `K` on its
-        // default, which is the union above — so this is opt-in rather than something the one-type-
-        // argument spelling can be made to do.
         const decrement = Contract.ProvableCircuitId<MockCounterContract, 'decrement'>('decrement');
 
-        expect(contractExecutable.circuit(decrement, {} as any, 1n)).type.not.toRaiseError();
-        // Red before `ProvableCircuitId` took `K`: accepted, because `increment` takes no arguments
-        // and the un-narrowed union offered its signature for a `decrement` call.
-        expect(contractExecutable.circuit(decrement, {} as any)).type.toRaiseError();
+        expect(contractExecutable.circuit).type.toBeCallableWith(decrement, {} as any, 1n);
+        expect(contractExecutable.circuit).type.not.toBeCallableWith(decrement, {} as any);
 
         const increment = Contract.ProvableCircuitId<MockCounterContract, 'increment'>('increment');
 
-        expect(contractExecutable.circuit(increment, {} as any)).type.not.toRaiseError();
-        expect(contractExecutable.circuit(increment, {} as any, 1n)).type.toRaiseError();
+        expect(contractExecutable.circuit).type.toBeCallableWith(increment, {} as any);
+        expect(contractExecutable.circuit).type.not.toBeCallableWith(increment, {} as any, 1n);
       });
     });
   });
