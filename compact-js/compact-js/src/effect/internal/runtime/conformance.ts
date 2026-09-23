@@ -68,8 +68,9 @@ type _V0_19HasCallTree = Assert<Extends<typeof V0_19, CallTreeRuntimeBinding>>;
 // `LogEvent` to compare (0.16's is `never`, which satisfies anything).
 type _V0_19LogEventDecodable = Assert<Extends<V0_19.LogEvent, ContractLogEvent>>;
 
-// `ContractCallPublic` exposes each call's `block`, `effects` and `comIndices` so a consumer can
-// redo the transcript partition in another ledger era (midnight-sdk#400). Those members are
+// `ContractCallPublic` exposes each call's pre-execution `state`, `block`, `effects` and
+// `comIndices` so a consumer can redo the transcript partition in another ledger era
+// (midnight-sdk#400). Those members are
 // *derived* from the trace entry's query context rather than declared, and a derivation that misses
 // resolves to `never` — which is assignable to everything, so the member would compile clean at
 // every call site and simply be unusable. Checked for every line, bound or not: this is the only

@@ -102,7 +102,7 @@ describe('ContractExecutable execution clock', () => {
         // Milliseconds in, seconds out: the runtime's `time` parameter is seconds since the epoch,
         // and reading it back off `block` is what proves the conversion happens on the way in
         // rather than being left to the caller.
-        expect(result.calls[0]!.public.block.secondsSinceEpoch).toBe(FIXED_SECONDS);
+        expect(result.calls[0]!.public.partitionInputs.block.secondsSinceEpoch).toBe(FIXED_SECONDS);
       }),
     30_000
   );
@@ -122,8 +122,8 @@ describe('ContractExecutable execution clock', () => {
         yield* TestClock.setTime(FIXED_MILLIS + 3_600_000);
         const second = yield* increment();
 
-        expect(first.calls[0]!.public.block.secondsSinceEpoch).toBe(FIXED_SECONDS);
-        expect(second.calls[0]!.public.block.secondsSinceEpoch).toBe(FIXED_SECONDS + 3_600n);
+        expect(first.calls[0]!.public.partitionInputs.block.secondsSinceEpoch).toBe(FIXED_SECONDS);
+        expect(second.calls[0]!.public.partitionInputs.block.secondsSinceEpoch).toBe(FIXED_SECONDS + 3_600n);
       }),
     30_000
   );
@@ -139,7 +139,7 @@ describe('ContractExecutable execution clock', () => {
         // Taking the clock from the context must not change the default. `it.live` runs against the
         // real `Clock`, which is the same reading compact-runtime would have taken itself — so a
         // consumer who provides nothing sees exactly the previous behaviour.
-        expect(result.calls[0]!.public.block.secondsSinceEpoch).toBeGreaterThanOrEqual(before);
+        expect(result.calls[0]!.public.partitionInputs.block.secondsSinceEpoch).toBeGreaterThanOrEqual(before);
       }),
     30_000
   );

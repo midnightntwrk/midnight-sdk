@@ -81,7 +81,7 @@ export interface CallProofDataView<QueryContext, AlignedValue, Op, EncodedZswapL
  * The members of a line's query context that a call's transcript partition is built from.
  *
  * @remarks
- * `ContractExecutable` republishes these three on every `ContractCallPublic` so a consumer can redo
+ * `ContractExecutable` republishes these four on every `ContractCallPublic` so a consumer can redo
  * the partition itself — in a *different* ledger era, which is the case that matters. Across a
  * hard-fork window a call executes on one era and composes on the next, so the partition that came
  * out of the executing era is the wrong one, and the inputs needed to redo it in the right one were
@@ -93,10 +93,24 @@ export interface CallProofDataView<QueryContext, AlignedValue, Op, EncodedZswapL
  * every call site would still compile and the member would simply be unusable. This is what turns
  * that silent collapse into a build failure.
  *
- * All three are plain data on every line compact-js binds, which is what lets them cross an era
- * seam at all; the query context they are read off is not.
+ * `block`, `effects` and `comIndices` are plain data on every line compact-js binds, which is what
+ * lets them cross an era seam; {@link state} is not — it is a live handle, like the post-execution
+ * state `ContractCallPublic.contractState` already reports, and a consumer moving it across an era
+ * boundary has to encode it first.
  */
 export interface PartitionInputs {
+  /**
+   * The ledger state the call ran against, one level in (`state.state` is the value itself). Read
+   * from the **pre**-execution context.
+   *
+   * @remarks
+   * Required rather than incidental: the partitioner *replays* the transcript against this state to
+   * decide where the guaranteed section ends and to charge the ops, so it rejects a state the
+   * transcript's reads do not fit and mis-charges one that merely differs. It is listed here for
+   * the same reason as the other three — the public member is derived from this context, and a
+   * derivation that misses collapses to `never` in silence.
+   */
+  readonly state: { readonly state: unknown };
   /** The block-level call context. Read from the **pre**-execution context. */
   readonly block: unknown;
   /** The contract-external effects the call declared. Read from the **pre**-execution context. */

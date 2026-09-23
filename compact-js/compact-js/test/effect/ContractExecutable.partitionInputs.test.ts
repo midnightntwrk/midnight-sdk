@@ -37,12 +37,12 @@ import { type CounterContract } from '../contract';
  * **Which query context each of a call's partition inputs comes from** (midnight-sdk#400).
  *
  * @remarks
- * `ContractCallPublic` reports `block` and `effects` from the call's **pre**-execution query context
- * and `comIndices` from its **post**-execution one — the split `partitionAllTranscripts` makes when
- * it builds a pre-transcript, and the one a consumer redoing that partition in another ledger era
- * has to make too. Reading any of the three from the wrong context is silent: the value is still
- * plain data of the right type, the partition still succeeds, and only a cross-era recomposition
- * notices.
+ * `ContractCallPublic.partitionInputs` reports `state`, `block` and `effects` from the call's
+ * **pre**-execution query context and `comIndices` from its **post**-execution one — the split
+ * `partitionAllTranscripts` makes when it builds a pre-transcript, and the one a consumer redoing
+ * that partition in another ledger era has to make too. Reading any of the four from the wrong
+ * context is silent: the value is still of the right type, the partition still succeeds, and only a
+ * cross-era recomposition notices.
  *
  * No compiled fixture can show the difference. `comIndices` is populated by shielded coin receives,
  * and none of the fixtures in `test/contract/` performs one — so on every real execution available
@@ -60,6 +60,9 @@ const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d3
 // A 32-byte coin commitment, hex encoded — the key type of `QueryContext.comIndices`.
 const COMMITMENT = 'ab'.repeat(32);
 const COMMITMENT_INDEX = 7n;
+// Put on the post-execution context's `effects` only, so reading `effects` from the wrong context
+// is observable. Nothing converts that context's effects, so nothing else would catch it.
+const POST_EXECUTION_NULLIFIER = 'cd'.repeat(32);
 // Two clocks far enough apart that neither could be the other's wall-clock reading.
 const PRE_EXECUTION_SECONDS = 1_000_000_000n;
 const POST_EXECUTION_SECONDS = 2_000_000_000n;
@@ -80,14 +83,22 @@ const testLayer = Layer.mergeAll(ZKFileConfiguration.layer(COUNTER_ASSETS_PATH),
  *
  * Spread from a real runtime `QueryContext`'s own `block` and `effects` rather than written from
  * scratch: both are assigned onto a ledger `QueryContext` by `Ledger.fromRuntimeQueryContext`
- * through a WASM setter, which rejects an incomplete shape. `state` and `address` stay the real
- * object's, because the assembly reads `finalQueryContext.state.state` and converts it for real.
+ * through a WASM setter, which rejects an incomplete shape. `address` stays the real object's.
+ *
+ * Every member the executable reads is differentiated, including the two whose provenance the type
+ * system cannot protect at all: `state` and `effects` are the *same type* on both contexts, so
+ * reading either from the wrong one compiles clean and produces a plausible value. Giving the two
+ * contexts distinguishable states — an array before, null after — is what makes that a test
+ * failure rather than a silent cross-era defect.
  */
 const queryContexts = (address: string) => {
   const real = new QueryContext(new ChargedState(StateValue.newNull()), address);
   return {
     initialQueryContext: {
-      state: real.state,
+      // Distinguishable from the final state by `type()` alone. The partitioner replays the
+      // transcript against *this* state, so it is a partition input in its own right and not just
+      // context — which is why `ContractCallPublic` reports it separately from `contractState`.
+      state: new ChargedState(StateValue.newArray()),
       address: real.address,
       block: { ...real.block, secondsSinceEpoch: PRE_EXECUTION_SECONDS },
       effects: real.effects,
@@ -96,10 +107,12 @@ const queryContexts = (address: string) => {
       comIndices: new Map<string, bigint>()
     },
     finalQueryContext: {
-      state: real.state,
+      state: new ChargedState(StateValue.newNull()),
       address: real.address,
       block: { ...real.block, secondsSinceEpoch: POST_EXECUTION_SECONDS },
-      effects: real.effects,
+      // Marked so that reading `effects` from this context — which is never converted, so nothing
+      // else would notice — fails the provenance assertion below.
+      effects: { ...real.effects, claimedNullifiers: [POST_EXECUTION_NULLIFIER] },
       comIndices: new Map([[COMMITMENT, COMMITMENT_INDEX]])
     }
   };
@@ -170,8 +183,38 @@ describe('ContractCallPublic partition inputs', () => {
 
       // A pre-transcript describes the state a call ran *against*, so the block context that
       // belongs on it is the one the call started with.
-      expect(result.calls[0]!.public.block.secondsSinceEpoch).toBe(PRE_EXECUTION_SECONDS);
-      expect(result.calls[0]!.public.block.secondsSinceEpoch).not.toBe(POST_EXECUTION_SECONDS);
+      expect(result.calls[0]!.public.partitionInputs.block.secondsSinceEpoch).toBe(PRE_EXECUTION_SECONDS);
+      expect(result.calls[0]!.public.partitionInputs.block.secondsSinceEpoch).not.toBe(POST_EXECUTION_SECONDS);
+    })
+  );
+
+  it.effect('reports the state the call ran against, separately from the state it left behind', () =>
+    Effect.gen(function* () {
+      const address = sampleContractAddress();
+      const contexts = queryContexts(address);
+
+      const result = yield* probe(standInContract(address, contexts), address);
+
+      // The partitioner *replays* the transcript against the state, so redoing a partition needs
+      // the state the call ran against — not the one it produced. `contractState` is the latter,
+      // which is why the former has to be reported too rather than left for the consumer to infer
+      // (midnight-sdk#400, and the reason the exposed set is only now sufficient).
+      expect(result.calls[0]!.public.partitionInputs.state.type()).toBe('array');
+      expect(result.calls[0]!.public.contractState.type()).toBe('null');
+    })
+  );
+
+  it.effect('reports the effects from before the call, not after it', () =>
+    Effect.gen(function* () {
+      const address = sampleContractAddress();
+      const contexts = queryContexts(address);
+
+      const result = yield* probe(standInContract(address, contexts), address);
+
+      // Same provenance rule as `block`, and the one with the least protection: both contexts'
+      // `effects` are the same type, and the post-execution context's is converted by nothing, so
+      // reading it would be invisible everywhere except here.
+      expect(result.calls[0]!.public.partitionInputs.effects.claimedNullifiers).not.toContain(POST_EXECUTION_NULLIFIER);
     })
   );
 
@@ -185,8 +228,8 @@ describe('ContractCallPublic partition inputs', () => {
       // The mirror image of `block`: commitments are what the call *discovered*, and they are what
       // the partitioner matches callers to callees on. Taking them from the pre-execution context
       // would hand a consumer an empty map and a partition they cannot reproduce.
-      expect(result.calls[0]!.public.comIndices.size).toBe(1);
-      expect(result.calls[0]!.public.comIndices.get(COMMITMENT)).toBe(COMMITMENT_INDEX);
+      expect(result.calls[0]!.public.partitionInputs.comIndices.size).toBe(1);
+      expect(result.calls[0]!.public.partitionInputs.comIndices.get(COMMITMENT)).toBe(COMMITMENT_INDEX);
     })
   );
 
