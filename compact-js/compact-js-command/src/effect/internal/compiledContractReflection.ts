@@ -337,12 +337,16 @@ const makeArgumentParser =
 
         return {
           parseInitializationArgs: (args) => transformParams(args, (initialStateMethodSignatureNode as TS.MethodDeclaration).parameters.slice(1).map((_) => _.type!)) as Either.Either<Contract.Contract.InitializeParameters<C>, ContractRuntimeError.ContractRuntimeError>,
-          parseCircuitArgs: (circuitId, args) => {
+          // Generic in `K` so the assertion below names the key the signature declares. It used to
+          // assert `CircuitParameters<C, ProvableCircuitId>` — the brand over *any* key — which only
+          // agreed with the declared return while that helper collapsed to `unknown[]`
+          // (midnight-sdk#402).
+          parseCircuitArgs: <K extends Contract.ProvableCircuitId<C>>(circuitId: K, args: string[]) => {
             const circuitNode = circuitMethodSignatureNodes.find((_) => (_.name as TS.Identifier)!.escapedText === circuitId);
             if (!circuitNode) {
               return Either.left(ContractRuntimeError.make(`Circuit '${circuitId}' not found on the Compact generated TypeScript declaration.`))
             }
-            return transformParams(args, circuitNode.parameters.slice(1).map((_) => _.type!)) as Either.Either<Contract.Contract.CircuitParameters<C, Contract.ProvableCircuitId>, ContractRuntimeError.ContractRuntimeError>;
+            return transformParams(args, circuitNode.parameters.slice(1).map((_) => _.type!)) as Either.Either<Contract.Contract.CircuitParameters<C, K>, ContractRuntimeError.ContractRuntimeError>;
           }
         } satisfies CompiledContractReflection.CompiledContractReflection.ArgumentParser<C, PS>;
       });
