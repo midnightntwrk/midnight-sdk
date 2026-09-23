@@ -16,9 +16,13 @@
 import { CompactRuntime, type ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import type {
   AlignedValue as RuntimeAlignedValue,
+  CallContext as RuntimeCallContext,
   CallProofData as RuntimeCallProofData,
   CircuitContext as RuntimeCircuitContext,
+  CoinCommitment as RuntimeCoinCommitment,
   ContractStateProvider as RuntimeContractStateProvider,
+  Effects as RuntimeEffects,
+  EncodedStateValue as RuntimeEncodedStateValue,
   EncodedZswapLocalState as RuntimeEncodedZswapLocalState,
   LogEvent as RuntimeLogEvent,
   Op as RuntimeOp,
@@ -65,6 +69,24 @@ describe('CompactRuntime facade type surface', () => {
     expect<CompactRuntime.WitnessContext<RuntimeStateValue, { readonly count: number }>>().type.toBe<
       RuntimeWitnessContext<RuntimeStateValue, { readonly count: number }>
     >();
+  });
+
+  it('re-exports the types of the partition inputs a call result hands back', () => {
+    // midnight-sdk#400 exposes `block`, `effects` and `comIndices` on `ContractCallPublic`; these
+    // are the names a consumer needs to declare what it received, and without them it would have to
+    // import the era package around the seam.
+    //
+    // `CallContext` is the one with a real hazard: compact-runtime's `index.d.ts` exports two of
+    // that name — `circuit-context.ts`'s per-call `CallContext<PS>` via `export *`, and
+    // onchain-runtime's block-level one via an explicit named re-export that takes precedence. This
+    // assertion is what pins which of the two the facade resolves to, so a future reordering of
+    // those export statements fails here rather than silently retyping the public result.
+    expect<CompactRuntime.CallContext>().type.toBe<RuntimeCallContext>();
+    expect<CompactRuntime.Effects>().type.toBe<RuntimeEffects>();
+    expect<CompactRuntime.CoinCommitment>().type.toBe<RuntimeCoinCommitment>();
+    // Not a partition-input type: the encoded form a `StateValue` round-trips through, and the
+    // payload shape a contract event's data arrives in. Re-exported for consumers decoding those.
+    expect<CompactRuntime.EncodedStateValue>().type.toBe<RuntimeEncodedStateValue>();
   });
 
   it('exposes the bound runtime line as a literal, not a widened union', () => {

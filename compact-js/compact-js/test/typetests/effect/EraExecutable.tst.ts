@@ -107,6 +107,67 @@ describe('the era-pinned executables', () => {
     expect<ReturnType<typeof V9Entry.ContractLog.decode<V0_19.LogEvent>>['raw']>().type.toBe<V0_19.LogEvent>();
   });
 
+  it('derives each call\'s partition inputs from its own era\'s query context', () => {
+    // midnight-sdk#400. The failure mode here is silent: `state`, `block`, `effects` and
+    // `comIndices` are derived by conditional types off the trace entry's query context, and a
+    // derivation that misses resolves to `never` — which is assignable to everything, so the member
+    // would compile clean at every call site and simply be unusable. Nothing else would catch that.
+    expect<
+      V8Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['state']
+    >().type.not.toBe<never>();
+    expect<V8Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['block']>().type.not.toBe<never>();
+    expect<V8Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['effects']>().type.not.toBe<never>();
+    expect<V8Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['comIndices']>().type.not.toBe<never>();
+    expect<
+      V9Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['state']
+    >().type.not.toBe<never>();
+    expect<V9Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['block']>().type.not.toBe<never>();
+    expect<V9Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['effects']>().type.not.toBe<never>();
+    expect<V9Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['comIndices']>().type.not.toBe<never>();
+
+    // The pre- and post-execution states are the same type, so nothing above distinguishes them —
+    // but they must *be* that type rather than having quietly widened. Tied to the era's own
+    // `contractState`, which is already pinned to the runtime declaration below.
+    expect<V8Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['state']>().type.toBe<
+      V8Entry.ContractExecutable.ContractExecutable.ContractCallPublic['contractState']
+    >();
+    expect<V9Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['state']>().type.toBe<
+      V9Entry.ContractExecutable.ContractExecutable.ContractCallPublic['contractState']
+    >();
+  });
+
+  it('lets a consumer name the partition inputs it was handed', () => {
+    // The other half of #400 (its addendum): exposing values a consumer cannot *name* leaves them
+    // importing the era package around the seam, which is what the facade exists to prevent. These
+    // tie each exposed member to the facade name for it, so adding the member without the type —
+    // or letting the two drift onto different declarations — fails here.
+    expect<V8Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['block']>().type.toBe<
+      V8Entry.CompactRuntime.CallContext
+    >();
+    expect<V8Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['effects']>().type.toBe<
+      V8Entry.CompactRuntime.Effects
+    >();
+    expect<V9Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['block']>().type.toBe<
+      V9Entry.CompactRuntime.CallContext
+    >();
+    expect<V9Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['effects']>().type.toBe<
+      V9Entry.CompactRuntime.Effects
+    >();
+    // `comIndices` is keyed by the era's own `CoinCommitment`, so naming the map needs that too.
+    expect<V9Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']['comIndices']>().type.toBe<
+      Map<V9Entry.CompactRuntime.CoinCommitment, bigint>
+    >();
+
+    // And the group itself is nameable, so a consumer can declare the object it passes on to its
+    // own re-partitioning helper rather than inlining the shape or reaching for the era package.
+    expect<V8Entry.ContractExecutable.ContractExecutable.CallPartitionInputs>().type.toBe<
+      V8Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']
+    >();
+    expect<V9Entry.ContractExecutable.ContractExecutable.CallPartitionInputs>().type.toBe<
+      V9Entry.ContractExecutable.ContractExecutable.ContractCallPublic['partitionInputs']
+    >();
+  });
+
   it('exposes the maintenance surface on both eras', () => {
     // The other half of #388's requirement: what an older era *can* do is present, with the same
     // shape. `MaintenanceUpdateOf` resolves to the entry itself when the operation is there.

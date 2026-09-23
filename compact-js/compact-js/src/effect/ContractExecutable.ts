@@ -62,6 +62,7 @@ export declare namespace ContractExecutable {
   export type DeployResult<PS> = Internal.DeployResult<BoundLedger, BoundRuntime, PS>;
 
   export type PartitionedTranscript = Internal.PartitionedTranscript<BoundLedger, BoundRuntime>;
+  export type CallPartitionInputs = Internal.CallPartitionInputs<BoundLedger, BoundRuntime>;
   export type ContractCallPublic = Internal.ContractCallPublic<BoundLedger, BoundRuntime>;
   export type ContractCallPrivate = Internal.ContractCallPrivate<BoundLedger, BoundRuntime>;
 
