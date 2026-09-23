@@ -129,6 +129,16 @@ describeWithFixture('ledger 8 execution adapter', () => {
 
     expect(entry.initialQueryContext.state.toString(true)).toBe(before);
     expect(entry.finalQueryContext.state.toString(true)).not.toBe(before);
+
+    // The *mechanism* those two rely on, asserted directly. `createExecutionContext` captures a
+    // reference to `currentQueryContext` rather than a snapshot of it (`v0_16.ts`), so the capture
+    // stays pre-execution only because the runtime **replaces** that property during execution
+    // instead of mutating the object in place. That is an unasserted dependency on runtime
+    // internals, and `ContractCallPublic.partitionInputs` now publishes what the capture holds —
+    // so a line that switched to in-place mutation would silently hand every consumer the
+    // post-execution context under a pre-execution name. Identity is what catches that on a
+    // circuit whose state happens not to change, where the two reads above cannot.
+    expect(entry.initialQueryContext).not.toBe(entry.finalQueryContext);
   });
 
   it('reports no contract events, because the era cannot emit them', async () => {

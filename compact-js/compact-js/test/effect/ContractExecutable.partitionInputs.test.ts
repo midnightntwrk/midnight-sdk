@@ -268,6 +268,42 @@ describe('ContractCallPublic partition inputs', () => {
       const failure = Exit.isFailure(exit) ? Option.getOrUndefined(Cause.failureOption(exit.cause)) : undefined;
       expect(ContractRuntimeError.isRuntimeError(failure)).toBe(true);
       expect(String((failure as ContractRuntimeError.ContractRuntimeError).cause)).toContain('partition inputs');
+      // Names *which* context was unreadable. The two are read under separate wrappers precisely
+      // so this is possible — see the sibling test below.
+      expect(String((failure as ContractRuntimeError.ContractRuntimeError).cause)).toContain('pre-execution');
+    })
+  );
+
+  it.effect('names the post-execution context when that is the one that could not be read', () =>
+    Effect.gen(function* () {
+      const address = sampleContractAddress();
+      const contexts = queryContexts(address);
+      // The mirror of the test above, on the other context. Both traps raise the same underlying
+      // message — `null pointer passed to rust` names neither object — so the wrapper's own text is
+      // the only thing that tells a caller whether the context the call *ran against* or the one it
+      // *produced* was freed. Those are different bugs: the first points at the state a consumer
+      // supplied, the second at the execution's own result.
+      //
+      // Counted for the same reason as `block` above: `comIndices` is read once by
+      // `partitionAllTranscripts` (inside its own wrapper) before the assembly read under test.
+      let reads = 0;
+      const comIndices = contexts.finalQueryContext.comIndices;
+      Object.defineProperty(contexts.finalQueryContext, 'comIndices', {
+        get: () => {
+          if (++reads >= 2) {
+            throw new Error('null pointer passed to rust');
+          }
+          return comIndices;
+        }
+      });
+
+      const exit = yield* probe(standInContract(address, contexts), address).pipe(Effect.exit);
+
+      expect(Exit.isFailure(exit) && Cause.isDie(exit.cause)).toBe(false);
+      const failure = Exit.isFailure(exit) ? Option.getOrUndefined(Cause.failureOption(exit.cause)) : undefined;
+      expect(ContractRuntimeError.isRuntimeError(failure)).toBe(true);
+      expect(String((failure as ContractRuntimeError.ContractRuntimeError).cause)).toContain('post-execution');
+      expect(String((failure as ContractRuntimeError.ContractRuntimeError).cause)).not.toContain('pre-execution');
     })
   );
 });

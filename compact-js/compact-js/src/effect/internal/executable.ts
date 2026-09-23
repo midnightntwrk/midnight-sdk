@@ -52,6 +52,7 @@ import { type ZKConfigurationReadError } from '../ZKConfigurationReadError.js';
 import { tryBoundary } from './boundary.js';
 import * as CompactContextInternal from './compactContext.js';
 import { type Era, type RuntimeLine } from './era.js';
+import { type PartitionInputs } from './runtime/execution.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -765,70 +766,59 @@ export const makeExecutable = <
                         `Missing partitioned transcript for call ${i} ('${entry.circuitId}')`
                       );
                     }
-                    // Two chained wasm-bindgen getters: `ChargedState.state` compiles to
-                    // `wasm.chargedstate_state(this.__wbg_ptr)`, so it traps on a freed or foreign
-                    // pointer rather than returning. This generator body is inside
-                    // `Effect.forEach`, where a throw is a defect — the same reason its sibling on
-                    // this object (`comIndices`) is held inside a wrapper in
-                    // `partitionAllTranscripts`. The other fields read off `entry` below are
-                    // plain-JS trace members and need no wrapper.
-                    // Annotated `unknown` and cast at the use site rather than inferred:
-                    // `Types['StateValue']` is itself a deferred conditional over
-                    // `finalQueryContext`, which `tryBoundary`'s own conditional parameter type
-                    // matches on, inferring `A` as the query context instead of the state value.
-                    const finalContractState = yield* tryBoundary(
-                      `Failed to read the updated contract state of the call to '${entry.circuitId}' ` +
-                        `on '${entry.contractAddress}'`,
-                      (): unknown => (entry.finalQueryContext as { state: { state: unknown } }).state.state
+                    // Every read below crosses the WASM boundary: these are wasm-bindgen getters on
+                    // live `QueryContext`s — `ChargedState.state` compiles to
+                    // `wasm.chargedstate_state(this.__wbg_ptr)` — so they trap on a freed or foreign
+                    // pointer rather than returning, and this generator body is inside
+                    // `Effect.forEach`, where a throw is a defect. (The remaining fields read off
+                    // `entry` further down are plain-JS trace members and need no wrapper.)
+                    //
+                    // **One wrapper per context, not one for all the reads.** The two query contexts
+                    // are separate objects with separate lifetimes, and the trap message is the same
+                    // either way — `null pointer passed to rust` names neither. A single wrapper
+                    // spanning both would leave a caller unable to tell a freed pre-execution
+                    // context from a freed post-execution one, which are different bugs with
+                    // different causes. Within one context the reads share a lifetime, so grouping
+                    // them there hides no distinction.
+                    //
+                    // Each context is cast to `PartitionInputs` — the shape `conformance.ts` already
+                    // asserts every line's `QueryContext` satisfies — rather than to an inline
+                    // literal, so the members are stated once. The *return* types stay literal
+                    // because they flatten `state.state`, and because `Types[…]` members are
+                    // deferred conditionals over the query context: annotating with one would have
+                    // `tryBoundary`'s own conditional parameter type match on it and infer `A` as
+                    // the context instead of the value.
+                    const preExecution = yield* tryBoundary(
+                      `Failed to read the pre-execution partition inputs of the call to ` +
+                        `'${entry.circuitId}' on '${entry.contractAddress}'`,
+                      (): { state: unknown; block: unknown; effects: unknown } => {
+                        const initial = entry.initialQueryContext as PartitionInputs;
+                        return { state: initial.state.state, block: initial.block, effects: initial.effects };
+                      }
                     );
-                    // The inputs this call's transcript was partitioned from, republished so a
-                    // consumer can redo the partition in another era (see `ContractCallPublic`).
-                    // Wrapped for the same reason as the state read above: these are wasm-bindgen
-                    // getters on live `QueryContext`s, so they trap on a freed or foreign pointer
-                    // rather than returning — and a throw in this `Effect.forEach` body would be a
-                    // defect. One wrapper rather than three, because from a caller's side this is a
-                    // single operation and three messages would name no distinction they can act on.
-                    // Typed `unknown` and cast at the use site for the reason given above: the
-                    // `Types[…]` members are deferred conditionals, which `tryBoundary`'s own
-                    // conditional parameter type matches on and infers against.
-                    const partitionInputs = yield* tryBoundary(
-                      `Failed to read the partition inputs of the call to '${entry.circuitId}' ` +
-                        `on '${entry.contractAddress}'`,
-                      (): { state: unknown; block: unknown; effects: unknown; comIndices: unknown } => {
-                        const initial = entry.initialQueryContext as {
-                          state: { state: unknown };
-                          block: unknown;
-                          effects: unknown;
-                        };
-                        const final = entry.finalQueryContext as { comIndices: unknown };
-                        return {
-                          // Chained getters like the `finalContractState` read above, and for the
-                          // same reason — `ChargedState.state` traps rather than returning on a
-                          // freed pointer — but this one is the state the partitioner replays
-                          // against, so it belongs with the other inputs rather than with the
-                          // result state.
-                          state: initial.state.state,
-                          block: initial.block,
-                          effects: initial.effects,
-                          comIndices: final.comIndices
-                        };
+                    const postExecution = yield* tryBoundary(
+                      `Failed to read the post-execution state and partition inputs of the call to ` +
+                        `'${entry.circuitId}' on '${entry.contractAddress}'`,
+                      (): { state: unknown; comIndices: unknown } => {
+                        const final = entry.finalQueryContext as PartitionInputs;
+                        return { state: final.state.state, comIndices: final.comIndices };
                       }
                     );
                     return {
                       contractAddress: ContractAddress.ContractAddress(entry.contractAddress),
                       circuitId: entry.circuitId,
                       public: {
-                        contractState: finalContractState as Types['StateValue'],
+                        contractState: postExecution.state as Types['StateValue'],
                         // Copied because the era-neutral trace exposes a readonly view while the
                         // public `ContractCall` field is mutable; narrowing that field would be a
                         // breaking type change for consumers.
                         publicTranscript: [...entry.publicTranscript],
                         partitionedTranscript,
                         partitionInputs: {
-                          state: partitionInputs.state as Types['InitialStateValue'],
-                          block: partitionInputs.block as Types['CallContext'],
-                          effects: partitionInputs.effects as Types['Effects'],
-                          comIndices: partitionInputs.comIndices as Types['ComIndices']
+                          state: preExecution.state as Types['InitialStateValue'],
+                          block: preExecution.block as Types['CallContext'],
+                          effects: preExecution.effects as Types['Effects'],
+                          comIndices: postExecution.comIndices as Types['ComIndices']
                         }
                       },
                       private: {
