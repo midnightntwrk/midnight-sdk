@@ -397,6 +397,16 @@ export interface ContractExecutable<
     ...args: Contract.Contract.CircuitParameters<C, K>
   ): Effect.Effect<CallResult<L, R, C, PS, K>, E, Rq>;
 
+  /**
+   * Brands one of this contract's circuit ids, narrowed to the circuit it names.
+   *
+   * @remarks
+   * The narrowing route that infers: `C` comes from the executable and `K` from the literal, so
+   * neither is written. {@link circuit} then checks the arguments against that one circuit rather
+   * than against the union over every circuit, which is all a widely-branded id can support.
+   */
+  circuitId<K extends Contract.Contract.ProvableCircuitId<C>>(id: K): Contract.ProvableCircuitId<C, K>;
+
   getProvableCircuitIds(): Contract.ProvableCircuitId<C>[];
 
   replaceContractMaintenanceAuthority(
@@ -404,13 +414,13 @@ export interface ContractExecutable<
     contractContext: ContractContext<L, R>
   ): Effect.Effect<MaintenanceResult<L, R>, E, Rq>;
 
-  removeContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
-    provableCircuitId: K,
+  removeContractOperation(
+    provableCircuitId: Contract.ProvableCircuitId<C>,
     contractContext: ContractContext<L, R>
   ): Effect.Effect<MaintenanceResult<L, R>, E, Rq>;
 
-  addOrReplaceContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
-    provableCircuitId: K,
+  addOrReplaceContractOperation(
+    provableCircuitId: Contract.ProvableCircuitId<C>,
     verifierKey: Contract.VerifierKey,
     contractContext: ContractContext<L, R>
   ): Effect.Effect<MaintenanceResult<L, R>, E, Rq>;
@@ -861,6 +871,10 @@ export const makeExecutable = <
       );
     }
 
+    circuitId<K extends Contract.Contract.ProvableCircuitId<C>>(id: K): Contract.ProvableCircuitId<C, K> {
+      return Contract.ProvableCircuitId<C, K>(id);
+    }
+
     getProvableCircuitIds(): Contract.ProvableCircuitId<C>[] {
       return Contract.getProvableCircuitIds(Effect.runSync(this.createContract()));
     }
@@ -898,9 +912,9 @@ export const makeExecutable = <
       );
     }
 
-    removeContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
+    removeContractOperation(
       this: ContractExecutableImpl<C, PS, E, Rq>,
-      provableCircuitId: K,
+      provableCircuitId: Contract.ProvableCircuitId<C>,
       contractContext: ContractContext<L, R>
     ): Effect.Effect<MaintenanceResult<L, R>, E, Rq> {
       return Effect.all({
@@ -926,8 +940,8 @@ export const makeExecutable = <
       );
     }
 
-    addOrReplaceContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
-      provableCircuitId: K,
+    addOrReplaceContractOperation(
+      provableCircuitId: Contract.ProvableCircuitId<C>,
       verifierKey: Contract.VerifierKey,
       contractContext: ContractContext<L, R>
     ): Effect.Effect<MaintenanceResult<L, R>, E, Rq> {

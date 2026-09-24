@@ -25,8 +25,8 @@ import { Contract as Contract_ } from '../../contract/managed/counter/contract';
 type MockCounterContract = Contract_<any>;
 const MockCounterContract = Contract_;
 
-// Typed rather than `ctx`: the circuit context is erased at every call below, so a change to
-// its shape would otherwise pass here silently.
+// Annotated rather than `{} as any`, so a change to the type this parameter names is caught here
+// instead of being silenced.
 const ctx = {} as ContractExecutable.ContractExecutable.CircuitContext<any>;
 
 class StringDep extends Context.Tag('StringDep')<StringDep, string>() {}
@@ -140,6 +140,27 @@ describe('ContractExecutable', () => {
 
         expect(contractExecutable.circuit).type.toBeCallableWith(increment, ctx);
         expect(contractExecutable.circuit).type.not.toBeCallableWith(increment, ctx, 1n);
+      });
+    });
+
+    describe('circuitId', () => {
+      it('should narrow to the named circuit with no type arguments written', () => {
+        const decrement = contractExecutable.circuitId('decrement');
+
+        expect<typeof decrement>().type.toBe<Contract.ProvableCircuitId<MockCounterContract, 'decrement'>>();
+        expect(contractExecutable.circuit).type.toBeCallableWith(decrement, ctx, 1n);
+        expect(contractExecutable.circuit).type.not.toBeCallableWith(decrement, ctx);
+      });
+
+      it('should reject a circuit the contract does not declare', () => {
+        expect(contractExecutable.circuitId).type.not.toBeCallableWith('decremnt');
+      });
+
+      it('should hand back an id the maintenance methods accept', () => {
+        expect(contractExecutable.removeContractOperation).type.toBeCallableWith(
+          contractExecutable.circuitId('increment'),
+          {} as ContractExecutable.ContractExecutable.ContractContext
+        );
       });
     });
   });

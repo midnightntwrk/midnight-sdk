@@ -18,8 +18,6 @@ import type * as Era9Runtime from '@midnight-ntwrk/compact-runtime';
 import type * as Era8Runtime from 'compact-runtime-ledger8';
 import { describe, expect, it } from 'tstyche';
 
-import type { Contract as Unshielded_ } from '../../contract/managed/unshielded/contract';
-
 /**
  * The **era-free contract spine** (midnight-sdk#387/#388).
  *
@@ -30,7 +28,8 @@ import type { Contract as Unshielded_ } from '../../contract/managed/unshielded/
  * circuit a flat context (`currentPrivateState`, `currentQueryContext`, `currentZswapLocalState`)
  * and returns `proofData` alongside the result; 0.19 hands it a call tree (`callContext`,
  * `queryContexts`, `callProofDataTrace`, `events`) and keeps the proof data on the context. The two
- * share no field, so neither is assignable to the other in either direction.
+ * share nothing beyond `costModel` and `gasLimit`, so neither is assignable to the other in either
+ * direction.
  *
  * While the spine named the *bound* era's versions of those types, a contract compiled for the
  * other era did not satisfy `Contract<PS>` — which is to say `/v8/effect` handed back a
@@ -92,10 +91,25 @@ type Era9NullaryContract = {
 };
 
 /**
- * Several circuits with more than one return type among them — three return `Uint8Array`, four
- * return `[]` — which the single-circuit fixtures above cannot distinguish from "the only one".
+ * Two circuits differing in *both* argument list and return type, so an assertion that names one of
+ * them distinguishes "reads the circuit it names" from "reads the only circuit" — which the
+ * single-circuit fixtures above cannot.
  */
-type Era9MultiCircuitContract = Unshielded_<PrivateState>;
+type Era9MultiCircuitContract = {
+  witnesses: Era9Contract['witnesses'];
+  circuits: Era9MultiCircuitContract['provableCircuits'];
+  provableCircuits: {
+    mint(
+      context: Era9Runtime.CircuitContext<PrivateState>,
+      recipient: Uint8Array,
+      amount: bigint
+    ): Promise<Era9Runtime.CircuitResults<PrivateState, Uint8Array>>;
+    receive(
+      context: Era9Runtime.CircuitContext<PrivateState>
+    ): Promise<Era9Runtime.CircuitResults<PrivateState, []>>;
+  };
+  initialState: Era9Contract['initialState'];
+};
 
 /**
  * The same contract as `compactc` generates it for the ledger 8 / runtime 0.16 pair.
@@ -104,9 +118,8 @@ type Era9MultiCircuitContract = Unshielded_<PrivateState>;
  * **Synchronous**, and that is not a simplification — it is what compactc 0.31.1 emits. Compare
  * `test/contract/managed-v8/counter/contract/index.d.ts` against its `managed/` twin: the whole
  * difference between the two generated declarations is that 0.19's circuits and `initialState`
- * return `Promise<…>` and 0.16's return the value. An earlier version of this file wrote the era 8
- * shape with `Promise` wrappers, which made the suite agree with the spine about a contract nobody
- * compiles, and missed the one difference that kept a real ledger 8 artifact from satisfying it.
+ * return `Promise<…>` and 0.16's return the value. Wrap these in `Promise` and the suite agrees
+ * with the spine about a contract nobody compiles.
  */
 type Era8Contract = {
   witnesses: {
@@ -136,10 +149,14 @@ describe('the contract spine', () => {
   });
 
   it('accepts a contract compiled for the ledger 8 era', () => {
-    // Red before the spine was era-free: 0.16's flat `CircuitContext` is not assignable to 0.19's
-    // call-tree one in either direction, `CircuitResults.context` carries the same split, and the
-    // line is synchronous where 0.19 is not.
+    // 0.16's flat `CircuitContext` is not assignable to 0.19's call-tree one in either direction,
+    // `CircuitResults.context` carries the same split, and the line is synchronous where 0.19 is
+    // not — so a spine naming either era's types rejects this.
     expect<Era8Contract>().type.toBeAssignableTo<Contract.Contract<PrivateState>>();
+  });
+
+  it('accepts the multi-circuit fixture the narrowing tests below read', () => {
+    expect<Era9MultiCircuitContract>().type.toBeAssignableTo<Contract.Contract<PrivateState>>();
   });
 
   it('rejects an object that is not a contract at all', () => {
@@ -187,23 +204,41 @@ describe('the contract spine — inference', () => {
     >().type.toBe<[]>();
   });
 
-  it('reads the result type of the circuit a narrowed brand names, not merely the only one', () => {
-    // Both were `unknown` pre-fix, and `CallResult.result` is typed by this (midnight-sdk#402).
+  it('reads the circuit a narrowed brand names, not merely the only one', () => {
+    // `CallResult.result` is typed by `CircuitReturnType` (midnight-sdk#402).
+    expect<
+      Contract.Contract.CircuitParameters<
+        Era9MultiCircuitContract,
+        Contract.ProvableCircuitId<Era9MultiCircuitContract, 'mint'>
+      >
+    >().type.toBe<[Uint8Array, bigint]>();
     expect<
       Contract.Contract.CircuitReturnType<
         Era9MultiCircuitContract,
-        Contract.ProvableCircuitId<Era9MultiCircuitContract, 'mintUnshieldedToSelfTest'>
+        Contract.ProvableCircuitId<Era9MultiCircuitContract, 'mint'>
       >
     >().type.toBe<Uint8Array>();
     expect<
+      Contract.Contract.CircuitParameters<
+        Era9MultiCircuitContract,
+        Contract.ProvableCircuitId<Era9MultiCircuitContract, 'receive'>
+      >
+    >().type.toBe<[]>();
+    expect<
       Contract.Contract.CircuitReturnType<
         Era9MultiCircuitContract,
-        Contract.ProvableCircuitId<Era9MultiCircuitContract, 'receiveUnshieldedTest'>
+        Contract.ProvableCircuitId<Era9MultiCircuitContract, 'receive'>
       >
     >().type.toBe<[]>();
   });
 
-  it('reads the union of every result type when the brand names no single circuit', () => {
+  it('reads the union over every circuit when the brand names no single one', () => {
+    expect<
+      Contract.Contract.CircuitParameters<
+        Era9MultiCircuitContract,
+        Contract.ProvableCircuitId<Era9MultiCircuitContract>
+      >
+    >().type.toBe<[Uint8Array, bigint] | []>();
     expect<
       Contract.Contract.CircuitReturnType<
         Era9MultiCircuitContract,
@@ -220,8 +255,11 @@ describe('the contract spine — inference', () => {
 
 describe('the circuit id brand', () => {
   it('rejects a circuit name the contract does not declare', () => {
-    // @ts-expect-error does not satisfy the constraint
-    expect<Contract.ProvableCircuitId<Era9Contract, 'incremnt'>>().type.toBeAssignableTo<string>();
+    // `toRaiseError` targets this type expression; a line-scoped `@ts-expect-error` would equally
+    // swallow a renamed fixture or a typo in `ProvableCircuitId` itself.
+    expect<Contract.ProvableCircuitId<Era9Contract, 'incremnt'>>().type.toRaiseError(
+      'does not satisfy the constraint'
+    );
   });
 
   it('accepts a circuit name the contract does declare', () => {

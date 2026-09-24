@@ -36,7 +36,8 @@
         "vitest.config.ts",
         "vitest.era8.config.ts",
         "tsconfig*.json",
-        "package.json"
+        "package.json",
+        "../scripts/run-all.mjs"
       ],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
     },
@@ -50,7 +51,8 @@
         "tstyche.json",
         "vitest.config.ts",
         "tsconfig*.json",
-        "package.json"
+        "package.json",
+        "../scripts/run-all.mjs"
       ],
       "outputs": ["reports/**", "coverage/**", "logs/**"]
     },

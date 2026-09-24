@@ -44,9 +44,9 @@ export interface WitnessContext<L, PS> {
  * @remarks
  * This is the one shape that genuinely differs between runtime lines: 0.16 passes a flat, single
  * contract frame (`currentPrivateState`, `currentQueryContext`, `currentZswapLocalState`) and 0.19
- * passes a call tree (`callContext`, `queryContexts`, `callProofDataTrace`, `events`). The two
- * share no member, so no structural type describes both, and naming either one pins the spine to
- * an era.
+ * passes a call tree (`callContext`, `queryContexts`, `callProofDataTrace`, `events`). Beyond
+ * `costModel` and `gasLimit` they have nothing in common, so neither is assignable to the other and
+ * naming either one pins the spine to an era.
  *
  * It is a *parameter* type, so `any` rather than `unknown`: parameters are contravariant, and a
  * circuit that accepts its own line's context must remain assignable to this signature. `unknown`
@@ -132,10 +132,11 @@ const ProvableCircuitId_ = Brand.nominal<ProvableCircuitId>();
  * Brands a circuit id, optionally narrowed to the single circuit it names.
  *
  * @remarks
- * `K` is second because a call site must supply *all* of its type arguments or none. With none —
- * what every call site in this repo does — `K` stays the union of every circuit `C` declares,
- * rejecting arguments no circuit takes but still accepting one circuit's for another. Naming both
- * narrows to the one literal; `C` alone is not an option, since nothing infers it.
+ * `K` is second and defaulted so a call site can name `C` alone. TypeScript has no *partial*
+ * type-argument inference, so naming `C` fixes `K` to its default — the union of every circuit `C`
+ * declares, which rejects arguments no circuit takes but still accepts one circuit's for another.
+ * Naming both narrows to the one literal. Naming neither — what the CLI does, from a `string`
+ * variable — leaves `C` at `Contract.Any` and brands the id over `string`.
  */
 export const ProvableCircuitId = <
   C extends Contract.Any,
@@ -173,6 +174,18 @@ export interface Contract<PS, W extends Witnesses<PS> = Witnesses<PS>> {
   initialState(context: any, ...args: any[]): Awaitable<ConstructorResult<PS>>;
 }
 
+/**
+ * A circuit id with the {@link ProvableCircuitId} brand taken back off, for use as an index.
+ *
+ * @remarks
+ * A brand is an *intersection*, so `provableCircuits['increment' & Brand<'ProvableCircuitId'>]` does
+ * not resolve to the declared method that `provableCircuits['increment']` does; indexing the key as
+ * given collapsed arguments to `unknown[]` and results to `unknown` (midnight-sdk#402). Every key
+ * the *runtime* API hands out is branded; plain literals also work, and always did — `Unbranded`
+ * passes them through untouched. Kept outside the namespace, whose members are implicitly exported.
+ */
+type CircuitKey<K> = Brand.Brand.Unbranded<K>;
+
 export declare namespace Contract {
   export type Any = Contract<any>;
 
@@ -187,17 +200,6 @@ export declare namespace Contract {
     Parameters<C['initialState']> extends [any, ...infer A] ? A : never;
 
   export type ProvableCircuitId<C extends Contract<any>> = keyof C['provableCircuits'] & string;
-
-  /**
-   * A circuit id with the {@link ProvableCircuitId} brand taken back off, for use as an index.
-   *
-   * @remarks
-   * A brand is an *intersection*, so `provableCircuits['increment' & Brand<'ProvableCircuitId'>]`
-   * does not resolve to the declared method that `provableCircuits['increment']` does; indexing the
-   * key as given collapsed arguments to `unknown[]` and results to `unknown` (midnight-sdk#402).
-   * Every key the *runtime* API hands out is branded; plain literals also work, and always did.
-   */
-  type CircuitKey<K> = Brand.Brand.Unbranded<K & Brand.Brand<'ProvableCircuitId'>>;
 
   export type CircuitParameters<C extends Contract<any>, K extends ProvableCircuitId<C>> =
     Parameters<C['provableCircuits'][CircuitKey<K>]> extends [any, ...infer A] ? A : never;
