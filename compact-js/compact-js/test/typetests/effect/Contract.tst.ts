@@ -18,6 +18,8 @@ import type * as Era9Runtime from '@midnight-ntwrk/compact-runtime';
 import type * as Era8Runtime from 'compact-runtime-ledger8';
 import { describe, expect, it } from 'tstyche';
 
+import type { Contract as Unshielded_ } from '../../contract/managed/unshielded/contract';
+
 /**
  * The **era-free contract spine** (midnight-sdk#387/#388).
  *
@@ -88,6 +90,12 @@ type Era9NullaryContract = {
   };
   initialState: Era9Contract['initialState'];
 };
+
+/**
+ * Several circuits with more than one return type among them — three return `Uint8Array`, four
+ * return `[]` — which the single-circuit fixtures above cannot distinguish from "the only one".
+ */
+type Era9MultiCircuitContract = Unshielded_<PrivateState>;
 
 /**
  * The same contract as `compactc` generates it for the ledger 8 / runtime 0.16 pair.
@@ -177,8 +185,44 @@ describe('the contract spine — inference', () => {
     >().type.toBe<[]>();
   });
 
+  it('reads the result type of the circuit a narrowed brand names, not merely the only one', () => {
+    // Both were `unknown` pre-fix, and `CallResult.result` is typed by this (midnight-sdk#402).
+    expect<
+      Contract.Contract.CircuitReturnType<
+        Era9MultiCircuitContract,
+        Contract.ProvableCircuitId<Era9MultiCircuitContract, 'mintUnshieldedToSelfTest'>
+      >
+    >().type.toBe<Uint8Array>();
+    expect<
+      Contract.Contract.CircuitReturnType<
+        Era9MultiCircuitContract,
+        Contract.ProvableCircuitId<Era9MultiCircuitContract, 'receiveUnshieldedTest'>
+      >
+    >().type.toBe<[]>();
+  });
+
+  it('reads the union of every result type when the brand names no single circuit', () => {
+    expect<
+      Contract.Contract.CircuitReturnType<
+        Era9MultiCircuitContract,
+        Contract.ProvableCircuitId<Era9MultiCircuitContract>
+      >
+    >().type.toBe<Uint8Array | []>();
+  });
+
   it('recovers the constructor arguments from either era', () => {
     expect<Contract.Contract.InitializeParameters<Era9Contract>>().type.toBe<[Uint8Array]>();
     expect<Contract.Contract.InitializeParameters<Era8Contract>>().type.toBe<[Uint8Array]>();
+  });
+});
+
+describe('the circuit id brand', () => {
+  it('rejects a circuit name the contract does not declare', () => {
+    // @ts-expect-error does not satisfy the constraint
+    expect<Contract.ProvableCircuitId<Era9Contract, 'incremnt'>>().type.toBeAssignableTo<string>();
+  });
+
+  it('accepts a circuit name the contract does declare', () => {
+    expect<Contract.ProvableCircuitId<Era9Contract, 'increment'>>().type.toBeAssignableTo<string>();
   });
 });

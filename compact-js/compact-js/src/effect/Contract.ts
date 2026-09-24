@@ -116,8 +116,16 @@ export const VerifierKey = Brand.nominal<VerifierKey>();
 export type ZKIR = Uint8Array & Brand.Brand<'ZKIR'>;
 export const ZKIR = Brand.nominal<ZKIR>();
 
-export type ProvableCircuitId<C extends Contract.Any = Contract.Any, K = Contract.ProvableCircuitId<C>> = K &
-  Brand.Brand<'ProvableCircuitId'>;
+/**
+ * A circuit id, branded, optionally narrowed to the one circuit it names. `K` is constrained
+ * because {@link Contract.CircuitParameters} and {@link Contract.CircuitReturnType} index by it —
+ * left open, a mistyped name is well-formed here and fails only downstream. The brand tag omits
+ * `C`: it marks circuit ids, not which contract they came from.
+ */
+export type ProvableCircuitId<
+  C extends Contract.Any = Contract.Any,
+  K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
+> = K & Brand.Brand<'ProvableCircuitId'>;
 const ProvableCircuitId_ = Brand.nominal<ProvableCircuitId>();
 
 /**
