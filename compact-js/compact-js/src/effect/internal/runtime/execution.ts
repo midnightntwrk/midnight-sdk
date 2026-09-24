@@ -15,7 +15,7 @@
 
 /**
  * The era-neutral shape of "execute one circuit", declared above both runtime bindings so each can
- * present the same view of a fundamentally different execution model (midnight-sdk#387 phase 3).
+ * present the same view of a fundamentally different execution model (midnight-sdk#387).
  *
  * @remarks
  * `ContractExecutable` used to speak compact-runtime 0.19's model directly: build a context with

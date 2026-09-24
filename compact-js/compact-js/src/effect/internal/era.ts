@@ -36,7 +36,7 @@ export type LedgerMajor = 8 | 9;
  * that a descriptor claiming a line its ledger major does not pair with is *unrepresentable*.
  * With two eras bound this is load-bearing rather than theoretical: `{ ledger: 8, runtime: '0.19' }`
  * does not compile. `CompactRuntime.test.ts` cannot stand in for it — that test compares the two
- * bound `current.ts` files and can never see a mismatch *inside* an unbound binding.
+ * bound `current.ts` files and can never see a mismatch *inside* a binding they do not name.
  *
  * @category era
  */
