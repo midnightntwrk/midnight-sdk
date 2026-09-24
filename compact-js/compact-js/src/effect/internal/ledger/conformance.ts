@@ -14,13 +14,12 @@
  */
 
 /**
- * Compile-time conformance for **every** ledger era binding, bound or not.
+ * Compile-time conformance for **every** ledger era binding, whether or not `current.ts` names it.
  *
  * @remarks
- * `current.ts` only asserts the binding it re-exports, so an unbound binding (a spike, or an era
- * being prepared) could rot until the day someone repoints `current` at it — exactly when the
- * breakage is most expensive. Listing each binding here means the build checks all of them on every
- * run, which is what lets a new era be developed against the contract before it is switched on.
+ * `current.ts` only asserts the binding it re-exports,. Listing each
+ * binding here means the build checks all of them on every run, which is what lets a new era be
+ * developed against the contract before anything points at it.
  *
  * Three things are checked per binding, because no one of them is sufficient:
  *
@@ -52,6 +51,7 @@ type Assert<_T extends true> = void;
 // union of message literals and fails the build quoting the relationship that broke.
 type AssertNoViolations<_V extends never> = void;
 
+// --- ledger 8 (bound by the `/v8` entry) --------------------------------------------------------
 type _V8Conforms = Assert<Extends<typeof V8, LedgerBinding>>;
 type _V8NoViolations = AssertNoViolations<LedgerBindingViolations<typeof V8>>;
 // Ledger 8 keys are BIP-340 only, so the era represents a signing key as a bare hex string. Pinned

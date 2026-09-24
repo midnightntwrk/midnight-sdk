@@ -14,7 +14,14 @@
  */
 
 /**
- * Findings so far, from the surface comparison against `@midnightntwrk/ledger-v8@8.1.2`:
+ * The ledger 8 era binding. This module (together with its peers under `internal/ledger`) is the
+ * only place in `src/` that may import from a `@midnightntwrk/ledger-v<N>` package; everything else
+ * goes through the `Ledger` facade, or through the era-pinned `internal/era/v8Ledger.ts` that
+ * `/v8/effect` exports. ESLint enforces this (`no-restricted-imports`); tests are exempt by design,
+ * since some must compare ledger module identity.
+ *
+ * @remarks
+ * How the v8 surface differs from v9, against `@midnightntwrk/ledger-v8@8.1.2`:
  *
  * - All 24 names the facade re-exports are present on v8; nothing was added between v8 and v9 that
  *   the facade depends on.
@@ -109,10 +116,11 @@ const CMA_SIGNATURE_KINDS: ReadonlySet<SignatureKind> = new Set(['schnorr']);
  * configured against a v8 build has no representation in this era's `SigningKey` at all, so it must
  * be rejected at the descriptor rather than coerced into a bare hex string.
  *
- * Not yet expressible: `Era` describes which *schemes* an era allows, but not the *shape* of its
- * `SigningKey`. `Ledger.fromPlatformSigningKey` returns `{ tag, value }` because v9 wants that;
- * against v8 it must return the bare `value`. Binding this era for real needs `Era` to gain a
- * signing-key-shape discriminant (or `fromPlatformSigningKey` to move into the binding).
+ * The key's *shape* is deliberately not expressed here: `Era` describes which *schemes* an era
+ * allows, not what its `SigningKey` looks like. That half lives in the binding instead —
+ * `fromPlatformSigningKey` splits, keeping the era-neutral allowlist check in `conversions.ts` and
+ * delegating construction to this module's {@link makeSigningKey}, which returns the bare `value`
+ * where v9 returns `{ tag, value }`.
  */
 export const era = {
   ledger: 8,

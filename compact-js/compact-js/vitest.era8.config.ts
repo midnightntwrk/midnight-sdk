@@ -17,7 +17,7 @@
 import { defineConfig } from 'vitest/config';
 
 /**
- * The **ledger 8 era** test project (midnight-sdk#387 phase 3).
+ * The **ledger 8 era**
  *
  * @remarks
  * A separate project purely because of module resolution. A contract compiled by `compactc` opens

@@ -25,14 +25,14 @@ import { describe, expect, it } from 'vitest';
 import * as V0_16 from '../../src/effect/internal/runtime/v0_16.js';
 
 /**
- * End-to-end proof that the **ledger 8 era can execute a contract** (midnight-sdk#387 phase 3,
- * feasibility question recorded on #388).
+ * End-to-end proof that the **ledger 8 era can execute a contract** (midnight-sdk#387, feasibility
+ * question recorded on #388).
  *
  * @remarks
- * This is the test the phase-3 answer rests on. Everything else about ledger 8 — the era bindings,
- * the capability split, a future `/v8` entry — is only worth building if a contract compiled for
- * that era actually runs, and that could not be settled by reading `.d.ts` diffs. It needed the
- * real compiler and the real WASM.
+ * This is the test the rest of the era rests on. Everything else about ledger 8 — the era bindings,
+ * the capability split, the `/v8` entry — is only worth having if a contract compiled for that era
+ * actually runs, and that could not be settled by reading `.d.ts` diffs. It needed the real
+ * compiler and the real WASM.
  *
  * What it establishes:
  *

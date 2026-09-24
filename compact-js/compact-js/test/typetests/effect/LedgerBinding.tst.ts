@@ -47,8 +47,8 @@ describe('LedgerBinding — real bindings', () => {
   });
 
   it('reports no violations for the ledger 8 binding', () => {
-    // v8 is an unbound spike, so nothing else in the build would catch drift in it. This is the
-    // check that lets the binding be developed against the contract before it is switched on.
+    // Held to the same contract as the bound era, not a weaker one: `/v8/effect` ships this
+    // binding, so a drifted signature in it reaches consumers exactly as one in v9 would.
     expect<LedgerBindingViolations<typeof V8>>().type.toBe<never>();
   });
 });

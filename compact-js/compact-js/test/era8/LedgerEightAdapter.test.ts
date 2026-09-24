@@ -23,7 +23,7 @@ import * as V0_16 from '../../src/effect/internal/runtime/v0_16.js';
 
 /**
  * The ledger 8 **execution adapter**: the seam that lets one `ContractExecutable` drive both
- * runtime lines (midnight-sdk#387 phase 3).
+ * runtime lines.
  *
  * @remarks
  * `ContractExecutable` is written against compact-runtime 0.19's call-tree model — it builds a
