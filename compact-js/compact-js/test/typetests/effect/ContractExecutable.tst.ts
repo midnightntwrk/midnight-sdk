@@ -113,7 +113,6 @@ describe('ContractExecutable', () => {
 
       it('should accept arguments the contract declares', () => {
         expect(contractExecutable.circuit).type.toBeCallableWith(id, {} as any, 1n);
-        expect(contractExecutable.circuit).type.toBeCallableWith(id, {} as any);
       });
 
       it('should reject arguments no circuit declares', () => {
@@ -122,6 +121,8 @@ describe('ContractExecutable', () => {
       });
 
       it('should check against every circuit when the id is not narrowed to one', () => {
+        // `increment` and `reset` are nullary, so their empty tuple is in the union too and is
+        // accepted for a `decrement` id. The narrowed test below rejects it — that is the contrast.
         expect(contractExecutable.circuit).type.toBeCallableWith(id, {} as any);
       });
 

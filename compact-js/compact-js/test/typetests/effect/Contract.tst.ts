@@ -155,14 +155,14 @@ describe('the contract spine — inference', () => {
     expect<Contract.Contract.PrivateState<Era8Contract>>().type.toBe<PrivateState>();
   });
 
-  it("recovers a circuit's arguments from either era", () => {
+  it('recovers a circuit\'s arguments from either era', () => {
     // `CircuitParameters` drops the leading context and keeps the rest; it is what the CLI and
     // `ContractExecutable.circuit` type their arguments by, so it has to survive the era split.
     expect<Contract.Contract.CircuitParameters<Era9Contract, 'increment'>>().type.toBe<[bigint]>();
     expect<Contract.Contract.CircuitParameters<Era8Contract, 'increment'>>().type.toBe<[bigint]>();
   });
 
-  it("recovers a circuit's result type from either era", () => {
+  it('recovers a circuit\'s result type from either era', () => {
     expect<Contract.Contract.CircuitReturnType<Era9Contract, 'increment'>>().type.toBe<bigint>();
     expect<Contract.Contract.CircuitReturnType<Era8Contract, 'increment'>>().type.toBe<bigint>();
   });
