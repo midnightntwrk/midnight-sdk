@@ -132,17 +132,10 @@ const ProvableCircuitId_ = Brand.nominal<ProvableCircuitId>();
  * Brands a circuit id, optionally narrowed to the single circuit it names.
  *
  * @remarks
- * `K` is what decides how precisely {@link Contract.CircuitParameters} and
- * {@link Contract.CircuitReturnType} can read the call downstream, and it is second because
- * TypeScript infers *all* of a call's type arguments or none of them: naming `C` alone — the
- * spelling everything here uses — leaves `K` on its default, the union of every circuit `C`
- * declares, and the argument tuple resolves to a union over all of them. That is enough to reject
- * arguments no circuit takes, and not enough to reject one circuit's arguments passed to another.
- *
- * Naming both (`ProvableCircuitId<Counter, 'decrement'>('decrement')`) narrows the brand to the one
- * literal and the arguments with it. It is opt-in because there is no third spelling: `C` cannot be
- * inferred (no value carries it), and once `C` is written explicitly `K` can only come from being
- * written too.
+ * `K` is second because a call site must supply *all* of its type arguments or none. With none —
+ * what every call site in this repo does — `K` stays the union of every circuit `C` declares,
+ * rejecting arguments no circuit takes but still accepting one circuit's for another. Naming both
+ * narrows to the one literal; `C` alone is not an option, since nothing infers it.
  */
 export const ProvableCircuitId = <
   C extends Contract.Any,
@@ -199,18 +192,10 @@ export declare namespace Contract {
    * A circuit id with the {@link ProvableCircuitId} brand taken back off, for use as an index.
    *
    * @remarks
-   * Every key that reaches {@link CircuitParameters} or {@link CircuitReturnType} through the public
-   * API is branded — `ProvableCircuitId()` and `getProvableCircuitIds()` return nothing else, and
-   * `ContractExecutable.circuit` constrains its key parameter to them — and a brand is an
-   * *intersection*, so `provableCircuits['increment' & Brand<'ProvableCircuitId'>]` does not resolve
-   * to the declared method the way `provableCircuits['increment']` does. Both helpers used to index
-   * with the key as given and so collapsed on exactly the keys the documented API produces:
-   * arguments to `unknown[]` and results to `unknown`, on every era, since this spine is era-free
-   * and both `/v8/effect` and `/v9/effect` re-export it (midnight-sdk#402).
-   *
-   * Stripping restores the plain literal. Two other spellings do not, and are recorded here so they
-   * are not retried: template-literal inference (``K extends `${infer S}` ? S : never``) and
-   * `keyof C['provableCircuits'] & K` both leave the collapse in place.
+   * A brand is an *intersection*, so `provableCircuits['increment' & Brand<'ProvableCircuitId'>]`
+   * does not resolve to the declared method that `provableCircuits['increment']` does; indexing the
+   * key as given collapsed arguments to `unknown[]` and results to `unknown` (midnight-sdk#402).
+   * Every key the *runtime* API hands out is branded; plain literals also work, and always did.
    */
   type CircuitKey<K> = Brand.Brand.Unbranded<K & Brand.Brand<'ProvableCircuitId'>>;
 

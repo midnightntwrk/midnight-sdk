@@ -168,6 +168,8 @@ describe('the contract spine — inference', () => {
   });
 
   it('recovers both from a *branded* circuit id, which is the only kind the executable takes', () => {
+    // Goes red if `CircuitKey` is replaced by template-literal inference (evaluates to `never`) or
+    // by `keyof C['provableCircuits'] & K` (keeps the brand) — neither strips it.
     expect<Contract.Contract.CircuitParameters<Era9Contract, Contract.ProvableCircuitId<Era9Contract>>>().type.toBe<
       [bigint]
     >();
