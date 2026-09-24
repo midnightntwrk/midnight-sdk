@@ -168,6 +168,31 @@ describe('the era-pinned executables', () => {
     >();
   });
 
+  it('reports gas costs on the era whose runtime totals them, and on no other', () => {
+    // midnight-sdk#403's closing observation. Ledger 8 is gated the way events are — by absence
+    // rather than by a wrong number — because 0.16 *overwrites* its running cost on every query
+    // instead of accumulating, so the figure it would report is the last query's, not the call's.
+    expect<V8Entry.ContractExecutable.ContractExecutable.CallResult<any, any, any>['gasCosts']>().type.toBe<undefined>();
+    expect<V9Entry.ContractExecutable.ContractExecutable.CallResult<any, any, any>['gasCosts']>().type.toBe<
+      Record<string, V9Entry.CompactRuntime.RunningCost>
+    >();
+  });
+
+  it('takes the same query gas limit on both eras', () => {
+    // The limit goes the other way across the seam — in, not out — so it is declared era-free and
+    // both lines' `RunningCost` accepts it. Asserting the two entries name one type is what keeps
+    // it that way; an era-derived limit would make a consumer's cap era-specific for no reason.
+    expect<V8Entry.ContractExecutable.ContractExecutable.CircuitContext<unknown>['queryGasLimit']>().type.toBe<
+      V8Entry.ContractExecutable.ContractExecutable.GasCost | undefined
+    >();
+    expect<V9Entry.ContractExecutable.ContractExecutable.CircuitContext<unknown>['queryGasLimit']>().type.toBe<
+      V9Entry.ContractExecutable.ContractExecutable.GasCost | undefined
+    >();
+    expect<V8Entry.ContractExecutable.ContractExecutable.GasCost>().type.toBe<
+      V9Entry.ContractExecutable.ContractExecutable.GasCost
+    >();
+  });
+
   it('exposes the maintenance surface on both eras', () => {
     // The other half of #388's requirement: what an older era *can* do is present, with the same
     // shape. `MaintenanceUpdateOf` resolves to the entry itself when the operation is there.

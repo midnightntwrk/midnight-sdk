@@ -110,6 +110,7 @@ export interface RuntimeBinding {
       readonly publicTranscript: readonly unknown[];
     }[];
     readonly events: readonly unknown[];
+    readonly gasCosts: unknown;
   };
   /**
    * Extracts the hex value of one of this line's signing keys.
