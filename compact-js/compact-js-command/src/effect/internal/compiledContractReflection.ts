@@ -337,10 +337,11 @@ const makeArgumentParser =
 
         return {
           parseInitializationArgs: (args) => transformParams(args, (initialStateMethodSignatureNode as TS.MethodDeclaration).parameters.slice(1).map((_) => _.type!)) as Either.Either<Contract.Contract.InitializeParameters<C>, ContractRuntimeError.ContractRuntimeError>,
-          // Generic in `K` so the assertion below names the key the signature declares. It used to
-          // assert `CircuitParameters<C, ProvableCircuitId>` — the brand over *any* key — which only
-          // agreed with the declared return while that helper collapsed to `unknown[]`
-          // (midnight-sdk#402).
+          // Generic in `K` so the assertion below names the key the signature declares. Not
+          // cosmetic: with the parameter left implicit and the assertion widened back to
+          // `CircuitParameters<C, ProvableCircuitId>`, tsc 6.0.3 crashes in
+          // `getSignatureApplicabilityError` ("parameter should have errors when reporting errors")
+          // rather than reporting a diagnostic.
           parseCircuitArgs: <K extends Contract.ProvableCircuitId<C>>(circuitId: K, args: string[]) => {
             const circuitNode = circuitMethodSignatureNodes.find((_) => (_.name as TS.Identifier)!.escapedText === circuitId);
             if (!circuitNode) {
