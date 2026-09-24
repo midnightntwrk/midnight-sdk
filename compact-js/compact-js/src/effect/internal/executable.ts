@@ -52,6 +52,7 @@ import { type ZKConfigurationReadError } from '../ZKConfigurationReadError.js';
 import { tryBoundary } from './boundary.js';
 import * as CompactContextInternal from './compactContext.js';
 import { type Era, type RuntimeLine } from './era.js';
+import { type PartitionInputs } from './runtime/execution.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -160,13 +161,15 @@ export interface ExecutableTypes<L extends ExecutableLedger, R extends Executabl
   readonly AlignedValue: ExecutableTypes<L, R>['TraceEntry']['input'];
   readonly Op: ExecutableTypes<L, R>['TraceEntry']['publicTranscript'][number];
   readonly StateValue: QueryContextState<ExecutableTypes<L, R>['TraceEntry']['finalQueryContext']>;
+  readonly InitialStateValue: QueryContextState<ExecutableTypes<L, R>['TraceEntry']['initialQueryContext']>;
   readonly CommunicationCommitmentData: NonNullable<ExecutableTypes<L, R>['TraceEntry']['commCommData']>;
   readonly LogEvent: ReturnType<R['readExecution']>['events'][number];
   // The partition inputs, read off the context each one actually comes from — the *initial* context
-  // for the two the pre-transcript describes, the *final* one for the commitments discovered during
-  // the call. Both are the same type on every line compact-js binds, so naming the right source is
-  // documentation rather than precision; it is the split `partitionAllTranscripts` makes, and the
-  // reason `ContractCallPublic` cannot state it in its shape (see the note there).
+  // for the three the pre-transcript describes (`InitialStateValue` above is the third), the *final*
+  // one for the commitments discovered during the call. Both contexts are the same type on every
+  // line compact-js binds, so naming the right source is documentation rather than precision; it is
+  // the split `partitionAllTranscripts` makes, and the one {@link CallPartitionInputs} groups these
+  // together to state.
   readonly CallContext: QueryContextBlock<ExecutableTypes<L, R>['TraceEntry']['initialQueryContext']>;
   readonly Effects: QueryContextEffects<ExecutableTypes<L, R>['TraceEntry']['initialQueryContext']>;
   readonly ComIndices: QueryContextComIndices<ExecutableTypes<L, R>['TraceEntry']['finalQueryContext']>;
@@ -183,18 +186,23 @@ type StateProviderOf<R extends ExecutableRuntime> = Parameters<R['createExecutio
   ? NonNullable<P>
   : never;
 
-/** A query context's inner ledger state, as `ContractCallPublic.contractState` reports it. */
+/**
+ * A query context's inner ledger state — the **post**-execution context's as
+ * `ContractCallPublic.contractState` reports it, the **pre**-execution context's as
+ * `ContractCallPublic.partitionInputs.state` does. One conditional for both because the two contexts
+ * are the same type on every line; which context it is applied to is the whole distinction.
+ */
 type QueryContextState<Q> = Q extends { state: { state: infer S } } ? S : never;
 
 // The three partition inputs, each read off a query context. Separate conditionals rather than one
 // over `PartitionInputs` because that interface types its members `unknown` — it exists to make a
 // *missing* member fail `conformance.ts`, not to describe what the member is. Inferring each one
 // individually is what keeps the public type the era's own.
-/** A query context's block-level call context, as `ContractCallPublic.block` reports it. */
+/** A query context's block-level call context, as `ContractCallPublic.partitionInputs.block` reports it. */
 type QueryContextBlock<Q> = Q extends { block: infer B } ? B : never;
-/** A query context's contract-external effects, as `ContractCallPublic.effects` reports it. */
+/** A query context's contract-external effects, as `ContractCallPublic.partitionInputs.effects` reports it. */
 type QueryContextEffects<Q> = Q extends { effects: infer E } ? E : never;
-/** A query context's commitment indices, as `ContractCallPublic.comIndices` reports it. */
+/** A query context's commitment indices, as `ContractCallPublic.partitionInputs.comIndices` reports it. */
 type QueryContextComIndices<Q> = Q extends { comIndices: infer C } ? C : never;
 
 export type ContractContext<L extends ExecutableLedger, R extends ExecutableRuntime> = {
@@ -233,38 +241,76 @@ export type PartitionedTranscript<L extends ExecutableLedger, R extends Executab
 >['PartitionedTranscript'];
 
 /**
+ * Everything one call's transcript partition was built from, as the era's own types.
+ *
+ * @remarks
+ * `ContractCallPublic.partitionedTranscript` is partitioned by whichever era *executed*. Across a
+ * hard-fork window that is not always the era a call composes in — a keep-state call can execute on
+ * ledger 8 and compose on ledger 9, the artifact being pre-fork and the chain head post-fork — and
+ * there the executing era's partition is the wrong one. These are the inputs needed to redo it
+ * against the target era's `LedgerParameters`, which is why they are published alongside the
+ * partition rather than instead of it (midnight-sdk#400).
+ *
+ * Redoing it *here*, for another era, is deliberately not offered: that would put fork-window
+ * knowledge inside the era seam and break the rule that only plain data crosses it. {@link block},
+ * {@link effects} and {@link comIndices} are plain data on every line, so handing them over does
+ * not; {@link state} is a live WASM handle, and a consumer moving it across an era boundary encodes
+ * it first.
+ *
+ * Grouped rather than spread across `ContractCallPublic` because they are consumed as a set — one
+ * object rebuilds one pre-transcript — and because the set has a property no individual member
+ * shows: **three of the four come from before the call and one from after it**. `state`, `block`
+ * and `effects` are the **pre**-execution query context's (a pre-transcript describes the state a
+ * call ran against), while `comIndices` is the **post**-execution one's (the commitments the call
+ * discovered, which the partitioner matches callers to callees on). `partitionAllTranscripts` makes
+ * exactly this split; a consumer reassembling a pre-transcript must make it too.
+ */
+export type CallPartitionInputs<L extends ExecutableLedger, R extends ExecutableRuntime> = {
+  /**
+   * The ledger state this call ran *against* — not `ContractCallPublic.contractState`, which is the
+   * state it left behind.
+   *
+   * @remarks
+   * A partition input in its own right, because the partitioner **replays** the transcript against
+   * this state: it rejects a state the transcript's reads do not fit, and silently mis-charges one
+   * that merely differs in value. The distinction is invisible for a contract whose state does not
+   * change size — which is why publishing only the other three would have left a consumer able to
+   * build a `QueryContext` over the wrong state and be told nothing.
+   *
+   * A live WASM handle, unlike its three siblings; encode it to cross an era boundary.
+   */
+  readonly state: ExecutableTypes<L, R>['InitialStateValue'];
+  /** The block-level call context this call ran under, from the pre-execution query context. */
+  readonly block: ExecutableTypes<L, R>['CallContext'];
+  /** The contract-external effects this call declared, from the pre-execution query context. */
+  readonly effects: ExecutableTypes<L, R>['Effects'];
+  /**
+   * The commitment indices this call **discovered**, from the post-execution query context.
+   *
+   * @remarks
+   * Not {@link block}`.comIndices`, one dot away, which is a different map: the pre-execution
+   * commitments the call *started* with, keyed to `number` rather than `bigint`. Reading that one
+   * instead produces a partition the target era will not accept, and nothing reports it — the two
+   * are structurally close enough that no type error marks the point of the mistake.
+   */
+  readonly comIndices: ExecutableTypes<L, R>['ComIndices'];
+};
+
+/**
  * The public half of one contract call: its post-execution state, its transcript, that transcript's
  * partition, and the inputs the partition was built from.
  *
  * @remarks
- * `partitionedTranscript` is partitioned by whichever era *executed*. Across a hard-fork window
- * that is not always the era a call composes in — a keep-state call can execute on ledger 8 and
- * compose on ledger 9, the artifact being pre-fork and the chain head post-fork — and there the
- * executing era's partition is the wrong one. {@link block}, {@link effects} and {@link comIndices}
- * are the inputs needed to redo it against the target era's `LedgerParameters`, which is why they
- * are published alongside rather than instead (midnight-sdk#400).
- *
- * Redoing it *here*, for another era, is deliberately not offered: that would put fork-window
- * knowledge inside the era seam and break the rule that only plain data crosses it. These three are
- * plain data on every line — unlike {@link contractState}, which is a live WASM handle — so handing
- * them over does not.
- *
- * The two groups come from different points in the call, which a flat shape cannot show: `block`
- * and `effects` are the **pre**-execution query context's (a pre-transcript describes the state a
- * call ran against), while `comIndices` is the **post**-execution one's (the commitments the call
- * discovered, which the partitioner matches callers to callees on). `partitionAllTranscripts` makes
- * the same split; a consumer reassembling a pre-transcript must make it too.
+ * {@link contractState} is the state the call *left*. The state it *ran against* is
+ * {@link partitionInputs}`.state`, and the two are not interchangeable — see
+ * {@link CallPartitionInputs}.
  */
 export type ContractCallPublic<L extends ExecutableLedger, R extends ExecutableRuntime> = {
   readonly contractState: ExecutableTypes<L, R>['StateValue'];
   readonly publicTranscript: ExecutableTypes<L, R>['Op'][];
   readonly partitionedTranscript: PartitionedTranscript<L, R>;
-  /** The block-level call context this call ran under, from the pre-execution query context. */
-  readonly block: ExecutableTypes<L, R>['CallContext'];
-  /** The contract-external effects this call declared, from the pre-execution query context. */
-  readonly effects: ExecutableTypes<L, R>['Effects'];
-  /** The commitment indices this call discovered, from the post-execution query context. */
-  readonly comIndices: ExecutableTypes<L, R>['ComIndices'];
+  /** The inputs {@link partitionedTranscript} was built from, for redoing it in another era. */
+  readonly partitionInputs: CallPartitionInputs<L, R>;
 };
 export type ContractCallPrivate<L extends ExecutableLedger, R extends ExecutableRuntime> = {
   readonly input: ExecutableTypes<L, R>['AlignedValue'];
@@ -720,54 +766,60 @@ export const makeExecutable = <
                         `Missing partitioned transcript for call ${i} ('${entry.circuitId}')`
                       );
                     }
-                    // Two chained wasm-bindgen getters: `ChargedState.state` compiles to
-                    // `wasm.chargedstate_state(this.__wbg_ptr)`, so it traps on a freed or foreign
-                    // pointer rather than returning. This generator body is inside
-                    // `Effect.forEach`, where a throw is a defect — the same reason its sibling on
-                    // this object (`comIndices`) is held inside a wrapper in
-                    // `partitionAllTranscripts`. The other fields read off `entry` below are
-                    // plain-JS trace members and need no wrapper.
-                    // Annotated `unknown` and cast at the use site rather than inferred:
-                    // `Types['StateValue']` is itself a deferred conditional over
-                    // `finalQueryContext`, which `tryBoundary`'s own conditional parameter type
-                    // matches on, inferring `A` as the query context instead of the state value.
-                    const finalContractState = yield* tryBoundary(
-                      `Failed to read the updated contract state of the call to '${entry.circuitId}' ` +
-                        `on '${entry.contractAddress}'`,
-                      (): unknown => (entry.finalQueryContext as { state: { state: unknown } }).state.state
+                    // Every read below crosses the WASM boundary: these are wasm-bindgen getters on
+                    // live `QueryContext`s — `ChargedState.state` compiles to
+                    // `wasm.chargedstate_state(this.__wbg_ptr)` — so they trap on a freed or foreign
+                    // pointer rather than returning, and this generator body is inside
+                    // `Effect.forEach`, where a throw is a defect. (The remaining fields read off
+                    // `entry` further down are plain-JS trace members and need no wrapper.)
+                    //
+                    // **One wrapper per context, not one for all the reads.** The two query contexts
+                    // are separate objects with separate lifetimes, and the trap message is the same
+                    // either way — `null pointer passed to rust` names neither. A single wrapper
+                    // spanning both would leave a caller unable to tell a freed pre-execution
+                    // context from a freed post-execution one, which are different bugs with
+                    // different causes. Within one context the reads share a lifetime, so grouping
+                    // them there hides no distinction.
+                    //
+                    // Each context is cast to `PartitionInputs` — the shape `conformance.ts` already
+                    // asserts every line's `QueryContext` satisfies — rather than to an inline
+                    // literal, so the members are stated once. The *return* types stay literal
+                    // because they flatten `state.state`, and because `Types[…]` members are
+                    // deferred conditionals over the query context: annotating with one would have
+                    // `tryBoundary`'s own conditional parameter type match on it and infer `A` as
+                    // the context instead of the value.
+                    const preExecution = yield* tryBoundary(
+                      `Failed to read the pre-execution partition inputs of the call to ` +
+                        `'${entry.circuitId}' on '${entry.contractAddress}'`,
+                      (): { state: unknown; block: unknown; effects: unknown } => {
+                        const initial = entry.initialQueryContext as PartitionInputs;
+                        return { state: initial.state.state, block: initial.block, effects: initial.effects };
+                      }
                     );
-                    // The inputs this call's transcript was partitioned from, republished so a
-                    // consumer can redo the partition in another era (see `ContractCallPublic`).
-                    // Wrapped for the same reason as the state read above: these are wasm-bindgen
-                    // getters on live `QueryContext`s, so they trap on a freed or foreign pointer
-                    // rather than returning — and a throw in this `Effect.forEach` body would be a
-                    // defect. One wrapper rather than three, because from a caller's side this is a
-                    // single operation and three messages would name no distinction they can act on.
-                    // Typed `unknown` and cast at the use site for the reason given above: the
-                    // `Types[…]` members are deferred conditionals, which `tryBoundary`'s own
-                    // conditional parameter type matches on and infers against.
-                    const partitionInputs = yield* tryBoundary(
-                      `Failed to read the partition inputs of the call to '${entry.circuitId}' ` +
-                        `on '${entry.contractAddress}'`,
-                      (): { block: unknown; effects: unknown; comIndices: unknown } => {
-                        const initial = entry.initialQueryContext as { block: unknown; effects: unknown };
-                        const final = entry.finalQueryContext as { comIndices: unknown };
-                        return { block: initial.block, effects: initial.effects, comIndices: final.comIndices };
+                    const postExecution = yield* tryBoundary(
+                      `Failed to read the post-execution state and partition inputs of the call to ` +
+                        `'${entry.circuitId}' on '${entry.contractAddress}'`,
+                      (): { state: unknown; comIndices: unknown } => {
+                        const final = entry.finalQueryContext as PartitionInputs;
+                        return { state: final.state.state, comIndices: final.comIndices };
                       }
                     );
                     return {
                       contractAddress: ContractAddress.ContractAddress(entry.contractAddress),
                       circuitId: entry.circuitId,
                       public: {
-                        contractState: finalContractState as Types['StateValue'],
+                        contractState: postExecution.state as Types['StateValue'],
                         // Copied because the era-neutral trace exposes a readonly view while the
                         // public `ContractCall` field is mutable; narrowing that field would be a
                         // breaking type change for consumers.
                         publicTranscript: [...entry.publicTranscript],
                         partitionedTranscript,
-                        block: partitionInputs.block as Types['CallContext'],
-                        effects: partitionInputs.effects as Types['Effects'],
-                        comIndices: partitionInputs.comIndices as Types['ComIndices']
+                        partitionInputs: {
+                          state: preExecution.state as Types['InitialStateValue'],
+                          block: preExecution.block as Types['CallContext'],
+                          effects: preExecution.effects as Types['Effects'],
+                          comIndices: postExecution.comIndices as Types['ComIndices']
+                        }
                       },
                       private: {
                         input: entry.input,

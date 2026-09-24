@@ -157,24 +157,24 @@ describeWithFixture('a ledger 8 contract through the `/v8/effect` executable', (
     // on its query context — so this is era-neutral surface rather than an era-gated capability
     // like contract events.
     const call = result.calls[0]!;
-    expect(call.public.block.ownAddress).toBe(address);
-    expect(typeof call.public.block.secondsSinceEpoch).toBe('bigint');
-    expect(Array.isArray(call.public.effects.claimedNullifiers)).toBe(true);
-    expect(call.public.comIndices).toBeInstanceOf(Map);
-    // Plain data, unlike `public.contractState` (a live WASM handle) — which is what lets these
+    expect(call.public.partitionInputs.block.ownAddress).toBe(address);
+    expect(typeof call.public.partitionInputs.block.secondsSinceEpoch).toBe('bigint');
+    expect(Array.isArray(call.public.partitionInputs.effects.claimedNullifiers)).toBe(true);
+    expect(call.public.partitionInputs.comIndices).toBeInstanceOf(Map);
+    // Plain data, unlike the two state members (live WASM handles) — which is what lets these
     // cross an era seam at all.
-    expect(() => structuredClone(call.public.block)).not.toThrow();
-    expect(() => structuredClone(call.public.effects)).not.toThrow();
+    expect(() => structuredClone(call.public.partitionInputs.block)).not.toThrow();
+    expect(() => structuredClone(call.public.partitionInputs.effects)).not.toThrow();
+    // The state the call ran against is genuinely the pre-execution one: the counter holds an
+    // empty cell before `increment` and a `01` cell after, so these two stringify differently.
+    // An `initialContractState` wired to the final context would make them equal.
+    expect(String(call.public.partitionInputs.state)).not.toBe(String(call.public.contractState));
   });
 
   it('re-partitions to the same transcript from the exposed inputs alone', async () => {
     const executable = await loadExecutable();
     const deployed = await Effect.runPromise(executable.initialize({ count: 0 }));
     const address = ContractAddress.ContractAddress(sampleContractAddress());
-    // Converted *before* the circuit runs: the 0.16 context mutates its state in place, and this
-    // is the pre-execution ledger state a consumer holds from the chain rather than from the call
-    // result (`public.contractState` is the post-execution one).
-    const initialState = await Effect.runPromise(Ledger.fromRuntimeContractState(deployed.public.contractState));
 
     const result = await Effect.runPromise(
       executable.circuit('increment', {
@@ -185,14 +185,25 @@ describeWithFixture('a ledger 8 contract through the `/v8/effect` executable', (
     );
     const call = result.calls[0]!;
 
-    // midnight-sdk#400's actual use case, done entirely through the public entry: rebuild the
-    // pre-transcript from the exposed values and re-run the partitioner. Reproducing
-    // `partitionedTranscript` is what proves the exposed set is *sufficient* — asserting the three
-    // fields are present would not.
-    const queryContext = new Ledger.QueryContext(initialState.data, address);
-    queryContext.block = call.public.block;
-    queryContext.effects = call.public.effects;
-    const withCommitments = [...call.public.comIndices].reduce(
+    // midnight-sdk#400's actual use case, done entirely through the public entry and entirely from
+    // the call result: rebuild the pre-transcript from the exposed values and re-run the
+    // partitioner. "From the exposed inputs alone" is the load-bearing part — every input below
+    // comes off `call.public`, including the pre-execution state, which used to have to be
+    // snapshotted from outside the result before the circuit ran.
+    //
+    // What this does *not* prove is that each input is read from the right context. The counter's
+    // partition is insensitive to all four — it inserts no commitments, and its state does not
+    // change size, so substituting the post-execution state reproduces this assertion exactly.
+    // `ContractExecutable.partitionInputs.test.ts` is what pins provenance; this pins usability.
+    //
+    // Encoded across rather than handed across: `initialContractState` is a live onchain-runtime
+    // handle, and the ledger rejects a foreign one outright (`expected instance of StateValue`).
+    // Encoding is the step a consumer crossing an era boundary takes anyway.
+    const initialState = Ledger.StateValue.decode(call.public.partitionInputs.state.encode());
+    const queryContext = new Ledger.QueryContext(new Ledger.ChargedState(initialState), address);
+    queryContext.block = call.public.partitionInputs.block;
+    queryContext.effects = call.public.partitionInputs.effects;
+    const withCommitments = [...call.public.partitionInputs.comIndices].reduce(
       (context, [commitment, index]) => context.insertCommitment(commitment, index),
       queryContext
     );

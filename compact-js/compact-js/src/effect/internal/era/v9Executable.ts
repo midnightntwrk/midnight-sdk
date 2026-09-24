@@ -54,6 +54,7 @@ export declare namespace ContractExecutable {
   export type DeployResult<PS> = Internal.DeployResult<EraLedger, EraRuntime, PS>;
 
   export type PartitionedTranscript = Internal.PartitionedTranscript<EraLedger, EraRuntime>;
+  export type CallPartitionInputs = Internal.CallPartitionInputs<EraLedger, EraRuntime>;
   export type ContractCallPublic = Internal.ContractCallPublic<EraLedger, EraRuntime>;
   export type ContractCallPrivate = Internal.ContractCallPrivate<EraLedger, EraRuntime>;
   export type ContractCall = Internal.ContractCall<EraLedger, EraRuntime>;
