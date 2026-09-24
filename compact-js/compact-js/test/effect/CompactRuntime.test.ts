@@ -14,7 +14,7 @@
  */
 
 import { CompactRuntime, ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
-import { ContractState, encodeZswapLocalState, versionString } from '@midnight-ntwrk/compact-runtime';
+import { ContractState, encodeZswapLocalState, sampleContractAddress, versionString } from '@midnight-ntwrk/compact-runtime';
 import { Cause, Effect, Exit, Option } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -70,6 +70,41 @@ describe('CompactRuntime.tryRuntime', () => {
     // One copy of the boundary handling across both seams: the two facades name it differently
     // because each documents its own package's failure mode, but a fix to one must reach the other.
     expect(CompactRuntime.tryRuntime).toBe(Ledger.tryConvert);
+  });
+});
+
+describe('execution clock', () => {
+  // midnight-sdk#403. Without a settable clock every execution stamps `block.secondsSinceEpoch`
+  // with `Date.now()`, so anything derived from `block` — which midnight-sdk#400 puts on the public
+  // result — differs on every run and cannot be recorded as a fixture. 0.19 takes `time` in the
+  // ninth positional slot; the binding previously stepped over it to reach `parentBlockHash`.
+  //
+  // The unit is **seconds** since the epoch, not milliseconds: both lines default it to
+  // `Math.floor(Date.now() / 1_000)`. These tests are where that is stated.
+  const contextParams = () => ({
+    circuitId: 'increment',
+    address: sampleContractAddress(),
+    zswapLocalState: CompactRuntime.emptyZswapLocalState('0'.repeat(64)),
+    contractState: new CompactRuntime.ContractState(),
+    privateState: { count: 0 }
+  });
+
+  it('stamps the block clock with the given time rather than the wall clock', () => {
+    const FIXED_TIME = 1_700_000_000;
+
+    const context = CompactRuntime.createExecutionContext({ ...contextParams(), time: FIXED_TIME });
+
+    expect(context.callContext.currentQueryContext.block.secondsSinceEpoch).toBe(BigInt(FIXED_TIME));
+  });
+
+  it('falls back to the wall clock when no time is given', () => {
+    const before = BigInt(Math.floor(Date.now() / 1_000));
+
+    const context = CompactRuntime.createExecutionContext(contextParams());
+
+    // Threading the parameter must not change the default, which is what keeps this additive for
+    // every existing caller.
+    expect(context.callContext.currentQueryContext.block.secondsSinceEpoch).toBeGreaterThanOrEqual(before);
   });
 });
 

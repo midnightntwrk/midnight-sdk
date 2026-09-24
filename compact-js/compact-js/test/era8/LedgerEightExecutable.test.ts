@@ -139,6 +139,87 @@ describeWithFixture('a ledger 8 contract through the `/v8/effect` executable', (
     expect(result.privateState).toMatchObject({ count: 1 });
   });
 
+  it('exposes the inputs its transcript was partitioned from', async () => {
+    const executable = await loadExecutable();
+    const deployed = await Effect.runPromise(executable.initialize({ count: 0 }));
+    const address = ContractAddress.ContractAddress(sampleContractAddress());
+
+    const result = await Effect.runPromise(
+      executable.circuit('increment', {
+        address,
+        contractState: deployed.public.contractState,
+        privateState: deployed.private.privateState
+      })
+    );
+
+    // midnight-sdk#400: the values needed to rebuild this call's pre-transcript in a *different*
+    // ledger era. Present on ledger 8 for the same reason as on ledger 9 — every era carries them
+    // on its query context — so this is era-neutral surface rather than an era-gated capability
+    // like contract events.
+    const call = result.calls[0]!;
+    expect(call.public.partitionInputs.block.ownAddress).toBe(address);
+    expect(typeof call.public.partitionInputs.block.secondsSinceEpoch).toBe('bigint');
+    expect(Array.isArray(call.public.partitionInputs.effects.claimedNullifiers)).toBe(true);
+    expect(call.public.partitionInputs.comIndices).toBeInstanceOf(Map);
+    // Plain data, unlike the two state members (live WASM handles) — which is what lets these
+    // cross an era seam at all.
+    expect(() => structuredClone(call.public.partitionInputs.block)).not.toThrow();
+    expect(() => structuredClone(call.public.partitionInputs.effects)).not.toThrow();
+    // The state the call ran against is genuinely the pre-execution one: the counter holds an
+    // empty cell before `increment` and a `01` cell after, so these two stringify differently.
+    // An `initialContractState` wired to the final context would make them equal.
+    expect(String(call.public.partitionInputs.state)).not.toBe(String(call.public.contractState));
+  });
+
+  it('re-partitions to the same transcript from the exposed inputs alone', async () => {
+    const executable = await loadExecutable();
+    const deployed = await Effect.runPromise(executable.initialize({ count: 0 }));
+    const address = ContractAddress.ContractAddress(sampleContractAddress());
+
+    const result = await Effect.runPromise(
+      executable.circuit('increment', {
+        address,
+        contractState: deployed.public.contractState,
+        privateState: deployed.private.privateState
+      })
+    );
+    const call = result.calls[0]!;
+
+    // midnight-sdk#400's actual use case, done entirely through the public entry and entirely from
+    // the call result: rebuild the pre-transcript from the exposed values and re-run the
+    // partitioner. "From the exposed inputs alone" is the load-bearing part — every input below
+    // comes off `call.public`, including the pre-execution state, which used to have to be
+    // snapshotted from outside the result before the circuit ran.
+    //
+    // What this does *not* prove is that each input is read from the right context. The counter's
+    // partition is insensitive to all four — it inserts no commitments, and its state does not
+    // change size, so substituting the post-execution state reproduces this assertion exactly.
+    // `ContractExecutable.partitionInputs.test.ts` is what pins provenance; this pins usability.
+    //
+    // Encoded across rather than handed across: `initialContractState` is a live onchain-runtime
+    // handle, and the ledger rejects a foreign one outright (`expected instance of StateValue`).
+    // Encoding is the step a consumer crossing an era boundary takes anyway.
+    const initialState = Ledger.StateValue.decode(call.public.partitionInputs.state.encode());
+    const queryContext = new Ledger.QueryContext(new Ledger.ChargedState(initialState), address);
+    queryContext.block = call.public.partitionInputs.block;
+    queryContext.effects = call.public.partitionInputs.effects;
+    const withCommitments = [...call.public.partitionInputs.comIndices].reduce(
+      (context, [commitment, index]) => context.insertCommitment(commitment, index),
+      queryContext
+    );
+
+    const [rebuilt] = Ledger.partitionTranscripts(
+      [new Ledger.PreTranscript(withCommitments, call.public.publicTranscript)],
+      Ledger.LedgerParameters.initialParameters()
+    );
+
+    // Recombined first, so neither assertion can pass vacuously on two undefined halves: the
+    // rebuilt partition has to account for the whole transcript before matching the original.
+    expect([...(rebuilt?.[0]?.program ?? []), ...(rebuilt?.[1]?.program ?? [])]).toEqual(call.public.publicTranscript);
+    expect(rebuilt?.[0]?.program).toEqual(call.public.partitionedTranscript[0]?.program);
+    expect(rebuilt?.[1]?.program).toEqual(call.public.partitionedTranscript[1]?.program);
+  });
+
   it('emits no events on an era that cannot emit them', async () => {
     const executable = await loadExecutable();
     const deployed = await Effect.runPromise(executable.initialize({ count: 0 }));

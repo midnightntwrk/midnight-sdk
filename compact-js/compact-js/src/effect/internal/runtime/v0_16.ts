@@ -73,10 +73,17 @@ import {
 import { type RuntimeLine } from '../era.js';
 import { type CallProofDataView, type ExecutionContextParams, type ExecutionView } from './execution.js';
 
+// `CallContext`, `Effects` and `CoinCommitment` are the types of the partition inputs
+// `ContractCallPublic` exposes (midnight-sdk#400), and `EncodedStateValue` is listed for the
+// separate reason given on the 0.19 twin. This line reaches all four the same way — an explicit
+// re-export from onchain-runtime-v3 — but without the `CallContext` ambiguity: 0.16's
+// circuit-context declares no `CallContext` of its own, so there is only one to resolve to.
 export {
   type AlignedValue,
+  type CallContext,
   type CircuitContext,
   type CircuitResults,
+  type CoinCommitment,
   CompactError,
   type ConstructorContext,
   type ConstructorResult,
@@ -84,7 +91,9 @@ export {
   createCircuitContext,
   createConstructorContext,
   decodeZswapLocalState,
+  type Effects,
   emptyZswapLocalState,
+  type EncodedStateValue,
   type EncodedZswapLocalState,
   encodeZswapLocalState,
   type Op,
@@ -250,11 +259,16 @@ export const createExecutionContext = <PS>(
     );
   }
 
+  // `time` is the seventh positional argument here, reached by stepping over `gasLimit` and
+  // `costModel` — which stay at the runtime's own defaults, as they always have.
   const context = createCircuitContext(
     params.address,
     params.zswapLocalState,
     params.contractState,
-    params.privateState
+    params.privateState,
+    undefined,
+    undefined,
+    params.time
   );
 
   const meta: ExecutionMeta = {
