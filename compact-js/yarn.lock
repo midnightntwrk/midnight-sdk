@@ -1051,7 +1051,7 @@ __metadata:
     "@eslint/js": "npm:^10.0.1"
     "@midnight-ntwrk/compact-js-node": "workspace:*"
     "@midnight-ntwrk/midnight-js-compact": "npm:5.0.0-beta.3"
-    "@tsconfig/node22": "npm:^22.0.6"
+    "@tsconfig/node24": "npm:^24.0.0"
     "@types/node": "npm:^26.6.2"
     "@vitest/coverage-v8": "npm:^4.1.11"
     "@vitest/ui": "npm:^4.1.11"
@@ -1782,10 +1782,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node22@npm:^22.0.6":
-  version: 22.0.6
-  resolution: "@tsconfig/node22@npm:22.0.6"
-  checksum: 10/a74c1bf95086b80e8436da7e3e710bebab4c35ab7cf99348ae68c8fab6032387516e9e9b80a868908c570c5af937e0a75821fc994e14a0495e04c5fab04d3c63
+"@tsconfig/node24@npm:^24.0.0":
+  version: 24.0.5
+  resolution: "@tsconfig/node24@npm:24.0.5"
+  checksum: 10/d7b57e0a2065d00b219119746e668016a15547fac5a9c3ac766d0913b543b937dc69d6c9fa703ed32ab559a4bb5f87438fea3cdc0eee96f0bf14adff0829cb77
   languageName: node
   linkType: hard
 
