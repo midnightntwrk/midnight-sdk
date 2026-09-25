@@ -36,6 +36,7 @@ import {
   type LogEvent,
   type Op,
   type QueryContext,
+  type RunningCost,
   sampleSigningKey,
   type SigningKey
 } from '@midnight-ntwrk/compact-runtime';
@@ -86,6 +87,7 @@ export {
   type LogEvent,
   type Op,
   type QueryContext,
+  type RunningCost,
   sampleSigningKey,
   signatureVerifyingKey,
   type StateValue,
@@ -137,7 +139,8 @@ export type Execution<Result, PrivateState> = ExecutionView<
   // Optional because 0.19 carries the root zswap state on `callContext`, where it may be absent;
   // `ContractExecutable` owns the typed failure for that case.
   EncodedZswapLocalState | undefined,
-  LogEvent
+  LogEvent,
+  Record<string, RunningCost>
 >;
 
 /**
@@ -146,8 +149,9 @@ export type Execution<Result, PrivateState> = ExecutionView<
  * @remarks
  * A direct pass-through: 0.19 *is* the call-tree model the era-neutral view is modelled on, so this
  * only reorders named parameters into `createCircuitContext`'s positional ones. The remaining gaps
- * (`gasLimit`, `costModel`, `reentrancyGuard`) keep the runtime's own defaults, exactly as the
- * previous inline call site did.
+ * (`costModel`, `reentrancyGuard`) keep the runtime's own defaults. `costModel` is not one a caller
+ * could fill: `CostModel` has a private constructor and one static factory, whose result *is* that
+ * default.
  *
  * @category execution
  */
@@ -161,7 +165,7 @@ export const createExecutionContext = <PS>(
     params.contractState,
     params.privateState,
     params.stateProvider,
-    undefined,
+    params.queryGasLimit,
     undefined,
     params.time,
     params.parentBlockHash
@@ -184,7 +188,10 @@ export const readExecution = <Result, PS>(
   trace: results.context.callProofDataTrace as readonly CallTraceEntry[],
   privateState: results.context.callContext.currentPrivateState,
   zswapLocalState: results.context.callContext.currentZswapLocalState,
-  events: results.context.events
+  events: results.context.events,
+  // The context's map, not `results.gasCost`: that one is the root frame's tally alone and omits
+  // every callee.
+  gasCosts: results.context.gasCosts
 });
 
 // `CallProofData` is the type the trace cast above narrows to; asserted rather than assumed so a

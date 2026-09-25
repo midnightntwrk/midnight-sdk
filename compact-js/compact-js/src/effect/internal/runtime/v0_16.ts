@@ -206,7 +206,10 @@ export type Execution<Result, PrivateState> = ExecutionView<
   PrivateState,
   CallTraceEntry,
   EncodedZswapLocalState,
-  LogEvent
+  LogEvent,
+  // Absent like `LogEvent`, but because this line's figure is *wrong*: `queryLedgerState` assigns
+  // `context.gasCost` per query instead of accumulating, so 0.16 reports the last query's cost.
+  undefined
 >;
 
 /**
@@ -259,14 +262,14 @@ export const createExecutionContext = <PS>(
     );
   }
 
-  // `time` is the seventh positional argument here, reached by stepping over `gasLimit` and
-  // `costModel` — which stay at the runtime's own defaults, as they always have.
+  // The gas limit is fifth here and seventh on 0.19; `costModel` sits between them on both lines
+  // and stays at the default, for the reason the 0.19 twin gives.
   const context = createCircuitContext(
     params.address,
     params.zswapLocalState,
     params.contractState,
     params.privateState,
-    undefined,
+    params.queryGasLimit,
     undefined,
     params.time
   );
@@ -332,6 +335,7 @@ export const readExecution = <Result, PS>(
     trace: [entry],
     privateState: results.context.currentPrivateState,
     zswapLocalState: results.context.currentZswapLocalState,
-    events: []
+    events: [],
+    gasCosts: undefined
   };
 };

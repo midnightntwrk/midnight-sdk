@@ -48,6 +48,7 @@ export declare namespace ContractExecutable {
 
   export type ContractContext = Internal.ContractContext<EraLedger, EraRuntime>;
   export type CircuitContext<PS> = Internal.CircuitContext<EraLedger, EraRuntime, PS>;
+  export type GasCost = Internal.GasCost;
 
   export type DeployResultPublic = Internal.DeployResultPublic<EraLedger, EraRuntime>;
   export type DeployResultPrivate<PS> = Internal.DeployResultPrivate<EraLedger, EraRuntime, PS>;

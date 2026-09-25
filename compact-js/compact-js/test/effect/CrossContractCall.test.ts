@@ -239,6 +239,24 @@ describe('cross-contract calls', () => {
     })
   );
 
+  it.effect('totals gas for the callee as well as the root', () =>
+    Effect.gen(function*() {
+      const result = yield* middle.circuit(
+        Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
+        middleContext(resolveFromChain),
+        1n
+      );
+
+      // Why `gasCosts` is read off the context rather than from `CircuitResults.gasCost`: that one
+      // is the root frame's own tally and would report nothing for `inner`, under-reporting exactly
+      // when a consumer is checking what a call tree cost. `inner` is called twice here and has a
+      // single entry, which is the other half of the shape — per contract, not per call.
+      expect(Object.keys(result.gasCosts).sort()).toEqual([innerDeploy.address, middleDeploy.address].sort());
+      expect(result.gasCosts[innerDeploy.address]!.computeTime).toBeGreaterThan(0n);
+      expect(result.gasCosts[middleDeploy.address]!.computeTime).toBeGreaterThan(0n);
+    })
+  );
+
   it.effect('uses the exact expected contract address for each returned call', () =>
     Effect.gen(function*() {
       const result = yield* middle.circuit(
