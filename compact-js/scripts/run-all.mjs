@@ -32,9 +32,10 @@ if (scripts.length === 0) {
   process.exit(2);
 }
 
-const failed = scripts.filter(
-  (script) => spawnSync('yarn', ['run', script], { stdio: 'inherit', shell: process.platform === 'win32' }).status !== 0
-);
+// No `shell: true`: it propagates the ambient shell's settings and turns the arguments into a
+// command string. Nothing here needs it — `yarn` is executable directly, and the script names
+// arrive as separate argv entries.
+const failed = scripts.filter((script) => spawnSync('yarn', ['run', script], { stdio: 'inherit' }).status !== 0);
 
 if (failed.length > 0) {
   console.error(`\nrun-all: ${failed.length} of ${scripts.length} failed: ${failed.join(', ')}`);
