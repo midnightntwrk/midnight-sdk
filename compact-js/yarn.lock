@@ -103,13 +103,13 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@changesets/changelog-github@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "@changesets/changelog-github@npm:1.0.0"
+"@changesets/changelog-github@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "@changesets/changelog-github@npm:1.0.1"
   dependencies:
-    "@changesets/get-github-info": "npm:^1.0.0"
+    "@changesets/get-github-info": "npm:^1.0.1"
     "@changesets/types": "npm:^7.0.0"
-  checksum: 10/efd1ddf4dde595a92c4cd527d75c1ae3c7b6b9f9e7cefcebdde1fab68a805cbc72d535f9f45e417ddee50a8ee13aa3911fd0554ffa2a9e55c248e8953cc9175e
+  checksum: 10/7ae2533348abdb4d503486e7cc165ff6be332e86a2a2652853148c2e6e310c9d8c9fea49442b2222f99aaeaf16ede0556de22a825307b1177c5ac8be29b225d8
   languageName: node
   linkType: hard
 
@@ -184,12 +184,12 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@changesets/get-github-info@npm:^1.0.0":
-  version: 1.0.0
-  resolution: "@changesets/get-github-info@npm:1.0.0"
+"@changesets/get-github-info@npm:^1.0.1":
+  version: 1.0.1
+  resolution: "@changesets/get-github-info@npm:1.0.1"
   dependencies:
     dataloader: "npm:^2.2.3"
-  checksum: 10/44c038626aee9ee138ab092e16a222dfb982e3f9ada4882ae28b58563cc45a7a40a0981b055a6b58e6ef2adc5e97285401af2a0dd526c8781636088c48b8242d
+  checksum: 10/09f119ec9829bb4ef92b5f13f4a0b2c7cc9af10e8e54026fed13d1d77398d333b9f90612d8b6832f66ba6198310f9cd1bb3eb6fa4b7c1324185e1c0ca46bff2d
   languageName: node
   linkType: hard
 
@@ -1034,7 +1034,7 @@ __metadata:
   version: 0.0.0-use.local
   resolution: "@midnight-ntwrk/compact-js-sources@workspace:."
   dependencies:
-    "@changesets/changelog-github": "npm:^1.0.0"
+    "@changesets/changelog-github": "npm:^1.0.1"
     "@changesets/cli": "npm:^3.0.3"
     "@commitlint/cli": "npm:^21.2.2"
     "@commitlint/config-conventional": "npm:^21.2.2"
