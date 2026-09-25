@@ -250,6 +250,40 @@ describe.sequential('CompiledContractReflection', () => {
       }).pipe(Effect.provide(testLayer)));
     });
 
+    it('should preserve a quoted bigint in a named struct alias', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const nonce = 'ff'.repeat(32);
+        const color = 'ab'.repeat(32);
+        const value = '9007199254740993';
+        const parsedArgs = yield* parseArgumentsTest(
+          'a: ShieldedCoinInfo',
+          (_) => _.parseInitializationArgs(
+            [`{"nonce":"${nonce}","color":"${color}","value":"${value}"}`]
+          ),
+          'export type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };'
+        );
+
+        expect(parsedArgs[0].value).toEqual(BigInt(value));
+      }).pipe(Effect.provide(testLayer)));
+    });
+
+    it('should reject an unsafe unquoted bigint in a named struct alias', async () => {
+      await Effect.runPromise(Effect.gen(function* () {
+        const nonce = 'ff'.repeat(32);
+        const color = 'ab'.repeat(32);
+        const value = '9007199254740993';
+        const error = yield* parseArgumentsTest(
+          'a: ShieldedCoinInfo',
+          (_) => _.parseInitializationArgs(
+            [`{"nonce":"${nonce}","color":"${color}","value":${value}}`]
+          ),
+          'export type ShieldedCoinInfo = { nonce: Uint8Array; color: Uint8Array; value: bigint };'
+        ).pipe(Effect.flip);
+
+        expect(error).toBeInstanceOf(ContractRuntimeError.ContractRuntimeError);
+      }).pipe(Effect.provide(testLayer)));
+    });
+
     it('should parse multiple named struct alias arguments', async () => {
       await Effect.runPromise(Effect.gen(function* () {
         const nonce = 'ff'.repeat(32);
