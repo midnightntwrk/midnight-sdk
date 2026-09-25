@@ -14,9 +14,7 @@
  */
 
 /**
- * Compile-time conformance for **every** compact-runtime binding, bound or not — the twin of
- * `internal/ledger/conformance.ts`, and for the same reason: `current.ts` asserts only the line it
- * re-exports, so an unbound binding could rot until the day someone repoints it.
+ * Compile-time conformance for **every** compact-runtime binding.
  *
  * @remarks
  * Two things are checked per binding, plus one negative check that carries real policy:
@@ -48,7 +46,7 @@ type Assert<_T extends true> = void;
 // union of message literals and fails the build quoting the relationship that broke.
 type AssertNoViolations<_V extends never> = void;
 
-// --- compact-runtime 0.16 (ledger 8 era; spike, not bound by `current.ts`) ----------------------
+// --- compact-runtime 0.16 (ledger 8 era; bound by the `/v8` entry) ------------------------------
 type _V0_16Conforms = Assert<Extends<typeof V0_16, RuntimeBinding>>;
 type _V0_16NoViolations = AssertNoViolations<RuntimeBindingViolations<typeof V0_16>>;
 // Asserted FALSE deliberately — see the capability note above. Do not "fix" this to `true`.
