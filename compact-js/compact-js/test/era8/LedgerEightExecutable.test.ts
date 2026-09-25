@@ -22,7 +22,7 @@ import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import { sampleContractAddress } from 'compact-runtime-ledger8';
-import { ConfigProvider, Effect, Layer } from 'effect';
+import { ConfigProvider, Effect, Exit, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -235,5 +235,42 @@ describeWithFixture('a ledger 8 contract through the `/v8/effect` executable', (
     // Statically `never[]` — the 0.16 binding's `readExecution` instantiates the event type as
     // `never` — so this asserts at run time what the types already forbid at compile time.
     expect(result.events).toEqual([]);
+  });
+
+  it('reports no gas costs on an era whose runtime cannot total them', async () => {
+    const executable = await loadExecutable();
+    const deployed = await Effect.runPromise(executable.initialize({ count: 0 }));
+
+    const result = await Effect.runPromise(
+      executable.circuit('increment', {
+        address: ContractAddress.ContractAddress(sampleContractAddress()),
+        contractState: deployed.public.contractState,
+        privateState: deployed.private.privateState
+      })
+    );
+
+    // Gated like events, but for a different reason: 0.16 *can* produce a figure, and the figure is
+    // wrong. `queryLedgerState` assigns `context.gasCost = res.gasCost` on every query rather than
+    // accumulating, so what the generated circuit hands back is the last query's cost. Reporting it
+    // under a name a consumer would read as the call's cost is worse than reporting nothing.
+    expect(result.gasCosts).toBeUndefined();
+  });
+
+  it('honours a query gas limit on the older line too', async () => {
+    const executable = await loadExecutable();
+    const deployed = await Effect.runPromise(executable.initialize({ count: 0 }));
+
+    const exit = await Effect.runPromiseExit(
+      executable.circuit('increment', {
+        address: ContractAddress.ContractAddress(sampleContractAddress()),
+        contractState: deployed.public.contractState,
+        privateState: deployed.private.privateState,
+        queryGasLimit: { readTime: 0n, computeTime: 0n, bytesWritten: 0n, bytesDeleted: 0n }
+      })
+    );
+
+    // The limit is the one execution parameter both lines accept in the same form, so it is threaded
+    // on both rather than gated — 0.16 takes it fifth positionally, 0.19 seventh.
+    expect(Exit.isFailure(exit)).toBe(true);
   });
 });

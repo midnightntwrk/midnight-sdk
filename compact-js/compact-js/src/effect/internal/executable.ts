@@ -52,7 +52,9 @@ import { type ZKConfigurationReadError } from '../ZKConfigurationReadError.js';
 import { tryBoundary } from './boundary.js';
 import * as CompactContextInternal from './compactContext.js';
 import { type Era, type RuntimeLine } from './era.js';
-import { type PartitionInputs } from './runtime/execution.js';
+import { type GasCost, type PartitionInputs } from './runtime/execution.js';
+
+export { type GasCost } from './runtime/execution.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -134,6 +136,7 @@ export interface ExecutableRuntime {
     readonly privateState: unknown;
     readonly zswapLocalState: unknown;
     readonly events: readonly unknown[];
+    readonly gasCosts: unknown;
   };
   readonly signatureVerifyingKey: (signingKey: never) => unknown;
   readonly signingKeyHex: (signingKey: never) => string;
@@ -164,6 +167,7 @@ export interface ExecutableTypes<L extends ExecutableLedger, R extends Executabl
   readonly InitialStateValue: QueryContextState<ExecutableTypes<L, R>['TraceEntry']['initialQueryContext']>;
   readonly CommunicationCommitmentData: NonNullable<ExecutableTypes<L, R>['TraceEntry']['commCommData']>;
   readonly LogEvent: ReturnType<R['readExecution']>['events'][number];
+  readonly GasCosts: ReturnType<R['readExecution']>['gasCosts'];
   // The partition inputs, read off the context each one actually comes from — the *initial* context
   // for the three the pre-transcript describes (`InitialStateValue` above is the third), the *final*
   // one for the commitments discovered during the call. Both contexts are the same type on every
@@ -214,6 +218,8 @@ export type CircuitContext<L extends ExecutableLedger, R extends ExecutableRunti
   readonly privateState: PS;
   readonly zswapLocalState?: ExecutableTypes<L, R>['ZswapLocalState'];
   readonly ledgerParameters?: ExecutableTypes<L, R>['LedgerParameters'];
+  /** A ceiling on each ledger query the call makes — per query, not per call. See `execution.ts`. */
+  readonly queryGasLimit?: GasCost;
 } & (
     | { readonly stateProvider?: undefined; readonly parentBlockHash?: undefined }
     | {
@@ -338,6 +344,12 @@ export type CallResult<
   readonly zswapLocalState: ExecutableTypes<L, R>['ZswapLocalState'];
   readonly events: ExecutableTypes<L, R>['LogEvent'][];
   readonly calls: readonly ContractCall<L, R>[];
+  /**
+   * What each contract in the call tree spent, keyed by address; `undefined` on an era whose runtime
+   * cannot total it. Per contract rather than per call — a callee called twice has one entry — which
+   * is why it is here and not on {@link ContractCall}.
+   */
+  readonly gasCosts: ExecutableTypes<L, R>['GasCosts'];
 };
 
 export type MaintenanceResultPublic<L extends ExecutableLedger, R extends ExecutableRuntime> = {
@@ -397,6 +409,16 @@ export interface ContractExecutable<
     ...args: Contract.Contract.CircuitParameters<C, K>
   ): Effect.Effect<CallResult<L, R, C, PS, K>, E, Rq>;
 
+  /**
+   * Brands one of this contract's circuit ids, narrowed to the circuit it names.
+   *
+   * @remarks
+   * The narrowing route that infers: `C` comes from the executable and `K` from the literal, so
+   * neither is written. {@link circuit} then checks the arguments against that one circuit rather
+   * than against the union over every circuit, which is all a widely-branded id can support.
+   */
+  circuitId<K extends Contract.Contract.ProvableCircuitId<C>>(id: K): Contract.ProvableCircuitId<C, K>;
+
   getProvableCircuitIds(): Contract.ProvableCircuitId<C>[];
 
   replaceContractMaintenanceAuthority(
@@ -404,13 +426,13 @@ export interface ContractExecutable<
     contractContext: ContractContext<L, R>
   ): Effect.Effect<MaintenanceResult<L, R>, E, Rq>;
 
-  removeContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
-    provableCircuitId: K,
+  removeContractOperation(
+    provableCircuitId: Contract.ProvableCircuitId<C>,
     contractContext: ContractContext<L, R>
   ): Effect.Effect<MaintenanceResult<L, R>, E, Rq>;
 
-  addOrReplaceContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
-    provableCircuitId: K,
+  addOrReplaceContractOperation(
+    provableCircuitId: Contract.ProvableCircuitId<C>,
     verifierKey: Contract.VerifierKey,
     contractContext: ContractContext<L, R>
   ): Effect.Effect<MaintenanceResult<L, R>, E, Rq>;
@@ -726,7 +748,8 @@ export const makeExecutable = <
                 stateProvider: circuitContext.stateProvider,
                 parentBlockHash: circuitContext.parentBlockHash,
                 // Seconds, not milliseconds — the unit both lines' `time` parameter takes.
-                time: Math.floor(nowMillis / 1_000)
+                time: Math.floor(nowMillis / 1_000),
+                queryGasLimit: circuitContext.queryGasLimit
               } as never);
               return runtime.readExecution((await circuit(runtimeContext, ...args)) as never);
             },
@@ -850,7 +873,8 @@ export const makeExecutable = <
                   // a breaking type change for consumers. On a line that cannot emit events this is
                   // `never[]`, so the copy is of an empty array.
                   events: [...execution.events] as Types['LogEvent'][],
-                  calls
+                  calls,
+                  gasCosts: execution.gasCosts as Types['GasCosts']
                 };
               })
             ),
@@ -859,6 +883,10 @@ export const makeExecutable = <
         ),
         this.transform
       );
+    }
+
+    circuitId<K extends Contract.Contract.ProvableCircuitId<C>>(id: K): Contract.ProvableCircuitId<C, K> {
+      return Contract.ProvableCircuitId<C, K>(id);
     }
 
     getProvableCircuitIds(): Contract.ProvableCircuitId<C>[] {
@@ -898,9 +926,9 @@ export const makeExecutable = <
       );
     }
 
-    removeContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
+    removeContractOperation(
       this: ContractExecutableImpl<C, PS, E, Rq>,
-      provableCircuitId: K,
+      provableCircuitId: Contract.ProvableCircuitId<C>,
       contractContext: ContractContext<L, R>
     ): Effect.Effect<MaintenanceResult<L, R>, E, Rq> {
       return Effect.all({
@@ -926,8 +954,8 @@ export const makeExecutable = <
       );
     }
 
-    addOrReplaceContractOperation<K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>>(
-      provableCircuitId: K,
+    addOrReplaceContractOperation(
+      provableCircuitId: Contract.ProvableCircuitId<C>,
       verifierKey: Contract.VerifierKey,
       contractContext: ContractContext<L, R>
     ): Effect.Effect<MaintenanceResult<L, R>, E, Rq> {

@@ -44,9 +44,9 @@ export interface WitnessContext<L, PS> {
  * @remarks
  * This is the one shape that genuinely differs between runtime lines: 0.16 passes a flat, single
  * contract frame (`currentPrivateState`, `currentQueryContext`, `currentZswapLocalState`) and 0.19
- * passes a call tree (`callContext`, `queryContexts`, `callProofDataTrace`, `events`). The two
- * share no member, so no structural type describes both, and naming either one pins the spine to
- * an era.
+ * passes a call tree (`callContext`, `queryContexts`, `callProofDataTrace`, `events`). Beyond
+ * `costModel` and `gasLimit` they have nothing in common, so neither is assignable to the other and
+ * naming either one pins the spine to an era.
  *
  * It is a *parameter* type, so `any` rather than `unknown`: parameters are contravariant, and a
  * circuit that accepts its own line's context must remain assignable to this signature. `unknown`
@@ -116,12 +116,37 @@ export const VerifierKey = Brand.nominal<VerifierKey>();
 export type ZKIR = Uint8Array & Brand.Brand<'ZKIR'>;
 export const ZKIR = Brand.nominal<ZKIR>();
 
-export type ProvableCircuitId<C extends Contract.Any = Contract.Any, K = Contract.ProvableCircuitId<C>> = K &
-  Brand.Brand<'ProvableCircuitId'>;
+/**
+ * A circuit id, branded, optionally narrowed to the one circuit it names. `K` is constrained
+ * because {@link Contract.CircuitParameters} and {@link Contract.CircuitReturnType} index by it —
+ * left open, a mistyped name is well-formed here and fails only downstream. The brand tag omits
+ * `C`: it marks circuit ids, not which contract they came from.
+ */
+export type ProvableCircuitId<
+  C extends Contract.Any = Contract.Any,
+  K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
+> = K & Brand.Brand<'ProvableCircuitId'>;
 const ProvableCircuitId_ = Brand.nominal<ProvableCircuitId>();
-export const ProvableCircuitId = <C extends Contract.Any>(
-  id: Brand.Brand.Unbranded<ProvableCircuitId<C>>
-): ProvableCircuitId<C> => ProvableCircuitId_(id);
+
+/**
+ * Brands a circuit id, optionally narrowed to the single circuit it names.
+ *
+ * @remarks
+ * `K` is second and defaulted so a call site can name `C` alone. TypeScript has no *partial*
+ * type-argument inference, so naming `C` fixes `K` to its default — the union of every circuit `C`
+ * declares, which rejects arguments no circuit takes but still accepts one circuit's for another.
+ * Naming both narrows to the one literal. Naming neither — what the CLI does, from a `string`
+ * variable — leaves `C` at `Contract.Any` and brands the id over `string`.
+ */
+export const ProvableCircuitId = <
+  C extends Contract.Any,
+  K extends Contract.ProvableCircuitId<C> = Contract.ProvableCircuitId<C>
+>(
+  id: K
+): ProvableCircuitId<C, K> =>
+  // The nominal constructor is built once, at the widest instantiation, so it hands back the brand
+  // over `string`; the cast re-states the literal the caller already passed.
+  ProvableCircuitId_(id) as ProvableCircuitId<C, K>;
 
 /**
  * The shape of a contract executable, as `compactc` generates it.
@@ -149,6 +174,18 @@ export interface Contract<PS, W extends Witnesses<PS> = Witnesses<PS>> {
   initialState(context: any, ...args: any[]): Awaitable<ConstructorResult<PS>>;
 }
 
+/**
+ * A circuit id with the {@link ProvableCircuitId} brand taken back off, for use as an index.
+ *
+ * @remarks
+ * A brand is an *intersection*, so `provableCircuits['increment' & Brand<'ProvableCircuitId'>]` does
+ * not resolve to the declared method that `provableCircuits['increment']` does; indexing the key as
+ * given collapsed arguments to `unknown[]` and results to `unknown` (midnight-sdk#402). Every key
+ * the *runtime* API hands out is branded; plain literals also work, and always did — `Unbranded`
+ * passes them through untouched. Kept outside the namespace, whose members are implicitly exported.
+ */
+type CircuitKey<K> = Brand.Brand.Unbranded<K>;
+
 export declare namespace Contract {
   export type Any = Contract<any>;
 
@@ -165,10 +202,10 @@ export declare namespace Contract {
   export type ProvableCircuitId<C extends Contract<any>> = keyof C['provableCircuits'] & string;
 
   export type CircuitParameters<C extends Contract<any>, K extends ProvableCircuitId<C>> =
-    Parameters<C['provableCircuits'][K]> extends [any, ...infer A] ? A : never;
+    Parameters<C['provableCircuits'][CircuitKey<K>]> extends [any, ...infer A] ? A : never;
 
   export type CircuitReturnType<C extends Contract<any>, K extends ProvableCircuitId<C>> =
-    Awaited<ReturnType<C['provableCircuits'][K]>> extends CircuitResults<infer U> ? U : never;
+    Awaited<ReturnType<C['provableCircuits'][CircuitKey<K>]>> extends CircuitResults<infer U> ? U : never;
 }
 
 export const getProvableCircuitIds: <C extends Contract.Any>(contract: C) => ProvableCircuitId<C>[] = (contract) =>

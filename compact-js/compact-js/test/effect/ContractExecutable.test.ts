@@ -220,6 +220,12 @@ describe('ContractExecutable', () => {
       expect(circuitIds.length).toBeGreaterThan(0);
     });
 
+    it('should brand a circuit identifier without altering it', () => {
+      // The brand is erased at runtime, so the value handed to the ledger is the plain name.
+      expect(contract.circuitId('increment')).toBe('increment');
+      expect(contract.getProvableCircuitIds()).toContain(contract.circuitId('increment'));
+    });
+
     it.effect('should return updated contract state', () =>
       Effect.gen(function* () {
         const result = yield* contract.circuit(Contract.ProvableCircuitId<CounterContract>('increment'), {

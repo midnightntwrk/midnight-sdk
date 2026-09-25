@@ -25,6 +25,10 @@ import { Contract as Contract_ } from '../../contract/managed/counter/contract';
 type MockCounterContract = Contract_<any>;
 const MockCounterContract = Contract_;
 
+// Annotated rather than `{} as any`, so a change to the type this parameter names is caught here
+// instead of being silenced.
+const ctx = {} as ContractExecutable.ContractExecutable.CircuitContext<any>;
+
 class StringDep extends Context.Tag('StringDep')<StringDep, string>() {}
 
 describe('ContractExecutable', () => {
@@ -94,7 +98,7 @@ describe('ContractExecutable', () => {
             StringDep
           >
         >();
-        expect(executable.circuit(Contract.ProvableCircuitId<MockCounterContract>('reset'), {} as any)).type.toBe<
+        expect(executable.circuit(Contract.ProvableCircuitId<MockCounterContract>('reset'), ctx)).type.toBe<
           Effect.Effect<
             ContractExecutable.ContractExecutable.CallResult<
               MockCounterContract,
@@ -105,6 +109,58 @@ describe('ContractExecutable', () => {
             StringDep
           >
         >();
+      });
+    });
+
+    describe('circuit arguments', () => {
+      const id = Contract.ProvableCircuitId<MockCounterContract>('decrement');
+
+      it('should accept arguments the contract declares', () => {
+        expect(contractExecutable.circuit).type.toBeCallableWith(id, ctx, 1n);
+      });
+
+      it('should reject arguments no circuit declares', () => {
+        expect(contractExecutable.circuit).type.not.toBeCallableWith(id, ctx, 'nonsense');
+        expect(contractExecutable.circuit).type.not.toBeCallableWith(id, ctx, 1n, 'extra', null);
+      });
+
+      it('should check against every circuit when the id is not narrowed to one', () => {
+        // `increment` and `reset` are nullary, so their empty tuple is in the union too and is
+        // accepted for a `decrement` id. The narrowed test below rejects it — that is the contrast.
+        expect(contractExecutable.circuit).type.toBeCallableWith(id, ctx);
+      });
+
+      it('should check against one circuit when the id names one', () => {
+        const decrement = Contract.ProvableCircuitId<MockCounterContract, 'decrement'>('decrement');
+
+        expect(contractExecutable.circuit).type.toBeCallableWith(decrement, ctx, 1n);
+        expect(contractExecutable.circuit).type.not.toBeCallableWith(decrement, ctx);
+
+        const increment = Contract.ProvableCircuitId<MockCounterContract, 'increment'>('increment');
+
+        expect(contractExecutable.circuit).type.toBeCallableWith(increment, ctx);
+        expect(contractExecutable.circuit).type.not.toBeCallableWith(increment, ctx, 1n);
+      });
+    });
+
+    describe('circuitId', () => {
+      it('should narrow to the named circuit with no type arguments written', () => {
+        const decrement = contractExecutable.circuitId('decrement');
+
+        expect<typeof decrement>().type.toBe<Contract.ProvableCircuitId<MockCounterContract, 'decrement'>>();
+        expect(contractExecutable.circuit).type.toBeCallableWith(decrement, ctx, 1n);
+        expect(contractExecutable.circuit).type.not.toBeCallableWith(decrement, ctx);
+      });
+
+      it('should reject a circuit the contract does not declare', () => {
+        expect(contractExecutable.circuitId).type.not.toBeCallableWith('decremnt');
+      });
+
+      it('should hand back an id the maintenance methods accept', () => {
+        expect(contractExecutable.removeContractOperation).type.toBeCallableWith(
+          contractExecutable.circuitId('increment'),
+          {} as ContractExecutable.ContractExecutable.ContractContext
+        );
       });
     });
   });

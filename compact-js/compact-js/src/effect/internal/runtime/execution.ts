@@ -130,12 +130,25 @@ export interface PartitionInputs {
  * a `never[]` — statically empty rather than merely empty at run time. That is what lets the same
  * `CallResult` type serve both eras while keeping the impossible case unconstructable.
  */
-export interface ExecutionView<Result, PrivateState, Trace, EncodedZswapLocalState, LogEvent> {
+export interface ExecutionView<Result, PrivateState, Trace, EncodedZswapLocalState, LogEvent, GasCosts> {
   readonly result: Result;
   readonly trace: readonly Trace[];
   readonly privateState: PrivateState;
   readonly zswapLocalState: EncodedZswapLocalState;
   readonly events: readonly LogEvent[];
+  readonly gasCosts: GasCosts;
+}
+
+/**
+ * A gas figure in the four dimensions both lines model. The inward-facing twin of
+ * {@link PartitionInputs}: structural, so each binding's own call checks it against that line's
+ * `RunningCost`. Costs travelling *out* stay era-derived.
+ */
+export interface GasCost {
+  readonly readTime: bigint;
+  readonly computeTime: bigint;
+  readonly bytesWritten: bigint;
+  readonly bytesDeleted: bigint;
 }
 
 /**
@@ -174,4 +187,7 @@ export interface ExecutionContextParams<PrivateState, ContractState, EncodedZswa
    * member only if something needs a *different* time per call — recording a fixture does not.
    */
   readonly time?: number | undefined;
+  // Per query and not per call because that is all either line enforces: both pass this same value
+  // to every `query` without decrementing it (midnight-sdk#403).
+  readonly queryGasLimit?: GasCost | undefined;
 }
