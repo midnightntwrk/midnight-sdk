@@ -28,3 +28,6 @@ logs
 .eslintcache
 .rollup.cache
 .DS_Store
+# Release-note drafting scratch (component-rn-draft). Holds unreviewed drafts and a sources.json
+# of PR bodies and author handles; publishing happens by PR from the reviewed draft, not from here.
+.rn-drafts/
