@@ -18,8 +18,11 @@ on:
         required: true
         type: string
 
+# An unlisted scope is `none`, so the generator's pull-request and issue reads need naming here.
 permissions:
   contents: write
+  pull-requests: read
+  issues: read
 
 concurrency:
   group: release-notes-${{ inputs.version }}

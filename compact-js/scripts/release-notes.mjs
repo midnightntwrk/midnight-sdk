@@ -58,13 +58,21 @@ if (version === undefined) usage('expected --version');
 const outFile = flag('--out');
 const withPrs = !args.includes('--no-prs');
 
-const run = (cmd, argv, allowFailure = false) => {
+/** Runs a command, reporting whether it succeeded and, when it did not, what it said. */
+const attempt = (cmd, argv) => {
   try {
-    return execFileSync(cmd, argv, { encoding: 'utf8', cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+    const out = execFileSync(cmd, argv, { encoding: 'utf8', cwd: REPO_ROOT, stdio: ['ignore', 'pipe', 'pipe'] });
+    return { ok: true, out: out.trim(), stderr: '' };
   } catch (error) {
-    if (allowFailure) return '';
-    throw new Error(`${cmd} ${argv.join(' ')} failed: ${error.stderr || error.message}`, { cause: error });
+    return { ok: false, out: '', stderr: String(error.stderr || error.message).trim() };
   }
+};
+
+const run = (cmd, argv, allowFailure = false) => {
+  const result = attempt(cmd, argv);
+  if (result.ok) return result.out;
+  if (allowFailure) return '';
+  throw new Error(`${cmd} ${argv.join(' ')} failed: ${result.stderr}`);
 };
 
 const readIfPresent = (path) => (existsSync(path) ? readFileSync(path, 'utf8') : '');
@@ -165,19 +173,29 @@ const CONVENTIONAL = /^(\w+)(\(([^)]*)\))?(!)?:\s*(.+)$/;
 // squashes or merges. A path filter cannot be used here — history simplification drops the very
 // merge commits that carry the pull-request number — so the workspace scoping happens below,
 // against the files each pull request actually touched.
+// Subjects only: both merge and squash commits carry the number there, while a body can quote a
+// pull request belonging to some upstream project.
 const prNumbersInRange = () => {
   if (previousTag === undefined) return [];
-  const log = run('git', ['log', `${previousTag}..${tag}`, '--first-parent', '--format=%s%n%b'], true);
+  const log = run('git', ['log', `${previousTag}..${tag}`, '--first-parent', '--format=%s']);
   const numbers = new Set();
   for (const m of log.matchAll(/(?:Merge pull request #|\(#)(\d{1,6})\b/g)) numbers.add(Number(m[1]));
   return [...numbers].sort((a, b) => a - b);
 };
 
+// A number scraped from a subject need not name a pull request here, so a genuine miss is skipped.
+// Anything else — denied permissions, rate limiting, no network — has to stop the run: a note that
+// silently loses its changes would replace a real release body with "no consumer-visible changes".
+const PR_NOT_FOUND = /could not resolve to a pullrequest|no pull requests found|not found/i;
+
 const fetchPr = (number) => {
-  const json = run('gh', ['pr', 'view', String(number), '--repo', repo, '--json',
-    'number,title,labels,mergedAt,url,files,body'], true);
-  if (json === '') return undefined;
-  const pr = JSON.parse(json);
+  const result = attempt('gh', ['pr', 'view', String(number), '--repo', repo, '--json',
+    'number,title,labels,mergedAt,url,files,body']);
+  if (!result.ok) {
+    if (PR_NOT_FOUND.test(result.stderr)) return undefined;
+    throw new Error(`gh pr view ${number} failed: ${result.stderr}`);
+  }
+  const pr = JSON.parse(result.out);
   if (pr.mergedAt === null) return undefined;
   if (!(pr.files ?? []).some((f) => f.path.startsWith('compact-js/'))) return undefined;
   return { ...pr, labels: (pr.labels ?? []).map((l) => l.name) };
