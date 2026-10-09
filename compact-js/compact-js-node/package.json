@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.20.0",
-    "@midnightntwrk/ledger-v9": "^1.0.0-rc.5"
+    "@midnightntwrk/ledger-v9": "^1.0.0-rc"
   },
   "peerDependencies": {
     "@midnight-ntwrk/compact-js": "workspace:^"
@@ -32,7 +32,7 @@
     "type": "git",
     "url": "https://github.com/midnightntwrk/midnight-sdk.git"
   },
-  "packageManager": "yarn@4.18.0",
+  "packageManager": "yarn@4.18.1",
   "author": "IOHK",
   "license": "Apache-2.0",
   "scripts": {
