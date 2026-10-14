@@ -127,4 +127,25 @@ describeWithFixture('the CLI targeting ledger 8', () => {
     // rather than writing an empty list that reads as "the contract emitted nothing".
     expect(lines.join('\n')).toMatch(/Ledger era 8 cannot emit contract log events/);
   }, 60_000);
+
+  it('fails a deploy given an ECDSA signing key, naming the unsupported scheme', async () => {
+    const lines = await Effect.gen(function* () {
+      yield* deployCli([
+        'node', 'deploy.ts',
+        '--ledger-era', '8',
+        '-c', CONFIG_FILEPATH,
+        '-s', 'a1'.repeat(32),
+        '--signing-kind', 'ecdsa',
+        '--output', OUTPUT_FILEPATH,
+        '--output-oc', OUTPUT_OC_FILEPATH,
+        '--output-ps', OUTPUT_PS_FILEPATH,
+        '--output-zswap', OUTPUT_ZSWAP_FILEPATH
+      ]);
+      return yield* MockConsole.getLines({ stripAnsi: true });
+    }).pipe(Effect.provide(testLayer), Effect.runPromise);
+
+    // Ledger 8 authorities are Schnorr only, so the era's existing unsupported-scheme error is the
+    // answer — not a Schnorr authority silently derived from an ECDSA key's bytes.
+    expect(lines.join('\n')).toContain("Unsupported signature scheme 'ecdsa'");
+  }, 60_000);
 });

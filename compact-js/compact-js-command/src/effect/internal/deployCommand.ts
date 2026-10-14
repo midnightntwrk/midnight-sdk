@@ -35,6 +35,7 @@ export type Options = Command.Command.ParseConfig<typeof Options>;
 /** @internal */
 export const Options = {
   signingKey: InternalOptions.signingKey,
+  signingKind: InternalOptions.signingKind,
   outputFilePath: InternalOptions.outputFilePath,
   outputPublicFilePath: InternalOptions.outputPublicFilePath,
   outputPrivateStateFilePath: InternalOptions.outputPrivateStateFilePath,

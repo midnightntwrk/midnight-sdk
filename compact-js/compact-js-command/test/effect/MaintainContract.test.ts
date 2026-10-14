@@ -16,9 +16,15 @@
 import { resolve } from 'node:path';
 
 import { Command } from '@effect/cli';
+import { FileSystem } from '@effect/platform';
 import { describe, it } from '@effect/vitest';
 import { maintainCommand } from '@midnight-ntwrk/compact-js-command/effect';
-import { sampleSigningKey } from '@midnightntwrk/ledger-v9';
+import {
+  Intent,
+  MaintenanceUpdate,
+  ReplaceAuthority,
+  sampleSigningKey
+} from '@midnightntwrk/ledger-v9';
 import { Effect } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
@@ -68,6 +74,60 @@ describe('Maintain Contract Command', () => {
         const lines = yield* MockConsole.getLines({ stripAnsi: true });
 
         expect(lines.length).toBe(0);
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
+    30_000
+  );
+
+  it.effect(
+    'installs an ECDSA authority when --signing-kind ecdsa is given for the new key',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const cli = Command.run(maintainCommand, { name: 'maintain', version: '0.0.0' });
+
+        yield* cli([
+          'node',
+          'maintain.ts',
+          'contract',
+          '-s',
+          sampleSigningKey().value,
+          '--signing-kind',
+          'ecdsa',
+          '-c',
+          COUNTER_CONFIG_FILEPATH,
+          '--input',
+          COUNTER_STATE_FILEPATH,
+          '--output',
+          COUNTER_OUTPUT_FILEPATH,
+          '0a2d0e34db258f640dc2ec410fb0e4eea9cd6f9661ba6a86f0c35a708e1b811a',
+          sampleSigningKey('ecdsa').value
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+        expect(lines.length).toBe(0);
+
+        // The intent's authority replacement must carry the kind named on the command line. The
+        // current key above stays 'schnorr' (it is given with `-s` and no kind applies to it), so
+        // this also proves the option tags the NEW key without retagging the key that signed the
+        // update — the rotation would otherwise install a Schnorr authority under an ECDSA key's
+        // bytes, or fail to verify at all.
+        const intent = Intent.deserialize(
+          'signature',
+          'pre-proof',
+          'pre-binding',
+          yield* fs.readFile(COUNTER_OUTPUT_FILEPATH)
+        );
+        const update = intent.actions.find((action) => action instanceof MaintenanceUpdate);
+        expect(update).toBeInstanceOf(MaintenanceUpdate);
+        const replacement = (update as MaintenanceUpdate).updates.find(
+          (single) => single instanceof ReplaceAuthority
+        );
+        expect(replacement).toBeInstanceOf(ReplaceAuthority);
+        expect((replacement as ReplaceAuthority).authority.committee).toHaveLength(1);
+        expect((replacement as ReplaceAuthority).authority.committee[0].tag).toBe('ecdsa');
       }).pipe(
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
         Effect.provide(testLayer)
