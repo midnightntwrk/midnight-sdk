@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@midnight-ntwrk/compact-runtime": "0.20.0",
-    "@midnightntwrk/ledger-v9": "^1.0.0-rc.5"
+    "@midnightntwrk/ledger-v9": "1.0.0-rc.5"
   },
   "peerDependencies": {
     "@midnight-ntwrk/compact-js": "workspace:^"
