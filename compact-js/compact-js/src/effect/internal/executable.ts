@@ -1186,7 +1186,11 @@ export const makeExecutable = <
       } catch (err: unknown) {
         return Either.left(
           ContractConfigurationError.make(
-            `Failed to create a signature verifying key for signing key '${signingKey}'`,
+            // Name the scheme and the key length, never the key itself: the signing key is a secret,
+            // and interpolating it here printed its value in this error before the key became a
+            // tagged object.
+            `Failed to create a signature verifying key for the '${signingKey.tag}' signing key ` +
+              `(${signingKey.value.length / 2} bytes)`,
             contractState,
             err
           )

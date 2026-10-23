@@ -16,7 +16,7 @@
 import { resolve } from 'node:path';
 
 import { NodeContext } from '@effect/platform-node';
-import { beforeEach,describe, expect, it } from '@effect/vitest';
+import { afterEach, beforeEach,describe, expect, it } from '@effect/vitest';
 import {
   CompiledContract,
   Contract,
@@ -25,7 +25,7 @@ import {
 import * as ContractConfigurationError from '@midnight-ntwrk/compact-js/effect/ContractConfigurationError';
 import * as ContractRuntimeError from '@midnight-ntwrk/compact-js/effect/ContractRuntimeError';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
-import { ContractState, sampleSigningKey } from '@midnight-ntwrk/compact-runtime';
+import { ContractState, sampleSigningKey, signatureVerifyingKey } from '@midnight-ntwrk/compact-runtime';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
@@ -38,8 +38,27 @@ import {
   verifySignature
 } from '@midnightntwrk/ledger-v9';
 import { Cause, ConfigProvider, Effect, Exit, Layer, Option } from 'effect';
+import { vi } from 'vitest';
 
 import { CounterContract } from '../contract';
+
+// Wrap `signatureVerifyingKey` so it delegates to the real implementation by default; one test
+// below overrides a single call to force the maintenance-authority failure path. The
+// compact-runtime seam re-exports this binding, so mocking the package reaches the executable too.
+vi.mock('@midnight-ntwrk/compact-runtime', async (importActual) => {
+  // eslint-disable-next-line @typescript-eslint/consistent-type-imports
+  const actual = await importActual<typeof import('@midnight-ntwrk/compact-runtime')>();
+  return { ...actual, signatureVerifyingKey: vi.fn(actual.signatureVerifyingKey) };
+});
+
+// Captured before any test queues an override, so `afterEach` can restore the delegating default:
+// neither `mockClear` nor `vi.restoreAllMocks()` drains a `mockImplementationOnce` queue.
+const delegatingSignatureVerifyingKey = vi.mocked(signatureVerifyingKey).getMockImplementation()!;
+
+afterEach(() => {
+  vi.mocked(signatureVerifyingKey).mockReset();
+  vi.mocked(signatureVerifyingKey).mockImplementation(delegatingSignatureVerifyingKey);
+});
 
 const COUNTER_ASSETS_PATH = resolve(import.meta.dirname, '../contract/managed/counter');
 
@@ -182,6 +201,36 @@ describe('ContractExecutable', () => {
         const committee = asLedgerContractState(result.public.contractState).maintenanceAuthority.committee;
         expect(committee).toHaveLength(1);
         expect(committee[0].tag).toEqual('ecdsa');
+      })
+    );
+
+    it.effect('names the scheme and length — never the key — when deriving a verifying key fails', () =>
+      Effect.gen(function* () {
+        // The signing key is a secret. The error raised when the ledger refuses to derive its
+        // verifying key once interpolated the key itself (when the key was a bare hex string, that
+        // printed the private key; as a tagged object it printed '[object Object]'). Force the
+        // failure and pin what the message may and may not contain.
+        vi.mocked(signatureVerifyingKey).mockImplementationOnce(() => {
+          throw new Error('the ledger rejected the key');
+        });
+        const contract = counterContract.pipe(
+          ContractExecutable.provide(
+            testLayer(
+              new Map([
+                ['KEYS_COIN_PUBLIC', VALID_COIN_PUBLIC_KEY],
+                ['KEYS_SIGNING', VALID_SIGNING_KEY]
+              ])
+            )
+          )
+        );
+        const error = yield* contract.initialize(initialPS).pipe(Effect.flip);
+
+        expect(error).toBeInstanceOf(ContractConfigurationError.ContractConfigurationError);
+        const { message } = error as ContractConfigurationError.ContractConfigurationError;
+        expect(message).toContain('Failed to create a signature verifying key');
+        expect(message).toContain("'schnorr'");
+        expect(message).toContain('32 bytes');
+        expect(message).not.toContain(VALID_SIGNING_KEY);
       })
     );
 
