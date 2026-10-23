@@ -44,7 +44,7 @@ Write and test Compact smart contracts.
 - [Compact language reference](https://docs.midnight.network/compact) — documentation
 - [Midnight Toolkit](https://github.com/midnightntwrk/midnight-node) — CLI for deploying and interacting with contracts
 - [create-mn-app](https://github.com/midnightntwrk/create-mn-app) — scaffold a new project
-- [example-counter](https://github.com/midnightntwrk/example-counter) / [example-bboard](https://github.com/midnightntwrk/example-bboard) — reference contracts (use as templates)
+- [example-bboard](https://github.com/midnightntwrk/example-bboard) / [create-mn-app](https://github.com/midnightntwrk/create-mn-app) — preferred starters (bulletin board + scaffold). [`example-counter`](https://github.com/midnightntwrk/example-counter) is **archived** — do not use it for new work.
 - [testkit-js](https://github.com/midnightntwrk/midnight-js) — E2E testing framework using midnight-js, dapp-connector-api, and wallet-sdk (in the midnight-js repo)
 - [Examples](https://docs.midnight.network/category/examples) — walkthroughs
 
