@@ -4,8 +4,7 @@
     "preRelease": "-rc.3",
     "tag": "rc",
     "releaseBranches": [
-      "main",
-      "release/compact-js/.*"
+      "main"
     ]
   }
 }

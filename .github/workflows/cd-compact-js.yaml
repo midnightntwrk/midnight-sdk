@@ -37,6 +37,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.extract_version.outputs.version }}
+      base_version: ${{ steps.extract_version.outputs.base_version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # ratchet:actions/checkout@v5
 
@@ -71,28 +72,40 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # ratchet:actions/checkout@v5
+        with:
+          fetch-tags: true
 
       - name: Create git tag
+        env:
+          TAG: compact-js-v${{ needs.publish.outputs.base_version }}
         run: |
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git config user.name "github-actions[bot]"
-          base_version=$(echo "${{ needs.publish.outputs.version }}" | sed 's/-alpha.*//')
-          git tag -a "compact-js-v${base_version}" -m "Release compact-js-v${base_version}"
-          git push origin "compact-js-v${base_version}"
-
-      - name: Extract changelog
-        id: changelog
-        run: |
-          # Extract the latest release notes from CHANGELOG.md (between first and second ## heading)
-          changelog=$(sed -n '/^## \[/,/^## \[/{/^## \[/!p;}' ./compact-js/CHANGELOG.md | head -n -1 | sed '/^$/d' | sed ':a;N;$!ba;s/\n/\\n/g')
-          echo "body=$changelog" >> "$GITHUB_OUTPUT"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
 
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: compact-js-v${{ needs.publish.outputs.base_version }}
+          VERSION: ${{ needs.publish.outputs.base_version }}
         run: |
-          base_version=$(echo "${{ needs.publish.outputs.version }}" | sed 's/-alpha.*//')
-          gh release create "compact-js-v${base_version}" \
-            --title "compact-js v${base_version}" \
-            --notes "${{ steps.changelog.outputs.body }}" \
-            --repo "${{ github.repository }}"
+          # Other workspaces and hand-cut tags share this repo, so the notes range is pinned to the
+          # previous compact-js tag instead of whichever tag GitHub would pick as the most recent.
+          previous_tag=$(git tag -l 'compact-js-v*' --sort=-creatordate | grep -vFx "$TAG" | head -1)
+          args=(--title "compact-js v$VERSION" --repo "$REPO" --generate-notes)
+          if [ -n "$previous_tag" ]; then
+            args+=(--notes-start-tag "$previous_tag")
+          fi
+          case "$VERSION" in
+            *-*) args+=(--prerelease) ;;
+          esac
+          gh release create "$TAG" "${args[@]}"
+
+  release-notes:
+    needs: [publish, release]
+    name: Publish release notes
+    uses: ./.github/workflows/publish-release-notes.yaml
+    with:
+      version: ${{ needs.publish.outputs.base_version }}
