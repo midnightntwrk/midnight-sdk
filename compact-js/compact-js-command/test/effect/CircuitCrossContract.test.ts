@@ -35,12 +35,12 @@ import {
   type PreProof,
   type SignatureEnabled
 } from '@midnightntwrk/ledger-v9';
-import { ConfigProvider, Effect, Layer } from 'effect';
+import { ConfigProvider, Effect, Layer, Schema } from 'effect';
 import { afterAll, beforeAll } from 'vitest';
 
 import { Contract as CCCInner_, ledger as innerLedger } from '../../../compact-js/test/contract/managed/cccInner/contract/index';
 import { Contract as CCCMiddle_ } from '../../../compact-js/test/contract/managed/cccMiddle/contract/index';
-import { decodeZswapLocalStateObject } from '../../src/effect/internal/encodedZswapLocalStateSchema.js';
+import { EncodedZswapLocalStateSchema } from '../../src/effect/internal/encodedZswapLocalStateSchema.js';
 import { ensureRemovePath } from './cleanup.js';
 import * as MockConsole from './MockConsole.js';
 import { testLayer } from './testLayer.js';
@@ -395,7 +395,7 @@ describe('Circuit Command (cross-contract calls)', () => {
       ]);
       // Each state is in `--output-zswap`'s format, and the root's entry is that file.
       for (const { zswapLocalState } of entries) {
-        yield* decodeZswapLocalStateObject(zswapLocalState);
+        yield* Schema.decodeUnknown(EncodedZswapLocalStateSchema)(zswapLocalState);
       }
       expect(entries[2]!.zswapLocalState).toEqual(JSON.parse(yield* fs.readFileString(w.outputZswap)));
     }).pipe(Effect.provide(testLayer)),

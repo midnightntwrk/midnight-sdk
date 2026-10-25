@@ -19,12 +19,12 @@ import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { type PlatformError } from '@effect/platform/Error';
 import { Contract, ContractKeyLocation, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { Array, Console, Effect, Option } from 'effect';
+import { Array, Console, Effect, Option, Schema } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import { decodeZswapLocalStateObject, encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
+import { encodeZswapLocalStateFile } from './encodedZswapLocalStateSchema.js';
 import type * as EraBinding from './era/binding.js';
 import { stringifyCircuitOutput } from './json.js';
 import * as InternalOptions from './options.js';
@@ -98,18 +98,24 @@ export const Options = {
  *
  * @param ledger The era's `Ledger` facade.
  * @param runtime The compact-runtime facade that era pairs with.
+ * @param zswapLocalStateSchema The schema of that runtime line's encoded zswap local state, which
+ * `--input-zswap` reads through and `--output-zswap` writes through.
  * @param capabilities What this era can and cannot do; the two options that depend on a capability
  * are rejected up front on an era that lacks it, rather than silently producing an empty result.
  *
  * @internal
  */
-export const makeHandler: (
+export const makeHandler: <Z, ZI>(
   ledger: EraBinding.CommandLedger,
-  runtime: EraBinding.CommandRuntime,
+  runtime: EraBinding.CommandRuntime<Z>,
+  zswapLocalStateSchema: Schema.Schema<Z, ZI>,
   capabilities: EraBinding.EraCapabilities
-) => InternalCommand.CommandHandler<Args & Options> = (ledger, runtime, capabilities) => {
+) => InternalCommand.CommandHandler<Args & Options> = (ledger, runtime, zswapLocalStateSchema, capabilities) => {
   const { tryLedger, newIntent, serializeIntent } = InternalCommand.makeIntents(ledger);
   const { makeContractStateProvider, makeContractModuleProvider } = capabilities;
+  const decodeZswapLocalStateObject = Schema.decodeUnknown(zswapLocalStateSchema);
+  const encodeZswapLocalState = (message: string, zswapLocalState: unknown) =>
+    encodeZswapLocalStateFile(runtime, zswapLocalStateSchema, message, zswapLocalState);
 
   return (
     {
@@ -201,7 +207,7 @@ export const makeHandler: (
       inputZswapLocalStateFilePath,
       (filePath) => readJsonFile(fs, filePath).pipe(
         Effect.flatMap(decodeZswapLocalStateObject),
-        // `EncodedZswapLocalStateSchema` validates shape only — no length constraint on the key or
+        // The zswap schema validates shape only — no length constraint on the key or
         // the coin nonces/colours, and `value` is any bigint — so a hand-edited or cross-network
         // file passes it and is rejected by the runtime instead. The decode belongs here, where
         // `filePath` is in scope to name in the failure; left unwrapped in the `Effect.gen` body
@@ -350,11 +356,10 @@ export const makeHandler: (
     const callZswapStates = yield* Effect.forEach(
       Option.isSome(outputZswapCallsFilePath) ? result.calls : [],
       (call) =>
-        runtime.tryRuntime(
+        encodeZswapLocalState(
           `Failed to encode the zswap local state of the call to '${call.circuitId}' on '${call.contractAddress}'`,
-          () => runtime.encodeZswapLocalState(call.private.zswapLocalState as never)
+          call.private.zswapLocalState
         ).pipe(
-          Effect.flatMap(encodeZswapLocalStateObject),
           Effect.map((zswapLocalState) => ({
             contractAddress: call.contractAddress,
             circuitId: call.circuitId,
@@ -404,14 +409,9 @@ export const makeHandler: (
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,
       JSON.stringify(
-        yield* encodeZswapLocalStateObject(
-          // The intent file is already written at this point, so an unwrapped throw here would be
-          // a defect that leaves a partially-written output directory and reports nothing at all.
-          yield* runtime.tryRuntime(
-            'Failed to encode the zswap local state produced by the circuit',
-            () => runtime.encodeZswapLocalState(result.zswapLocalState as never)
-          )
-        )
+        // The intent file is already written at this point, so an unwrapped throw here would be
+        // a defect that leaves a partially-written output directory and reports nothing at all.
+        yield* encodeZswapLocalState('Failed to encode the zswap local state produced by the circuit', result.zswapLocalState)
       )
     );
     if (Option.isSome(outputZswapCallsFilePath)) {

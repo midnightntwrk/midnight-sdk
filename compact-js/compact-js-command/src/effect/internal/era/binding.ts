@@ -44,7 +44,6 @@ import { type ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import type * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 import { type Effect, type Option } from 'effect';
 
-import { type EncodedZswapLocalStateSchema } from '../encodedZswapLocalStateSchema.js';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -148,28 +147,28 @@ export interface CommandLedger {
  * The compact-runtime-facade members the command handlers call.
  *
  * @remarks
- * The two zswap members are typed against the CLI's own
- * {@link EncodedZswapLocalStateSchema} rather than left opaque, and that is deliberate. `--input-zswap`
- * decodes a JSON file through that schema and hands the result to `decodeZswapLocalState`;
- * `--output-zswap` takes what `encodeZswapLocalState` produced and writes it back through the same
- * schema, which — `Schema.Struct` defaulting to `onExcessProperty: 'ignore'` — *strips* fields it
- * does not know rather than rejecting them. So a line whose encoded zswap state gained a field
- * would silently drop it from every written state file.
+ * The two zswap members are typed against `Z`, the decoded type of the era's zswap local state
+ * schema (`internal/encodedZswapLocalStateSchema.ts`), rather than left opaque, and that is
+ * deliberate. `--input-zswap` decodes a JSON file through that schema and hands the result to
+ * `decodeZswapLocalState`; `--output-zswap` takes what `encodeZswapLocalState` produced and writes
+ * it back through the same schema, which — `Schema.Struct` defaulting to `onExcessProperty:
+ * 'ignore'` — *strips* fields it does not know rather than rejecting them. So a line whose encoded
+ * zswap state gained a field would silently drop it from every written state file.
  *
- * Stating the two shapes here checks both directions at each era's instantiation: `decode`'s
- * parameter is contravariant, so the schema's type must be assignable to the line's, and `encode`'s
- * return is covariant, so the line's must be assignable to the schema's. That replaces the pair of
- * hand-written assertions that used to sit in `encodedZswapLocalStateSchema.ts` checking only the
- * *bound* line, and extends the guarantee to every era the CLI can select.
+ * The schema is an era argument because the lines differ: compact-runtime 0.16 records each
+ * input's tree position and an output counter, and later lines record neither. Stating the two
+ * shapes here checks both directions where an era applies a handler factory: `decode`'s parameter
+ * is contravariant, so the schema's type must be assignable to the line's, and `encode`'s return
+ * is covariant, so the line's must be assignable to the schema's.
  */
-export interface CommandRuntime {
+export interface CommandRuntime<Z> {
   readonly tryRuntime: TryBoundary;
-  readonly decodeZswapLocalState: (state: EncodedZswapLocalStateSchema) => unknown;
-  readonly encodeZswapLocalState: (state: never) => EncodedZswapLocalStateSchema;
+  readonly decodeZswapLocalState: (state: Z) => unknown;
+  readonly encodeZswapLocalState: (state: never) => Z;
 }
 
 /**
- * Fails the build if a line's `EncodedZswapLocalState` has a key the CLI's schema does not —
+ * Fails the build if a line's `EncodedZswapLocalState` has a key its era's schema does not —
  * the gap neither direction of {@link CommandRuntime}'s zswap members covers.
  *
  * @remarks
@@ -187,8 +186,11 @@ export interface CommandRuntime {
  */
 export type AssertNoZswapKeyDrift<ExcessKeys extends never> = ExcessKeys;
 
-/** The excess keys {@link AssertNoZswapKeyDrift} is applied to, for a line's encoded zswap state. */
-export type ZswapKeyDrift<S> = Exclude<keyof S, keyof EncodedZswapLocalStateSchema>;
+/**
+ * The excess keys {@link AssertNoZswapKeyDrift} is applied to: those of a line's encoded zswap
+ * state `S` that its era's schema type `Z` lacks.
+ */
+export type ZswapKeyDrift<S, Z> = Exclude<keyof S, keyof Z>;
 
 /**
  * The capabilities an era either has or does not, as the commands see them.

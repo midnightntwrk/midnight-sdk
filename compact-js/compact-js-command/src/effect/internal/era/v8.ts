@@ -50,6 +50,7 @@ import { CompactRuntime, type Contract, type ContractExecutable, Ledger } from '
 
 import * as CircuitCommand from '../circuitCommand.js';
 import * as DeployCommand from '../deployCommand.js';
+import { EncodedZswapLocalStateWithTreePositionsSchema } from '../encodedZswapLocalStateSchema.js';
 import * as MaintainCircuitCommand from '../maintainCircuitCommand.js';
 import * as MaintainContractCommand from '../maintainContractCommand.js';
 import type * as EraBinding from './binding.js';
@@ -76,7 +77,7 @@ const capabilities = {
  * {@link EraBinding.AssertIsCommandExecutable} for why this cannot be left to the import.
  */
 type _NoZswapKeyDrift = EraBinding.AssertNoZswapKeyDrift<
-  EraBinding.ZswapKeyDrift<CompactRuntime.EncodedZswapLocalState>
+  EraBinding.ZswapKeyDrift<CompactRuntime.EncodedZswapLocalState, typeof EncodedZswapLocalStateWithTreePositionsSchema.Type>
 >;
 
 type ProbePrivateState = { readonly count: number };
@@ -93,8 +94,8 @@ type _ExecutableIsCommandExecutable = EraBinding.AssertIsCommandExecutable<
 /** @internal */
 export const commands: EraCommands = {
   era: Ledger.era,
-  circuit: CircuitCommand.makeHandler(Ledger, CompactRuntime, capabilities),
-  deploy: DeployCommand.makeHandler(Ledger, CompactRuntime),
+  circuit: CircuitCommand.makeHandler(Ledger, CompactRuntime, EncodedZswapLocalStateWithTreePositionsSchema, capabilities),
+  deploy: DeployCommand.makeHandler(Ledger, CompactRuntime, EncodedZswapLocalStateWithTreePositionsSchema),
   maintainCircuit: MaintainCircuitCommand.makeHandler(Ledger),
   maintainContract: MaintainContractCommand.makeHandler(Ledger)
 };

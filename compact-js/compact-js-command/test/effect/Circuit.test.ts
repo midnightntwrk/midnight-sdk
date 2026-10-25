@@ -78,7 +78,6 @@ const COUNTER_NULL_PS_FILEPATH = resolve(import.meta.dirname, '../contract/count
 // cross-network state file.
 const SHORT_KEY_ZSWAP_LOCAL_STATE = {
   coinPublicKey: { bytes: new Array<number>(31).fill(0) },
-  currentIndex: '0',
   inputs: [],
   outputs: []
 };

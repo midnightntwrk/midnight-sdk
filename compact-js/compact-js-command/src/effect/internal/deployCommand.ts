@@ -16,12 +16,12 @@
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
 import { ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
-import { Effect, Option } from 'effect';
+import { Effect, Option, type Schema } from 'effect';
 
 import * as CompiledContractReflection from '../CompiledContractReflection.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import { encodeZswapLocalStateObject } from './encodedZswapLocalStateSchema.js'
+import { encodeZswapLocalStateFile } from './encodedZswapLocalStateSchema.js';
 import type * as EraBinding from './era/binding.js';
 import * as InternalOptions from './options.js';
 
@@ -46,13 +46,16 @@ export const Options = {
  *
  * @param ledger The era's `Ledger` facade.
  * @param runtime The compact-runtime facade that era pairs with.
+ * @param zswapLocalStateSchema The schema of that runtime line's encoded zswap local state, which
+ * `--output-zswap` writes through.
  *
  * @internal
  */
-export const makeHandler: (
+export const makeHandler: <Z, ZI>(
   ledger: EraBinding.CommandLedger,
-  runtime: EraBinding.CommandRuntime
-) => InternalCommand.CommandHandler<Args & Options> = (ledger, runtime) => {
+  runtime: EraBinding.CommandRuntime<Z>,
+  zswapLocalStateSchema: Schema.Schema<Z, ZI>
+) => InternalCommand.CommandHandler<Args & Options> = (ledger, runtime, zswapLocalStateSchema) => {
   const { tryLedger, newIntent, serializeIntent } = InternalCommand.makeIntents(ledger);
 
   return (
@@ -101,13 +104,13 @@ export const makeHandler: (
     yield* fs.writeFileString(
       outputZswapLocalStateFilePath,
       JSON.stringify(
-        yield* encodeZswapLocalStateObject(
-          // As in `circuitCommand`: the intent file is already written above, so an unwrapped throw
-          // would be a defect leaving a partially-written output directory and reporting nothing.
-          yield* runtime.tryRuntime(
-            'Failed to encode the initial zswap local state',
-            () => runtime.encodeZswapLocalState(result.private.zswapLocalState as never)
-          )
+        // As in `circuitCommand`: the intent file is already written above, so an unwrapped throw
+        // would be a defect leaving a partially-written output directory and reporting nothing.
+        yield* encodeZswapLocalStateFile(
+          runtime,
+          zswapLocalStateSchema,
+          'Failed to encode the initial zswap local state',
+          result.private.zswapLocalState
         )
       )
     );

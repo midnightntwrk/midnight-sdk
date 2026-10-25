@@ -13,7 +13,10 @@
  * limitations under the License.
  */
 
-import * as Schema from 'effect/Schema';
+import { type ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import { Effect, type ParseResult, Schema } from 'effect';
+
+import type * as EraBinding from './era/binding.js';
 
 export const EncodedCoinPublicKeySchema = Schema.Struct({
   bytes: Schema.Uint8Array
@@ -23,17 +26,16 @@ export const EncodedContractAddressSchema = Schema.Struct({
   bytes: Schema.Uint8Array
 });
 
-export const EncodedQualifiedShieldedCoinInfoSchema = Schema.Struct({
-  nonce: Schema.Uint8Array,
-  color: Schema.Uint8Array,
-  value: Schema.BigInt,
-  mt_index: Schema.BigInt
-});
-
 export const EncodedShieldedCoinInfoSchema = Schema.Struct({
   nonce: Schema.Uint8Array,
   color: Schema.Uint8Array,
   value: Schema.BigInt
+});
+
+/** A coin with its position in the coin commitment tree, as the compact-runtime 0.16 line records an input. */
+export const EncodedQualifiedShieldedCoinInfoSchema = Schema.Struct({
+  ...EncodedShieldedCoinInfoSchema.fields,
+  mt_index: Schema.BigInt
 });
 
 export const EncodedRecipientSchema = Schema.Struct({
@@ -42,35 +44,54 @@ export const EncodedRecipientSchema = Schema.Struct({
   right: EncodedContractAddressSchema
 });
 
-// `Schema.mutable` on the two collections: `Schema.Array` decodes to `readonly T[]`, which is the
-// only thing that kept this schema's output from being the runtime's own `EncodedZswapLocalState`.
-export const EncodedZswapLocalStateSchema = Schema.Struct({
-  coinPublicKey: EncodedCoinPublicKeySchema,
-  currentIndex: Schema.BigInt,
-  inputs: Schema.mutable(Schema.Array(EncodedQualifiedShieldedCoinInfoSchema)),
-  outputs: Schema.mutable(Schema.Array(Schema.Struct({
-    coinInfo: EncodedShieldedCoinInfoSchema,
-    recipient: EncodedRecipientSchema
-  })))
+const EncodedZswapOutputSchema = Schema.Struct({
+  coinInfo: EncodedShieldedCoinInfoSchema,
+  recipient: EncodedRecipientSchema
 });
 
 /**
- * This schema's decoded type — the shape the commands hand to, and receive from, an era's
- * compact-runtime zswap codec.
+ * The encoded zswap local state of a runtime line that records no tree positions: an input is the
+ * coin alone, because the transaction builder locates a contract-owned coin's leaf by its
+ * commitment.
  *
  * @remarks
- * Every check that used to sit here against `CompactRuntime.EncodedZswapLocalState` has moved into
- * `internal/era/binding.ts`, which states them once per era the CLI can select rather than once
- * against whichever line the build happens to bind: the two assignability pins as the *parameter*
- * and *return* types of `CommandRuntime`'s zswap members (parameters contravariantly, returns
- * covariantly), and the key-set comparison as `AssertNoZswapKeyDrift`.
- *
- * Why the encode direction matters is unchanged and worth keeping in view: `Schema.Struct` defaults
- * to `onExcessProperty: 'ignore'`, so a field added to a line's encoded zswap state would be
- * silently stripped from every written `--output-zswap` file, surfacing only when the file is read
- * back and the coin set is wrong.
+ * `Schema.mutable` on the two collections: `Schema.Array` decodes to `readonly T[]`, which is the
+ * only thing that kept this schema's output from being the runtime's own `EncodedZswapLocalState`.
+ * `Schema.Struct` defaults to `onExcessProperty: 'ignore'`, so a state file written by a line that
+ * did record positions still reads back through this schema, minus the positions.
  */
-export type EncodedZswapLocalStateSchema = typeof EncodedZswapLocalStateSchema.Type;
+export const EncodedZswapLocalStateSchema = Schema.Struct({
+  coinPublicKey: EncodedCoinPublicKeySchema,
+  inputs: Schema.mutable(Schema.Array(EncodedShieldedCoinInfoSchema)),
+  outputs: Schema.mutable(Schema.Array(EncodedZswapOutputSchema))
+});
 
-export const encodeZswapLocalStateObject = Schema.encodeUnknown(EncodedZswapLocalStateSchema);
-export const decodeZswapLocalStateObject = Schema.decodeUnknown(EncodedZswapLocalStateSchema);
+/**
+ * The encoded zswap local state of a runtime line that records tree positions (compact-runtime
+ * 0.16): each input carries its `mt_index`, and `currentIndex` counts the outputs the contract has
+ * produced.
+ */
+export const EncodedZswapLocalStateWithTreePositionsSchema = Schema.Struct({
+  coinPublicKey: EncodedCoinPublicKeySchema,
+  currentIndex: Schema.BigInt,
+  inputs: Schema.mutable(Schema.Array(EncodedQualifiedShieldedCoinInfoSchema)),
+  outputs: Schema.mutable(Schema.Array(EncodedZswapOutputSchema))
+});
+
+/**
+ * Encodes a runtime line's zswap local state to its JSON-representable form through the era's
+ * schema. `tryRuntime` refuses an async `evaluate` through a conditional on its return type, which
+ * a type parameter cannot discharge, so the (synchronous) runtime result is asserted into shape.
+ */
+export const encodeZswapLocalStateFile = <Z, ZI>(
+  runtime: EraBinding.CommandRuntime<Z>,
+  zswapLocalStateSchema: Schema.Schema<Z, ZI>,
+  message: string,
+  zswapLocalState: unknown
+): Effect.Effect<ZI, ContractRuntimeError.ContractRuntimeError | ParseResult.ParseError> =>
+  runtime
+    .tryRuntime(
+      message,
+      () => runtime.encodeZswapLocalState(zswapLocalState as never) as Z extends PromiseLike<unknown> ? never : Z
+    )
+    .pipe(Effect.flatMap(Schema.encodeUnknown(zswapLocalStateSchema)));

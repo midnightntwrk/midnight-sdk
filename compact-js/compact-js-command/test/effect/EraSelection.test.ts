@@ -19,6 +19,7 @@ import { Cause, Clock, Effect, Exit, Option } from 'effect';
 
 import * as CircuitCommand from '../../src/effect/internal/circuitCommand.js';
 import { makeIntents } from '../../src/effect/internal/command.js';
+import { EncodedZswapLocalStateSchema } from '../../src/effect/internal/encodedZswapLocalStateSchema.js';
 import type * as EraBinding from '../../src/effect/internal/era/binding.js';
 import { DEFAULT_LEDGER_ERA, SELECTABLE_LEDGER_ERAS } from '../../src/effect/internal/era/eras.js';
 import { forLedgerEra } from '../../src/effect/internal/era/registry.js';
@@ -96,12 +97,11 @@ const makeStubLedger = (): readonly [EraBinding.CommandLedger, StubCalls] => {
   return [ledger, calls] as const;
 };
 
-const stubRuntime: EraBinding.CommandRuntime = {
+const stubRuntime: EraBinding.CommandRuntime<typeof EncodedZswapLocalStateSchema.Type> = {
   tryRuntime: (message, evaluate) => Effect.try({ try: evaluate, catch: (err) => ContractRuntimeError.make(message, err) }),
   decodeZswapLocalState: () => 'stub-decoded-zswap',
   encodeZswapLocalState: () => ({
     coinPublicKey: { bytes: new Uint8Array() },
-    currentIndex: 0n,
     inputs: [],
     outputs: []
   })
@@ -241,8 +241,8 @@ describe('era selection', () => {
 
     // An era with neither capability — ledger 8's shape, built here rather than imported so the
     // gates are tested against the *contract* rather than against one era's current facts.
-    const withoutCapabilities = CircuitCommand.makeHandler(stubLedger, stubRuntime, { contractEvents: false });
-    const withCapabilities = CircuitCommand.makeHandler(stubLedger, stubRuntime, {
+    const withoutCapabilities = CircuitCommand.makeHandler(stubLedger, stubRuntime, EncodedZswapLocalStateSchema, { contractEvents: false });
+    const withCapabilities = CircuitCommand.makeHandler(stubLedger, stubRuntime, EncodedZswapLocalStateSchema, {
       makeContractStateProvider: () => ({ getContractState: () => Promise.resolve(undefined) }),
       makeContractModuleProvider: () => ({ resolve: () => undefined }),
       contractEvents: true
