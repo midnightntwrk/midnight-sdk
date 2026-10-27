@@ -209,7 +209,7 @@ export const exclusive: {
 export const from: (input: IntegerRangeInput) => IntegerRange =
   (input) => make(input);
 
-const RANGE_REGEXP = /(?<n>\d*)\.\.(?<inc>\=?)(?<x>\d*)/; // eslint-disable-line no-useless-escape
+const RANGE_REGEXP = /^(?<n>\d+)\.\.(?<inc>=?)(?<x>\d+)$/;
 const DEFAULT_ARRAY_INPUT_MODE: IntegerRangeValue['_tag'] = 'Exclusive';
 
 const IntegerRangeProto: Omit<IntegerRange, 'value'> = {
