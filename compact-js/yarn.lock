@@ -1001,7 +1001,7 @@ __metadata:
     "@midnight-ntwrk/compact-runtime": "npm:0.20.0"
     "@midnight-ntwrk/platform-js": "npm:^3.0.0"
     "@midnight-ntwrk/wallet-sdk-address-format": "npm:3.1.0"
-    "@midnightntwrk/ledger-v9": "npm:^1.0.0-rc.5"
+    "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.5"
     effect: "npm:^3.22.1"
     json5: "npm:^2.2.3"
     ts-node: "npm:^10.9.2"
@@ -1022,7 +1022,7 @@ __metadata:
     "@effect/sql": "npm:^0.52.1"
     "@effect/workflow": "npm:^0.19.0"
     "@midnight-ntwrk/compact-runtime": "npm:0.20.0"
-    "@midnightntwrk/ledger-v9": "npm:^1.0.0-rc.5"
+    "@midnightntwrk/ledger-v9": "npm:1.0.0-rc.5"
     effect: "npm:^3.22.1"
     tslib: "npm:^2.8.1"
   peerDependencies:
@@ -1225,7 +1225,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@midnightntwrk/ledger-v9@npm:^1.0.0-rc.5":
+"@midnightntwrk/ledger-v9@npm:1.0.0-rc.5, @midnightntwrk/ledger-v9@npm:^1.0.0-rc.5":
   version: 1.0.0-rc.5
   resolution: "@midnightntwrk/ledger-v9@npm:1.0.0-rc.5"
   checksum: 10/e40470c85cc4a74f5cec3cc5d4f7bbfd4e2b54cd5ac4a1b128d1c919219e1a6574ac74db5558f99521a280453cb07d778cccb38bcf842389506104103666bfc0
