@@ -64,15 +64,19 @@ export interface SigningKey {
   readonly tag: SignatureKind;
 
   /**
-   * The raw key value, a public BIP-340 signing key, 32 bytes in length, with an optional 3-byte version prefix.
+   * The raw key value: a hex-encoded secret (private) signing key, exactly 32 bytes in length, for the
+   * signature scheme named by {@link SigningKey.tag | tag} (`schnorr` or `ecdsa`). Keep it secret; it is
+   * never a public key.
    */
   readonly value: SigningKey.Value;
 }
 
 export declare namespace SigningKey {
   /**
-   * The raw value of a {@link SigningKey}; a hex-encoded string 32 bytes in length, with an optional 3-byte
-   * version prefix.
+   * The raw value of a {@link SigningKey}; a hex-encoded secret (private) key string, exactly 32 bytes in
+   * length. Both ledger signature schemes (`schnorr` and `ecdsa`) take a 32-byte key, and neither accepts a
+   * version-prefixed form, so any other length is rejected here rather than failing later, when the key
+   * reaches the ledger.
    *
    * @category keys
    */
@@ -86,7 +90,7 @@ export declare namespace SigningKey {
  */
 export const Value = Brand.all(
   Brand.nominal<SigningKey.Value>(),
-  Hex.ConstrainedPlainHex({ byteLength: '32..=35' })
+  Hex.ConstrainedPlainHex({ byteLength: '32..=32' })
 );
 
 /**

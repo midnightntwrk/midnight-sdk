@@ -19,7 +19,7 @@ import * as Effect from 'effect/Effect';
 import * as Option from 'effect/Option';
 
 const COIN_PUBLIC = '0102';
-// A valid signing key value is plain hex, 32 to 35 bytes in length.
+// A valid signing key value is plain hex, exactly 32 bytes in length.
 const SIGNING = 'a1'.repeat(32);
 
 const readKeys = (json: unknown): Configuration.Configuration.Keys =>

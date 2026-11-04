@@ -38,7 +38,11 @@ export type Options = Command.Command.ParseConfig<typeof Options>;
 /** @internal */
 export const Options = {
   ...InternalMaintainCommand.Options,
-  signingKey: InternalOptions.signingKey
+  signingKey: InternalOptions.signingKey,
+  // The kind of the NEW authority key only. It is deliberately not named `signingKind`: that name
+  // feeds `asConfigProvider`, which tags the CURRENT key (the one given with `--signing`) that signs
+  // the maintenance update. The current and new keys need not share a scheme.
+  newSigningKind: InternalOptions.signingKind
 };
 
 /**
@@ -54,7 +58,7 @@ export const makeHandler: (
 ) => InternalCommand.CommandHandler<Args & Options> = (ledger) => {
   const { tryLedger, newIntent, serializeIntent } = InternalCommand.makeIntents(ledger);
 
-  return ({ address, inputFilePath, newSigningKey, outputFilePath }, moduleSpec) =>
+  return ({ address, inputFilePath, newSigningKey, newSigningKind, outputFilePath }, moduleSpec) =>
     Effect.gen(function* () {
       const fs = yield* FileSystem.FileSystem;
       const {
@@ -64,7 +68,8 @@ export const makeHandler: (
         .readFile(inputFilePath)
         .pipe(Effect.flatMap(ledger.contractStateFromBytes));
       const result = yield* contractModule.contractExecutable.replaceContractMaintenanceAuthority(
-        Option.some(SigningKey.make(newSigningKey)),
+        // `SigningKey.make` defaults the kind to 'schnorr' when the option is absent.
+        Option.some(SigningKey.make(newSigningKey, Option.getOrUndefined(newSigningKind))),
         {
           address,
           contractState: yield* ledger.toRuntimeContractState(ledgerContractState as never)

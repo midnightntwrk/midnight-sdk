@@ -65,7 +65,11 @@ export default {
   config: {
     keys: {
       coinPublic: '...',
-      signing: '...'
+      // The secret signing key (32 bytes, hex encoded) and its signature scheme:
+      // 'schnorr' (the default) or 'ecdsa'. `signingKind` can also be set with the
+      // KEYS_SIGNING_KIND environment variable or the --signing-kind command line option.
+      signing: '...',
+      signingKind: 'schnorr'
     },
     network: 'undeployed'
   }
@@ -94,6 +98,7 @@ Defaults to the Midnight MainNet if not specified. Its value can also be specifi
                  [-p ...]
                  [-n ...]
                  [-s | --signing ...]
+                 [--signing-kind ...]
                  [--output ...]
                  [--output-ps ...]
                  [--output-zswap ...]
@@ -107,10 +112,16 @@ respectively, both formatted as JSON.
 
 #### Options
 
-- `-s | --signing key`. An optional public BIP-340 signing key, hex encoded.  
+- `-s | --signing key`. An optional secret signing key, hex encoded, exactly 32 bytes. This is a private key —
+never a public key — and it may be for either signature scheme (see `--signing-kind`).  
 If not provided, a sample signing key is used in order to create a valid Contract Maintenance Authority (CMA) but it
 will not be available for use in future maintenance operations. Its value can also be specified using an environment
-variable named `KEYS_SIGNING`.
+variable named `KEYS_SIGNING`, or as `keys.signing` in the contract configuration.
+- `--signing-kind kind`. The signature scheme of the signing key: `schnorr` (the default) or `ecdsa`.  
+It overrides the environment variable named `KEYS_SIGNING_KIND` and the contract configuration's `keys.signingKind`.
+On `maintain contract`, the same option sets the scheme of the NEW authority key (the positional `signing_key`
+argument); it does not change the scheme of the current key given with `--signing`. Note that ledger 8 supports
+only `schnorr`; choosing `ecdsa` there fails with an "unsupported signature scheme" error.
 - `--output pathToStateOutput`. The file path to where the serialized `Intent` data should be written.  
 Defaults to `'output.bin'` in the current working folder.
 - `--output-ps pathToPrivateStateOutput`. The file path to where the private state data should be written.  

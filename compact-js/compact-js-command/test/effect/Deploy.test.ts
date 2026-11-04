@@ -16,9 +16,11 @@
 import { resolve } from 'node:path';
 
 import { Command } from '@effect/cli';
+import { FileSystem } from '@effect/platform';
 import { describe, it } from '@effect/vitest';
 import { deployCommand } from '@midnight-ntwrk/compact-js-command/effect';
 import { encodeZswapLocalState } from '@midnight-ntwrk/compact-runtime';
+import { ContractState, sampleSigningKey } from '@midnightntwrk/ledger-v9';
 import { Effect } from 'effect';
 import { afterEach, vi } from 'vitest';
 
@@ -81,6 +83,44 @@ describe('Deploy Command', () => {
       Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
       Effect.provide(testLayer)
     ),
+    30_000
+  );
+
+  it.effect(
+    'records an ECDSA maintenance authority when --signing-kind ecdsa is given',
+    () =>
+      Effect.gen(function* () {
+        const fs = yield* FileSystem.FileSystem;
+        const cli = Command.run(deployCommand, { name: 'deploy', version: '0.0.0' });
+
+        yield* cli([
+          'node', 'deploy.ts',
+          '-c', COUNTER_CONFIG_FILEPATH,
+          '-s', sampleSigningKey('ecdsa').value,
+          '--signing-kind', 'ecdsa',
+          '--output', COUNTER_OUTPUT_FILEPATH,
+          '--output-oc', COUNTER_OUTPUT_OC_FILEPATH,
+          '--output-ps', COUNTER_OUTPUT_PS_FILEPATH,
+          '--output-zswap', COUNTER_OUTPUT_ZSWAP_FILEPATH
+        ]);
+
+        const lines = yield* MockConsole.getLines({ stripAnsi: true });
+        expect(lines.length).toBe(0);
+
+        // The on-chain state carries the authority the constructor built from the configured key:
+        // its single committee member must be tagged with the scheme the command line named. A CLI
+        // that dropped the kind would record 'schnorr' here while the key bytes are an ECDSA key —
+        // the silent scheme change this option exists to prevent.
+        const state = ContractState.deserialize(yield* fs.readFile(COUNTER_OUTPUT_OC_FILEPATH));
+        expect(state.maintenanceAuthority.committee).toHaveLength(1);
+        expect(state.maintenanceAuthority.committee[0].tag).toBe('ecdsa');
+      }).pipe(
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_OC_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_PS_FILEPATH)),
+        Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_ZSWAP_FILEPATH)),
+        Effect.provide(testLayer)
+      ),
     30_000
   );
 

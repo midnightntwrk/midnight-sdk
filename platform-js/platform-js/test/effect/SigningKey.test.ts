@@ -16,13 +16,30 @@
 import { describe, expect, it } from '@effect/vitest';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
 
-// A valid signing key value is plain hex, 32 to 35 bytes in length.
+// A valid signing key value is plain hex, exactly 32 bytes in length.
 const VALID_VALUE = 'a1'.repeat(32);
 
 describe('SigningKey', () => {
   describe('Value', () => {
     it('accepts a valid plain hex value', () => {
       expect(() => SigningKey.Value(VALID_VALUE)).not.toThrow();
+    });
+
+    it('accepts a value of exactly 32 bytes', () => {
+      expect(() => SigningKey.Value('a1'.repeat(32))).not.toThrow();
+    });
+
+    it('rejects a value of 31 bytes', () => {
+      expect(() => SigningKey.Value('a1'.repeat(31))).toThrow();
+    });
+
+    it('rejects a value of 33 bytes', () => {
+      expect(() => SigningKey.Value('a1'.repeat(33))).toThrow();
+    });
+
+    it('rejects the formerly accepted prefixed lengths (34 and 35 bytes)', () => {
+      expect(() => SigningKey.Value('a1'.repeat(34))).toThrow();
+      expect(() => SigningKey.Value('a1'.repeat(35))).toThrow();
     });
 
     it.each([

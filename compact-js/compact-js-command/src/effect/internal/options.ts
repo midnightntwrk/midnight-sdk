@@ -102,8 +102,18 @@ export const coinPublicKey = Options.text('coin-public').pipe(
 /** @internal */
 export const signingKey = Options.text('signing').pipe(
   Options.withAlias('s'),
-  Options.withDescription('A public BIP-340 signing key, hex encoded.'),
+  Options.withDescription('The secret signing key, hex encoded (32 bytes). See --signing-kind for its scheme.'),
   Options.withSchema(Schema.String.pipe(Schema.fromBrand(SigningKey.Value)).annotations({ title: 'signing' })),
+  Options.optional
+);
+
+/** @internal */
+export const signingKind = Options.text('signing-kind').pipe(
+  Options.withDescription(
+    'The signature scheme of the signing key (\'schnorr\' or \'ecdsa\'). Overrides the KEYS_SIGNING_KIND ' +
+      'environment variable and the contract configuration\'s keys.signingKind.'
+  ),
+  Options.withSchema(Schema.Literal(...SigningKey.SignatureKinds).annotations({ title: 'signing-kind' })),
   Options.optional
 );
 
@@ -238,6 +248,7 @@ export type ConfigOptionInput = Command.Command.ParseConfig<{
 export type AllConfigurableOptionInputs = Command.Command.ParseConfig<{
   coinPublicKey: typeof coinPublicKey;
   signingKey: typeof signingKey;
+  signingKind: typeof signingKind;
 }>;
 
 export const asConfigProvider: (
@@ -246,6 +257,7 @@ export const asConfigProvider: (
   ConfigProvider.fromJson({
     keys: {
       coinPublic: Option.getOrUndefined(configurableOptions.coinPublicKey ?? Option.none()),
-      signing: Option.getOrUndefined(configurableOptions.signingKey ?? Option.none())
+      signing: Option.getOrUndefined(configurableOptions.signingKey ?? Option.none()),
+      signingKind: Option.getOrUndefined(configurableOptions.signingKind ?? Option.none())
     }
   });
