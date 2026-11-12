@@ -66,6 +66,9 @@ jobs:
           node-version-file: ${{ inputs.node-version-file }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.MIDNIGHTCI_PACKAGES_WRITE }}
+      - name: Update NPM
+        run: npm install -g npm@12.0.2
+
       # Provisions the Yarn version pinned by each workspace's `packageManager`
       # field. Without this the runner's Yarn 1.x shim is used instead.
       - name: Enable corepack
