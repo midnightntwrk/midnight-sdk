@@ -15,7 +15,7 @@
 
 import { CompiledContract, ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
 
-import { Contract as C_ } from '../../../../compact-js/test/contract/managed/cccMiddle/contract/index';
+import { Contract as C_ } from '../../../../compact-js/test/contract/managed/cccMiddle/contract/index.js';
 
 type CCCMiddleContract = C_<undefined>;
 const CCCMiddleContract = C_;

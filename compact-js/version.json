@@ -1,11 +1,10 @@
 {
   "v_info": {
-    "version": "2.5.5",
-    "preRelease": "-rc.7",
+    "version": "3.0.0",
+    "preRelease": "-rc.3",
     "tag": "rc",
     "releaseBranches": [
-      "main",
-      "release/compact-js/.*"
+      "main"
     ]
   }
 }

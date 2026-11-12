@@ -2,16 +2,22 @@ version: 2
 
 updates:
   - package-ecosystem: "github-actions"
+    labels:
+      - "bot:github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
 
   - package-ecosystem: "npm"
+    labels:
+      - "bot:dependencies"
     directory: "/compact-js"
     schedule:
       interval: "weekly"
 
   - package-ecosystem: "npm"
+    labels:
+      - "bot:dependencies"
     directory: "/platform-js"
     schedule:
       interval: "weekly"

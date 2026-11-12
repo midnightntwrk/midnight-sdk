@@ -29,7 +29,10 @@ An example configuration file for the canonical "Counter" contract is shown belo
 
 ```ts
 import { CompiledContract, type Contract, ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
-import { Contract as C_ } from './<path>/managed/counter/contract/index.cjs';
+// `compactc` emits `contract/index.js`. The extension is required: Compact.js transpiles this file
+// and then imports the result with plain Node ESM, which does no extension guessing for relative
+// specifiers.
+import { Contract as C_ } from './<path>/managed/counter/contract/index.js';
 
 // The type of private state to use in contract execution.
 type PrivateState = {
@@ -124,9 +127,12 @@ Defaults to `'zswap.json'` in the current working folder.
                   --input ...
                   --input-ps ...
                   [--input-zswap ...]
+                  [--contract-states-dir ... --contract-modules-dir ...]
                   [--output ...]
                   [--output-ps ...]
                   [--output-zswap ...]
+                  [--output-zswap-calls ...]
+                  [--output-contract-states-dir ...]
                   contractAddress,
                   circuitId,
                   ...args
@@ -154,6 +160,23 @@ Defaults to `'output.bin'` in the current working folder.
 Defaults to `'output.ps.json'` in the current working folder.
 - `--output-zswap pathToZswapLocalStateOutput`. The file path to where the the local Zswap state data should be written.  
 Defaults to `'zswap.json'` in the current working folder.
+
+#### Cross-contract calls
+
+A circuit that calls other contracts needs each callee's state and its compiled code, so `--contract-states-dir` and
+`--contract-modules-dir` are given together. `--contract-states-dir` alone was enough before dynamic cross-contract
+calls, because a caller's generated code imported its callees, but it no longer does.
+
+- `--contract-states-dir pathToStatesDir`. A directory of ledger-serialized contract states, each file named by its
+contract address.
+- `--contract-modules-dir pathToModulesDir`. A directory of compiled contract directories, each named by its contract
+address. Node resolves each module's imports from its real location, so keep the directory inside the project, or fill
+it with symlinks to compiled directories there.
+- `--output-contract-states-dir pathToStatesOutputDir`. The directory where the updated state of each called contract
+is written, named by its address.
+- `--output-zswap-calls pathToZswapCallsOutput`. The file path to where the local Zswap state of every call is written
+as JSON, callees first and the root last. A callee's shielded coins appear only here, because `--output-zswap` holds
+the root's. A contract called more than once appears once per call, each time with all of its coins so far.
 
 ### Contract Arguments
 

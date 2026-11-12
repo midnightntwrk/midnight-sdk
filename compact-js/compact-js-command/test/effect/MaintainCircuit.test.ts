@@ -16,33 +16,33 @@
 import { resolve } from 'node:path';
 
 import { Command } from '@effect/cli';
-import { NodeContext } from '@effect/platform-node';
 import { describe, it } from '@effect/vitest';
-import { ConfigCompiler, maintainCommand } from '@midnight-ntwrk/compact-js-command/effect';
+import { maintainCommand } from '@midnight-ntwrk/compact-js-command/effect';
 import { sampleSigningKey } from '@midnightntwrk/ledger-v9';
-import { Console, Effect, Layer } from 'effect';
+import { Effect } from 'effect';
 
 import { ensureRemovePath } from './cleanup.js';
+import { useConfigFixture } from './configFixture.js';
 import * as MockConsole from './MockConsole.js';
+import { testLayer } from './testLayer.js';
 
-const COUNTER_CONFIG_FILEPATH = resolve(import.meta.dirname, '../contract/counter/contract.config.ts');
+// Test files run in parallel, so each owns a distinct path for every artefact it writes — the
+// config fixture (which is transpiled to a sibling `.js` before import) as much as the output
+// intent: a shared name lets one file's cleanup delete another's artefact mid-read.
+const COUNTER_CONFIG_FILEPATH = useConfigFixture(
+  resolve(import.meta.dirname, '../contract/counter/contract.config.ts'),
+  'maintain-circuit'
+);
 const COUNTER_STATE_FILEPATH = resolve(import.meta.dirname, '../contract/counter/state.bin');
-const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_circuit.bin');
+const COUNTER_OUTPUT_FILEPATH = resolve(import.meta.dirname, '../contract/counter/output_maintain_circuit.bin');
 
-const testLayer: Layer.Layer<ConfigCompiler.ConfigCompiler | NodeContext.NodeContext> = Effect.gen(function* () {
-  const console = yield* MockConsole.make;
-  return Layer.mergeAll(Console.setConsole(console), ConfigCompiler.layer.pipe(Layer.provideMerge(NodeContext.layer)));
-}).pipe(Layer.unwrapEffect);
-
-// Skipped. The current yarn workspace setup (with the root dependent on Ledger@4), means that Ledger@6 that
-// both `compact-js` and `compact-js-command` depended on are not being deduped on install. At runtime this
-// means that two instances of the Ledger WASM is being loaded. `compact-js` creates an instance of
-// `MaintenanceUpdate` that is then added to an `Intent` created in `compact-js-command`, and since these two types
-// are originated from different instances of the Ledger WASM, the `Intent.addMaintenanceUpdate()` function
-// throws an `'expected instance of MaintenanceUpdate'` error. To fix this we need to properly segregate the
-// workspace. The Contract Maintenance Operations are tested (outside of the command) in the `compact-js` package.
+// These tests were long skipped because each package loaded its own ledger WASM instance: a
+// `MaintenanceUpdate` built in `compact-js` failed `Intent.addMaintenanceUpdate()` in
+// `compact-js-command` with 'expected instance of MaintenanceUpdate'. Both packages now reach one
+// ledger binding through the `Ledger` facade, and these tests are the behavioural regression
+// guard for exactly that dual-instance failure.
 // @seealso ./MaintainContract.test.ts
-describe.skip('Maintain Circuit Command', () => {
+describe('Maintain Circuit Command', () => {
   it.effect(
     'should report success with valid setup',
     () =>
@@ -52,10 +52,9 @@ describe.skip('Maintain Circuit Command', () => {
         yield* cli([
           'node',
           'maintain.ts',
-          'maintain',
           'circuit',
           '-s',
-          sampleSigningKey(),
+          sampleSigningKey().value,
           '-c',
           COUNTER_CONFIG_FILEPATH,
           '--input',
@@ -70,7 +69,6 @@ describe.skip('Maintain Circuit Command', () => {
 
         expect(lines.length).toBe(0);
       }).pipe(
-        Effect.ensuring(ensureRemovePath(COUNTER_CONFIG_FILEPATH.replace('.ts', '.js'))),
         Effect.ensuring(ensureRemovePath(COUNTER_OUTPUT_FILEPATH)),
         Effect.provide(testLayer)
       ),

@@ -17,6 +17,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { ContractRuntimeError, Ledger } from '@midnight-ntwrk/compact-js/effect';
 import { FileSystemContractStateProvider } from '@midnight-ntwrk/compact-js-node/effect';
 import { ContractState as RuntimeContractState } from '@midnight-ntwrk/compact-runtime';
 import { ContractOperation, ContractState as LedgerContractState } from '@midnightntwrk/ledger-v9';
@@ -66,6 +67,35 @@ describe('FileSystemContractStateProvider', () => {
     expect(state!.operations()).toContain('getV');
   });
 
+  it('decodes through a caller-supplied era rather than the build\'s bound one', async () => {
+    const bytes = stateBytesWith('getV');
+    writeFileSync(join(baseDir, ADDRESS), bytes);
+    const decoded: string[] = [];
+
+    // Cross-contract calls are a ledger 9+ capability, so there is only one era that can use this
+    // provider *today* — which is exactly why the coupling is easy to miss. The provider used to
+    // reach `Ledger` directly, so it always spoke whichever era `current.ts` bound: the first time
+    // that advances, a consumer holding the retained era through `/v9/effect` would be handed
+    // states from the *new* era by a provider they passed to the old era's circuit context.
+    // Supplying the era makes the caller's choice reach the decode.
+    const era = {
+      era: { ledger: 9 },
+      contractStateFromBytes: (raw: Uint8Array) => {
+        decoded.push('fromBytes');
+        return Ledger.contractStateFromBytes(raw);
+      },
+      toRuntimeContractState: Ledger.toRuntimeContractState
+    };
+
+    const state = await FileSystemContractStateProvider.make(baseDir, { ledger: era }).getContractState(
+      ZERO_BLOCK_HASH,
+      ADDRESS
+    );
+
+    expect(decoded).toEqual(['fromBytes']);
+    expect(serializedEqual(state!.serialize(), bytes)).toBe(true);
+  });
+
   it('returns undefined when the contract state file is missing', async () => {
     const missing = 'f'.repeat(64);
     const state = await FileSystemContractStateProvider.make(baseDir).getContractState(ZERO_BLOCK_HASH, missing);
@@ -110,14 +140,28 @@ describe('FileSystemContractStateProvider', () => {
     expect(serializedEqual(fromHashA!.serialize(), bytes)).toBe(true);
   });
 
-  it('rejects when the state file exists but contains invalid bytes', async () => {
+  it('rejects with a ContractRuntimeError when the state file exists but contains invalid bytes', async () => {
     const address = 'd'.repeat(64);
     // A present-but-corrupt file must fail loudly: only a *missing* file means "no state". The
     // provider catches solely ENOENT, so deserializing garbage rejects rather than resolving
-    // undefined — distinguishing "no state" from "unreadable state".
+    // undefined — distinguishing "no state" from "unreadable state". The rejection carries the
+    // Ledger facade's typed error, not a wrapped fiber failure.
     writeFileSync(join(baseDir, address), Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7]));
 
-    await expect(FileSystemContractStateProvider.make(baseDir).getContractState(ZERO_BLOCK_HASH, address))
-      .rejects.toThrow();
+    const rejection = await FileSystemContractStateProvider.make(baseDir)
+      .getContractState(ZERO_BLOCK_HASH, address)
+      .then(
+        () => undefined,
+        (err: unknown) => err
+      );
+
+    expect(ContractRuntimeError.isRuntimeError(rejection)).toBe(true);
+    // The message content is the point of the error, not just its type: it must name the contract,
+    // the file, and the era whose encoding was expected, so a user can find the offending file in
+    // a directory of callee states without bisecting by hand.
+    const { message } = rejection as ContractRuntimeError.ContractRuntimeError;
+    expect(message).toContain(address);
+    expect(message).toContain(join(baseDir, address));
+    expect(message).toContain('expected ledger era 9 encoding');
   });
 });

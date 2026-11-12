@@ -51,7 +51,7 @@ jobs:
           done
 
       - name: Log in to GitHub Container registry
-        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # ratchet:docker/login-action@v4.4.0
+        uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # ratchet:docker/login-action@v4.6.0
         with:
           registry: 'https://ghcr.io'
           username: ${{ github.actor }}
@@ -69,6 +69,10 @@ jobs:
       - name: Update NPM
         run: npm install -g npm@12.0.2
 
+      # Provisions the Yarn version pinned by each workspace's `packageManager`
+      # field. Without this the runner's Yarn 1.x shim is used instead.
+      - name: Enable corepack
+        run: corepack enable
       - name: Configure yarn
         run: |
           yarn config set 'npmScopes.midnight-ntwrk.npmAuthToken' "$MIDNIGHTCI_PACKAGES_WRITE"
@@ -125,7 +129,7 @@ jobs:
 
       - name: Publish Test Coverage
         if: ${{ inputs.coverage-files }} # Publish the comment if we have received coverage files
-        uses: MishaKav/jest-coverage-comment@25f2818fee93043532f640ad32a7565b4bd4ea9a # ratchet:MishaKav/jest-coverage-comment@v1
+        uses: MishaKav/jest-coverage-comment@642ef024cc554a34b7082cea12c7bf63575ae151 # ratchet:MishaKav/jest-coverage-comment@v1
         with:
           hide-comment: false
           unique-id-for-comment: ${{ inputs.workspace }}-coverage

@@ -1,0 +1,201 @@
+/*
+ * This file is part of midnight-sdk.
+ * Copyright (C) 2025 Midnight Foundation
+ * SPDX-License-Identifier: Apache-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+/**
+ * The era-neutral shape of "execute one circuit", declared above both runtime bindings so each can
+ * present the same view of a fundamentally different execution model (midnight-sdk#387).
+ *
+ * @remarks
+ * `ContractExecutable` used to speak compact-runtime 0.19's model directly: build a context with
+ * `createCircuitContext(circuitId, address, …)`, then read `context.callProofDataTrace`,
+ * `context.callContext` and `context.events`. None of that exists on 0.16 — it has one flat frame
+ * and hands proof data back on `results.proofData`.
+ *
+ * Rather than fork the executable per era, each binding implements two functions against the types
+ * here:
+ *
+ * - `createExecutionContext` — takes one set of named parameters, which each line maps onto its own
+ *   entry point (0.20's options object, 0.16's positional arguments), and returns whatever context
+ *   *that* line's generated contracts accept.
+ * - `readExecution` — projects the line's results into {@link ExecutionView}.
+ *
+ * The type parameters keep this file era-agnostic: each binding instantiates them with its own
+ * `QueryContext`, `AlignedValue` and so on, and the relational checks in `binding.ts` assert the
+ * instantiation is self-consistent. Deliberately structural — nothing here imports a runtime
+ * package, so this module stays above both seams.
+ *
+ * This docblock carries no internal-marker JSDoc tag. A module docblock attaches to the file's
+ * first declaration, so under `stripInternal` the marker deleted {@link CallProofDataView} from the
+ * emitted typings while `v0_16.d.ts` and `v0_20.d.ts` went on importing it — `.d.ts` files that
+ * only looked sound because most consumers build with `skipLibCheck`. Privacy comes from
+ * `package.json` `exports` blocking `./effect/internal/*` instead. See `internal/boundary.ts` for
+ * why this note does not spell the tag out.
+ */
+
+/**
+ * One entry of an execution's call trace: the data needed to prove a single circuit call and to
+ * partition its transcript.
+ *
+ * @remarks
+ * Mirrors compact-runtime 0.20's `CallProofData` because that is the richer of the two models, so
+ * nothing is lost on the newer line. On 0.16 a single entry of this shape is *synthesised* from the
+ * flat frame, which is faithful rather than lossy: a line with no `crossContractCall` can only
+ * produce one call, so a one-element trace is complete by construction.
+ */
+export interface CallProofDataView<QueryContext, AlignedValue, Op, EncodedZswapLocalState, CommunicationCommitmentData> {
+  readonly circuitId: string;
+  readonly contractAddress: string;
+  /**
+   * The contract's ledger state *before* the call.
+   *
+   * @remarks
+   * Must be captured at context construction, not read back afterwards. 0.16's flat context is
+   * mutated in place during execution, so reading `currentQueryContext` at the end would report
+   * the final state as the initial one and silently corrupt transcript partitioning.
+   */
+  readonly initialQueryContext: QueryContext;
+  /** The contract's ledger state after the call. */
+  readonly finalQueryContext: QueryContext;
+  readonly publicTranscript: readonly Op[];
+  readonly input: AlignedValue;
+  readonly output: AlignedValue;
+  readonly privateTranscriptOutputs: readonly AlignedValue[];
+  readonly zswapLocalState: EncodedZswapLocalState;
+  /** Present only when this call was a cross-contract sub-call, so never on ledger 8. */
+  readonly commCommData?: CommunicationCommitmentData | undefined;
+}
+
+/**
+ * The members of a line's query context that a call's transcript partition is built from.
+ *
+ * @remarks
+ * `ContractExecutable` republishes these four on every `ContractCallPublic` so a consumer can redo
+ * the partition itself — in a *different* ledger era, which is the case that matters. Across a
+ * hard-fork window a call executes on one era and composes on the next, so the partition that came
+ * out of the executing era is the wrong one, and the inputs needed to redo it in the right one were
+ * unreachable (midnight-sdk#400).
+ *
+ * Declared here structurally rather than taken from either line, and asserted against both by
+ * `conformance.ts`, because the public members are *derived* from {@link CallProofDataView}'s query
+ * context: a derivation that misses resolves to `never`, which is assignable to everything — so
+ * every call site would still compile and the member would simply be unusable. This is what turns
+ * that silent collapse into a build failure.
+ *
+ * `block`, `effects` and `comIndices` are plain data on every line compact-js binds, which is what
+ * lets them cross an era seam; {@link state} is not — it is a live handle, like the post-execution
+ * state `ContractCallPublic.contractState` already reports, and a consumer moving it across an era
+ * boundary has to encode it first.
+ */
+export interface PartitionInputs {
+  /**
+   * The ledger state the call ran against, one level in (`state.state` is the value itself). Read
+   * from the **pre**-execution context.
+   *
+   * @remarks
+   * Required rather than incidental: the partitioner *replays* the transcript against this state to
+   * decide where the guaranteed section ends and to charge the ops, so it rejects a state the
+   * transcript's reads do not fit and mis-charges one that merely differs. It is listed here for
+   * the same reason as the other three — the public member is derived from this context, and a
+   * derivation that misses collapses to `never` in silence.
+   */
+  readonly state: { readonly state: unknown };
+  /** The block-level call context. Read from the **pre**-execution context. */
+  readonly block: unknown;
+  /** The contract-external effects the call declared. Read from the **pre**-execution context. */
+  readonly effects: unknown;
+  /** The commitment indices the call discovered. Read from the **post**-execution context. */
+  readonly comIndices: unknown;
+}
+
+/**
+ * The result of executing one root circuit, as `ContractExecutable` consumes it.
+ *
+ * @remarks
+ * `result`, `privateState` and `zswapLocalState` belong to the root contract; `trace` covers every
+ * call made (callees first, root last), and `events` is the whole execution's log-event list.
+ *
+ * On a line that cannot emit events, `LogEvent` is instantiated as `never`, which makes `events`
+ * a `never[]` — statically empty rather than merely empty at run time. That is what lets the same
+ * `CallResult` type serve both eras while keeping the impossible case unconstructable.
+ */
+export interface ExecutionView<Result, PrivateState, Trace, EncodedZswapLocalState, LogEvent, GasCosts> {
+  readonly result: Result;
+  readonly trace: readonly Trace[];
+  readonly privateState: PrivateState;
+  readonly zswapLocalState: EncodedZswapLocalState;
+  readonly events: readonly LogEvent[];
+  readonly gasCosts: GasCosts;
+}
+
+/**
+ * A gas figure in the four dimensions both lines model. The inward-facing twin of
+ * {@link PartitionInputs}: structural, so each binding's own call checks it against that line's
+ * `RunningCost`. Costs travelling *out* stay era-derived.
+ */
+export interface GasCost {
+  readonly readTime: bigint;
+  readonly computeTime: bigint;
+  readonly bytesWritten: bigint;
+  readonly bytesDeleted: bigint;
+}
+
+/**
+ * Named parameters for building an execution context.
+ *
+ * @remarks
+ * Named rather than positional because the two lines disagree on shape — 0.20 takes one options
+ * object and 0.16 takes `(address, …)` positionally with no circuit id at all. A named object means
+ * adding an era cannot silently shift an argument into the wrong slot.
+ *
+ * `stateProvider` and `moduleProvider` exist only for cross-contract calls, and arrive together. A
+ * binding whose line has no `crossContractCall` must *reject* them, and a `parentBlockHash`, rather
+ * than ignore them: silently dropping a provider would make a cross-contract call appear to
+ * succeed against stale state.
+ */
+export interface ExecutionContextParams<
+  PrivateState,
+  ContractState,
+  EncodedZswapLocalState,
+  ContractStateProvider,
+  ContractModuleProvider
+> {
+  readonly circuitId: string;
+  readonly address: string;
+  readonly zswapLocalState: EncodedZswapLocalState;
+  readonly contractState: ContractState;
+  readonly privateState: PrivateState;
+  readonly stateProvider?: ContractStateProvider | undefined;
+  readonly moduleProvider?: ContractModuleProvider | undefined;
+  readonly parentBlockHash?: string | undefined;
+  /**
+   * The execution clock, in **seconds** since the Unix epoch — not milliseconds. Defaults to the
+   * wall clock (`Math.floor(Date.now() / 1_000)`) on both lines, so omitting it changes nothing.
+   *
+   * @remarks
+   * Lands in the query context's `block.secondsSinceEpoch`, which {@link PartitionInputs} puts on
+   * the public result — so without it every execution produces a `block` that differs on each run
+   * and no consumer can record a fixture (midnight-sdk#403).
+   *
+   * `ContractExecutable.circuit` supplies this from the effect's own `Clock`, converting from
+   * milliseconds at the call site. That is why there is no `time` on the public `CircuitContext`:
+   * `Clock` is a default Effect service, so a consumer pins the value with a layer and pays no new
+   * API for it, while the live clock reproduces the previous behaviour exactly. Add a per-call
+   * member only if something needs a *different* time per call — recording a fixture does not.
+   */
+  readonly time?: number | undefined;
+  // Per query and not per call because that is all either line enforces: both pass this same value
+  // to every `query` without decrementing it (midnight-sdk#403).
+  readonly queryGasLimit?: GasCost | undefined;
+}

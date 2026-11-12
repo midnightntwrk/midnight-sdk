@@ -15,12 +15,12 @@
 
 import { FileSystem,Path } from '@effect/platform';
 import { type PlatformError } from '@effect/platform/Error';
-import type { Contract,ContractExecutable } from '@midnight-ntwrk/compact-js/effect';
 import { Context, Effect, Layer, Option } from 'effect';
 import { create } from 'ts-node';
 
 import * as ConfigCompilationError from './ConfigCompilationError.js';
 import * as ConfigError from './ConfigError.js';
+import type * as EraBinding from './internal/era/binding.js';
 
 /**
  * Compiles a contract configuration file into a JavaScript module.
@@ -35,12 +35,23 @@ export class ConfigCompiler extends Context.Tag('compact-js-command/ConfigCompil
 export declare namespace ConfigCompiler {
   /**
    * Represents the _shape_ of an exported configuration module.
+   *
+   * @remarks
+   * `contractExecutable` is described **era-agnostically** ({@link EraBinding.CommandExecutable}),
+   * not as the bound era's `ContractExecutable`. A configuration fixes its own era by importing
+   * `@midnight-ntwrk/compact-js/v8/effect` or `/v9/effect`, and the CLI selects its era separately
+   * with `--ledger-era`; naming one era here would declare a configuration written against the
+   * other to be the wrong type, which is backwards. Both are accepted, and
+   * `internal/command.ts`'s `invocationHandler` reconciles the two choices at run time.
+   *
+   * The view is a structural supertype of every era's `ContractExecutable`, so an existing
+   * configuration type-checks unchanged.
    */
   export type ModuleExport<PS = any> = { // eslint-disable-line @typescript-eslint/no-explicit-any
     default: {
       config: Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
       createInitialPrivateState: () => PS;
-      contractExecutable: ContractExecutable.ContractExecutable<Contract.Contract<PS>, PS>;
+      contractExecutable: EraBinding.CommandExecutable<PS>;
     }
   }
 

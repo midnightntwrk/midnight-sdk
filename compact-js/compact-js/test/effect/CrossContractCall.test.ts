@@ -16,27 +16,47 @@
 import { resolve } from 'node:path';
 
 import { NodeContext } from '@effect/platform-node';
-import { beforeEach, describe, expect, it } from '@effect/vitest';
+import { afterEach, beforeEach, describe, expect, it } from '@effect/vitest';
 import { CompiledContract, Contract, ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import { ZKFileConfiguration } from '@midnight-ntwrk/compact-js-node/effect';
-import { ChargedState, ContractState, type ContractStateProvider } from '@midnight-ntwrk/compact-runtime';
+import {
+  ChargedState,
+  type ContractModuleProvider,
+  ContractState,
+  type ContractStateProvider,
+  type Module
+} from '@midnight-ntwrk/compact-runtime';
 import * as Configuration from '@midnight-ntwrk/platform-js/effect/Configuration';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
-import { ContractDeploy, ContractState as LedgerContractState, partitionTranscripts } from '@midnightntwrk/ledger-v9';
+import { ContractDeploy, ContractState as LedgerContractState, partitionTranscripts, PreTranscript } from '@midnightntwrk/ledger-v9';
 import { Cause, ConfigProvider, Effect, Exit, Layer, Option } from 'effect';
 import { vi } from 'vitest';
 
 import { CCCInnerContract, CCCMiddleContract, CCCOuterContract, CCCSelfContract } from '../contract';
-import { ledger as cccInnerLedger } from '../contract/managed/cccInner/contract';
-import { ledger as cccSelfLedger } from '../contract/managed/cccSelf/contract';
+import * as cccInnerModule from '../contract/managed/cccInner/contract';
+import * as cccMiddleModule from '../contract/managed/cccMiddle/contract';
+import * as cccSelfModule from '../contract/managed/cccSelf/contract';
 
-// Wrap `partitionTranscripts` so it delegates to the real implementation by default; individual
-// tests can override a single call (see the wrong-partition-count test below).
+// Wrap `partitionTranscripts` and `PreTranscript` so they delegate to the real implementation by
+// default; individual tests can override a single call (see the wrong-partition-count and
+// pre-transcript-throw tests below).
 vi.mock('@midnightntwrk/ledger-v9', async (importActual) => {
   // eslint-disable-next-line @typescript-eslint/consistent-type-imports
   const actual = await importActual<typeof import('@midnightntwrk/ledger-v9')>();
-  return { ...actual, partitionTranscripts: vi.fn(actual.partitionTranscripts) };
+  return {
+    ...actual,
+    partitionTranscripts: vi.fn(actual.partitionTranscripts),
+    // Not an arrow function: callers construct with `new`, so the default delegate must itself
+    // be constructible.
+    PreTranscript: vi.fn(function (...args: ConstructorParameters<typeof actual.PreTranscript>) {
+      return new actual.PreTranscript(...args);
+    })
+  };
 });
+
+// Captured before any test queues an override, so `afterEach` can restore the delegating defaults.
+const delegatingPartitionTranscripts = vi.mocked(partitionTranscripts).getMockImplementation()!;
+const delegatingPreTranscript = vi.mocked(PreTranscript).getMockImplementation()!;
 
 // The fixtures form a three-level call chain: `outer` calls `middle`, which calls the `inner` leaf.
 const VALID_COIN_PUBLIC_KEY = 'd2dc8d175c0ef7d1f7e5b7f32bd9da5fcd4c60fa1b651f1d312986269c2d3c79';
@@ -56,6 +76,14 @@ const asContractState = (state: LedgerContractState): ContractState =>
 // The on-chain deploy (and its address) derived from an `initialize` result's contract state.
 const deployOf = (result: { public: { contractState: ContractState } }): ContractDeploy =>
   new ContractDeploy(asLedgerContractState(result.public.contractState));
+
+/** A module provider over an in-memory address-to-module table. */
+const moduleProviderFor = (modules: ReadonlyMap<string, Module>): ContractModuleProvider => ({
+  resolve: (address) => {
+    const module = modules.get(address);
+    return module === undefined ? undefined : () => Promise.resolve(module);
+  }
+});
 
 // All fixtures share the same coin public key and ZK-asset-backed configuration; they differ only by
 // their compiled-assets path.
@@ -119,6 +147,20 @@ describe('cross-contract calls', () => {
   let innerDeploy: ContractDeploy;
   let middleDeploy: ContractDeploy;
   let chainStates: Map<string, ContractState>;
+  let chainModules: Map<string, Module>;
+
+  // Two tests below queue one-shot implementations on these mocks. Nothing else drains those
+  // queues: no vitest config here sets `restoreMocks`, `clearMocks` or `mockReset`, and
+  // `vi.restoreAllMocks()` does not reach a `vi.fn` — so an effect that fails before consuming its
+  // queued implementation would leave it armed, and it would detonate in whichever test ran next as
+  // a confusing failure in an unrelated case. `mockReset` drains the queue but also drops the
+  // delegating implementation, so both are put back.
+  afterEach(() => {
+    vi.mocked(partitionTranscripts).mockReset();
+    vi.mocked(partitionTranscripts).mockImplementation(delegatingPartitionTranscripts);
+    vi.mocked(PreTranscript).mockReset();
+    vi.mocked(PreTranscript).mockImplementation(delegatingPreTranscript);
+  });
 
   beforeEach(async () => {
     inner = innerExecutable.pipe(ContractExecutable.provide(testLayer(CCC_INNER_ASSETS_PATH)));
@@ -130,6 +172,12 @@ describe('cross-contract calls', () => {
     middleDeploy = deployOf(middleResult);
 
     chainStates = new Map([[innerDeploy.address, asContractState(innerDeploy.initialState)]]);
+    // Which module implements the contract at each address. A deployment carries no code, so this is
+    // the table a chain-backed provider would keep; here the fixtures are already imported.
+    chainModules = new Map<string, Module>([
+      [innerDeploy.address, cccInnerModule],
+      [middleDeploy.address, cccMiddleModule]
+    ]);
   });
 
   const middleContext = (stateProvider: ContractStateProvider) => ({
@@ -137,7 +185,8 @@ describe('cross-contract calls', () => {
     contractState: asContractState(middleDeploy.initialState),
     privateState: undefined,
     parentBlockHash: ZERO_BLOCK_HASH,
-    stateProvider
+    stateProvider,
+    moduleProvider: moduleProviderFor(chainModules)
   });
 
   // A state provider backed by the in-memory `chainStates` map — resolves any callee deployed above.
@@ -186,6 +235,41 @@ describe('cross-contract calls', () => {
     })
   );
 
+  it.effect('every call exposes its own Zswap local state, keyed to its own contract', () =>
+    Effect.gen(function*() {
+      // Before LFDT-Minokawa/compact#658 the runtime blanked a callee's Zswap local state, so only
+      // the root had one and `CallResult` surfaced it alone. A callee that is sent a shielded coin
+      // has to claim the receive in the same transaction, so transaction assembly needs each
+      // call's coins separately, bound to the contract that moved them.
+      //
+      // These fixtures move no coins, so every state is empty — what is asserted here is the
+      // plumbing: the field is present on every call, carries the submitter's coin public key
+      // throughout, and is a distinct accumulator per call rather than the root's shared by
+      // reference. Coverage for coins actually crossing a call boundary is end-to-end.
+      const result = yield* middle.circuit(
+        Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
+        middleContext(resolveFromChain),
+        1n
+      );
+
+      expect(result.calls).toHaveLength(3);
+      for (const call of result.calls) {
+        expect(call.private.zswapLocalState).toBeDefined();
+        expect(call.private.zswapLocalState.inputs).toEqual([]);
+        expect(call.private.zswapLocalState.outputs).toEqual([]);
+        // One wallet pays for the whole transaction, so the submitter's key is shared even though
+        // the accumulators are not.
+        expect(call.private.zswapLocalState.coinPublicKey).toEqual(result.zswapLocalState.coinPublicKey);
+      }
+
+      // Sub-calls run in a different contract than the root and must not alias its state.
+      const rootCall = result.calls[result.calls.length - 1];
+      for (const subCall of result.calls.slice(0, -1)) {
+        expect(subCall.private.zswapLocalState).not.toBe(rootCall.private.zswapLocalState);
+      }
+    })
+  );
+
   it.effect('getInner reads callee state and returns the root result plus one sub-call', () =>
     Effect.gen(function*() {
       const setVResult = yield* inner.circuit(
@@ -210,6 +294,24 @@ describe('cross-contract calls', () => {
       expect(result.calls.map((call) => call.circuitId)).toEqual(['getV', 'getInner']);
       expect(Option.isSome(result.calls[0].communicationCommitment)).toBe(true);
       expect(Option.isNone(result.calls[1].communicationCommitment)).toBe(true);
+    })
+  );
+
+  it.effect('totals gas for the callee as well as the root', () =>
+    Effect.gen(function*() {
+      const result = yield* middle.circuit(
+        Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
+        middleContext(resolveFromChain),
+        1n
+      );
+
+      // Why `gasCosts` is read off the context rather than from `CircuitResults.gasCost`: that one
+      // is the root frame's own tally and would report nothing for `inner`, under-reporting exactly
+      // when a consumer is checking what a call tree cost. `inner` is called twice here and has a
+      // single entry, which is the other half of the shape — per contract, not per call.
+      expect(Object.keys(result.gasCosts).sort()).toEqual([innerDeploy.address, middleDeploy.address].sort());
+      expect(result.gasCosts[innerDeploy.address]!.computeTime).toBeGreaterThan(0n);
+      expect(result.gasCosts[middleDeploy.address]!.computeTime).toBeGreaterThan(0n);
     })
   );
 
@@ -280,8 +382,8 @@ describe('cross-contract calls', () => {
       const setVCall = result.calls.find((call) => call.circuitId === 'setV')!;
       // The read-only sub-call still sees the pre-update value; the write sub-call carries the
       // callee's post-execution state.
-      expect(cccInnerLedger(getVCall.public.contractState).v).toBe(0n);
-      expect(cccInnerLedger(setVCall.public.contractState).v).toBe(3n);
+      expect(cccInnerModule.ledger(getVCall.public.contractState).v).toBe(0n);
+      expect(cccInnerModule.ledger(setVCall.public.contractState).v).toBe(3n);
     })
   );
 
@@ -315,6 +417,63 @@ describe('cross-contract calls', () => {
         const [guaranteed, fallible] = call.public.partitionedTranscript;
         expect([...(guaranteed?.program ?? []), ...(fallible?.program ?? [])]).toEqual(call.public.publicTranscript);
       }
+    })
+  );
+
+  it.effect('reports each call\'s own block context, effects, and commitment indices', () =>
+    Effect.gen(function*() {
+      const result = yield* middle.circuit(
+        Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
+        middleContext(resolveFromChain),
+        1n
+      );
+
+      for (const call of result.calls) {
+        // The block-level call context belongs to the contract the call ran against, not to the
+        // root — which is what makes these usable per call rather than per execution.
+        expect(call.public.partitionInputs.block.ownAddress).toBe(call.contractAddress);
+        expect(typeof call.public.partitionInputs.block.secondsSinceEpoch).toBe('bigint');
+        expect(Array.isArray(call.public.partitionInputs.effects.claimedNullifiers)).toBe(true);
+        expect(call.public.partitionInputs.comIndices).toBeInstanceOf(Map);
+        // Plain data, unlike `public.contractState` (a live WASM handle that `structuredClone`
+        // reduces to `{ __wbg_ptr }`). Being plain data is what lets these cross an era seam at
+        // all, which is the whole premise of midnight-sdk#400.
+        expect(() => structuredClone(call.public.partitionInputs.block)).not.toThrow();
+        expect(() => structuredClone(call.public.partitionInputs.effects)).not.toThrow();
+        expect(() => structuredClone(call.public.partitionInputs.comIndices)).not.toThrow();
+      }
+    })
+  );
+
+  it.effect('exposes the inputs each call\'s transcript was partitioned from', () =>
+    Effect.gen(function*() {
+      const result = yield* middle.circuit(
+        Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
+        middleContext(resolveFromChain),
+        1n
+      );
+
+      // The claim behind midnight-sdk#400 is not that the three values exist but that they are the
+      // ones *this* partition consumed — a consumer re-partitioning in another ledger era gets a
+      // different answer otherwise. So they are read back off the `PreTranscript`s the executable
+      // actually built; `PreTranscript` is a delegating mock in this suite, so its call arguments
+      // are the real query contexts.
+      const contexts = vi.mocked(PreTranscript).mock.calls.map(([context]) => context);
+      expect(contexts).toHaveLength(result.calls.length);
+
+      result.calls.forEach((call, i) => {
+        const context = contexts[i]!;
+        // `block` and `effects` are copied straight off the pre-execution query context, so they
+        // are exactly what the pre-transcript's context carries.
+        expect(call.public.partitionInputs.block).toEqual(context.block);
+        expect(call.public.partitionInputs.effects).toEqual(context.effects);
+        // `comIndices` is the *post*-execution context's, folded onto the pre-execution one by
+        // `insertCommitment` — so the exposed map is contained in the pre-transcript's context
+        // rather than equal to it.
+        for (const [commitment, index] of call.public.partitionInputs.comIndices) {
+          expect(context.comIndices.get(commitment)).toBe(index);
+        }
+      });
     })
   );
 
@@ -390,7 +549,8 @@ describe('cross-contract calls', () => {
           contractState: asContractState(outerDeploy.initialState),
           privateState: undefined,
           parentBlockHash: ZERO_BLOCK_HASH,
-          stateProvider: resolveFromChain
+          stateProvider: resolveFromChain,
+          moduleProvider: moduleProviderFor(chainModules)
         }
       );
 
@@ -431,9 +591,11 @@ describe('cross-contract calls', () => {
       );
       selfState.data = new ChargedState(setSelfResult.calls[0].public.contractState);
       // Sanity check: `self` now points at this contract's own address.
-      expect(Buffer.from(cccSelfLedger(setSelfResult.calls[0].public.contractState).self.bytes).toString('hex')).toBe(selfAddress);
+      expect(Buffer.from(cccSelfModule.ledger(setSelfResult.calls[0].public.contractState).self.bytes).toString('hex')).toBe(selfAddress);
 
       const chain = new Map([[selfAddress, selfState]]);
+      // Resolvable on purpose: the guard has to be what refuses the call, not a missing module.
+      const chainModule = new Map<string, Module>([[selfAddress, cccSelfModule]]);
       // `callSelfGet` calls `getV()` on its own address, re-entering the contract while it is still
       // executing on the call stack. Re-entrant cross-contract calls are not supported: the runtime's
       // re-entrancy guard rejects the call, surfaced here as a ContractRuntimeError.
@@ -445,7 +607,8 @@ describe('cross-contract calls', () => {
             contractState: selfState,
             privateState: undefined,
             parentBlockHash: ZERO_BLOCK_HASH,
-            stateProvider: { getContractState: async (_blockHash, address) => chain.get(address) }
+            stateProvider: { getContractState: async (_blockHash, address) => chain.get(address) },
+            moduleProvider: moduleProviderFor(chainModule)
           }
         )
       );
@@ -470,6 +633,28 @@ describe('cross-contract calls', () => {
 
       expect(ContractRuntimeError.isRuntimeError(error)).toBe(true);
       expect(String((error as ContractRuntimeError.ContractRuntimeError).cause)).toContain('transcript partition pairs');
+    })
+  );
+
+  it.effect('returns a ContractRuntimeError when pre-transcript construction throws', () =>
+    Effect.gen(function*() {
+      // Force the ledger to reject the pre-transcript construction for this run only — the same
+      // WASM-boundary throw a cross-instance `QueryContext` produces (`_assertClass`). The throw
+      // must surface as a typed failure, not escape `Effect.flip` as a defect.
+      vi.mocked(PreTranscript).mockImplementationOnce(function () {
+        throw new Error('expected instance of QueryContext');
+      });
+
+      const error = yield* Effect.flip(
+        middle.circuit(
+          Contract.ProvableCircuitId<CCCMiddleContract>('incrementInner'),
+          middleContext(resolveFromChain),
+          1n
+        )
+      );
+
+      expect(ContractRuntimeError.isRuntimeError(error)).toBe(true);
+      expect(String((error as ContractRuntimeError.ContractRuntimeError).cause)).toContain('building call pre-transcript');
     })
   );
 

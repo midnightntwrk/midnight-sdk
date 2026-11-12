@@ -1,0 +1,4 @@
+*.js
+*.bin
+# Per-test-file copies of contract.config.ts (see test/effect/configFixture.ts).
+contract.config.*.ts

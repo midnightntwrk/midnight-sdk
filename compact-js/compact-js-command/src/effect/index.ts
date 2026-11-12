@@ -18,8 +18,15 @@ import { Command } from '@effect/cli';
 import * as InternalCircuitCommand from './internal/circuitCommand.js';
 import * as InternalCommand from './internal/command.js';
 import * as InternalDeployCommand from './internal/deployCommand.js';
+import * as InternalEraRegistry from './internal/era/registry.js';
 import * as InternalMaintainCircuitCommand from './internal/maintainCircuitCommand.js';
 import * as InternalMaintainContractCommand from './internal/maintainContractCommand.js';
+
+// Each command is handed a *selector* rather than a handler: the handler is chosen by the
+// `--ledger-era` the invocation carries, out of that era's application of the handler factories
+// (`internal/era/v8.ts`, `internal/era/v9.ts`). This module is the composition root for that choice
+// and the only one that imports the registry, which is what keeps the era modules — they import the
+// command modules — out of a cycle with `internal/command.ts`.
 
 export const deployCommand = Command.make(
   'deploy',
@@ -29,7 +36,9 @@ export const deployCommand = Command.make(
     ...InternalDeployCommand.Args
   }).pipe(
   Command.withDescription('Initialize a new contract instance and returns a ContractDeploy intent for it.'),
-  Command.withHandler(InternalCommand.invocationHandler(InternalDeployCommand.handler))
+  Command.withHandler(
+    InternalCommand.invocationHandler((ledgerEra) => InternalEraRegistry.forLedgerEra(ledgerEra).deploy)
+  )
 );
 
 export const circuitCommand = Command.make(
@@ -40,7 +49,9 @@ export const circuitCommand = Command.make(
     ...InternalCircuitCommand.Args
   }).pipe(
     Command.withDescription('Invokes a circuit on a contract instance and returns a ContractCall intent for it.'),
-    Command.withHandler(InternalCommand.invocationHandler(InternalCircuitCommand.handler))
+    Command.withHandler(
+      InternalCommand.invocationHandler((ledgerEra) => InternalEraRegistry.forLedgerEra(ledgerEra).circuit)
+    )
   );
 
 export const maintainCommand = Command.make('maintain').pipe(
@@ -54,7 +65,9 @@ export const maintainCommand = Command.make('maintain').pipe(
           ...InternalMaintainContractCommand.Args
         }).pipe(
           Command.withDescription('Updates the Contract Maintenance Authority for deployed contract state and returns a MaintenanceUpdate intent for it.'),
-          Command.withHandler(InternalCommand.invocationHandler(InternalMaintainContractCommand.handler))
+          Command.withHandler(
+            InternalCommand.invocationHandler((ledgerEra) => InternalEraRegistry.forLedgerEra(ledgerEra).maintainContract)
+          )
         ),
       Command.make(
         'circuit',
@@ -64,7 +77,9 @@ export const maintainCommand = Command.make('maintain').pipe(
           ...InternalMaintainCircuitCommand.Args
         }).pipe(
           Command.withDescription('Updates the circuits associated with deployed contract state and returns a MaintenanceUpdate intent for it.'),
-          Command.withHandler(InternalCommand.invocationHandler(InternalMaintainCircuitCommand.handler))
+          Command.withHandler(
+            InternalCommand.invocationHandler((ledgerEra) => InternalEraRegistry.forLedgerEra(ledgerEra).maintainCircuit)
+          )
         )
     ])
   );

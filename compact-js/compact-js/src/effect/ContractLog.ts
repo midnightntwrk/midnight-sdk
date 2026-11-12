@@ -43,12 +43,53 @@
  *
  * @packageDocumentation
  */
-import type { LogEvent } from '@midnight-ntwrk/compact-runtime';
 import * as ContractAddress from '@midnight-ntwrk/platform-js/effect/ContractAddress';
 import { Option } from 'effect';
 import * as Schema from 'effect/Schema';
 
-export type { LogEvent } from '@midnight-ntwrk/compact-runtime';
+/**
+ * The `EncodedStateValue` arms this module discriminates.
+ *
+ * @remarks
+ * Only the `cell` arm carries a payload to decode; every other arm means the event's data was
+ * dropped on-chain or is not a byte buffer, which {@link decode} surfaces as a degraded event. The
+ * remaining tags are named rather than widened to `string` so that `data.tag === 'cell'` narrows.
+ *
+ * @category model
+ */
+export type LogEventData =
+  | { readonly tag: 'cell'; readonly content: { readonly value: readonly Uint8Array[] } }
+  | { readonly tag: 'null' | 'map' | 'array' | 'boundedMerkleTree' };
+
+/**
+ * The raw log event a circuit result carries — stated **era-free**, as the structural minimum this
+ * module reads.
+ *
+ * @remarks
+ * This used to be re-exported from the {@link CompactRuntime} seam, which resolves
+ * `internal/runtime/current.ts`. That made it the one era-varying type on an era-pinned entry that
+ * was *not* derived from a binding argument: `/v9/effect` exported `ContractExecutable`'s
+ * `CallResult.events` as ledger 9's (correctly derived) while its `ContractLog` would have followed
+ * the build's bound era. Harmless while the two coincide, and wrong in exactly the situation the
+ * era-pinned entries exist for — a fork window, where a consumer holds the retained era and the new
+ * one in one process and the retained era's path is the one that must keep working
+ * (midnight-sdk#388).
+ *
+ * Stating the minimum rather than naming a line is the same choice `Contract.CircuitResults` makes,
+ * and it costs nothing here: {@link decode} and {@link decodeAll} are generic in the event they are
+ * given, so a caller passing an era's own `LogEvent` gets it back on {@link ContractEventBase.raw}
+ * unchanged. `internal/runtime/conformance.ts` asserts each events-capable line still satisfies it.
+ *
+ * @category model
+ */
+export interface LogEvent {
+  /** The wire-format version (`1` for Phase 1; `0` is the reserved fallback). */
+  readonly version: number;
+  /** The emitting contract's address, unvalidated as the runtime supplied it. */
+  readonly address: string;
+  readonly eventType: LogEventType;
+  readonly data: LogEventData;
+}
 
 /**
  * Schema for the standard `LogEventType` discriminants emitted by Compact contracts — the single
@@ -167,7 +208,7 @@ export interface PayloadMap {
 }
 
 /** The common fields carried by every {@link ContractEvent}. @category model */
-export interface ContractEventBase {
+export interface ContractEventBase<E extends LogEvent = LogEvent> {
   /** The wire-format version (`1` for Phase 1). */
   readonly version: number;
   /**
@@ -178,7 +219,7 @@ export interface ContractEventBase {
    */
   readonly address: ContractAddress.ContractAddress;
   /** The original, undecoded log event. */
-  readonly raw: LogEvent;
+  readonly raw: E;
 }
 
 /**
@@ -186,8 +227,8 @@ export interface ContractEventBase {
  *
  * @category model
  */
-export type DecodedEvent = {
-  [K in LogEventType]: ContractEventBase & {
+export type DecodedEvent<E extends LogEvent = LogEvent> = {
+  [K in LogEventType]: ContractEventBase<E> & {
     readonly eventType: K;
     readonly payload: PayloadMap[K];
     readonly degraded: false;
@@ -202,7 +243,7 @@ export type DecodedEvent = {
  *
  * @category model
  */
-export type DegradedEvent = ContractEventBase & {
+export type DegradedEvent<E extends LogEvent = LogEvent> = ContractEventBase<E> & {
   readonly eventType: LogEventType;
   readonly payload: undefined;
   readonly degraded: true;
@@ -214,7 +255,7 @@ export type DegradedEvent = ContractEventBase & {
  *
  * @category model
  */
-export type ContractEvent = DecodedEvent | DegradedEvent;
+export type ContractEvent<E extends LogEvent = LogEvent> = DecodedEvent<E> | DegradedEvent<E>;
 
 // --- byte-buffer readers ----------------------------------------------------------------------
 
@@ -231,7 +272,7 @@ const concatSegments = (segments: readonly Uint8Array[]): Uint8Array => {
 };
 
 /** Flatten a `LogEvent.data` to its concatenated byte buffer, or `undefined` if not a `cell`. */
-const flatten = (data: LogEvent['data']): Uint8Array | undefined =>
+const flatten = (data: LogEventData): Uint8Array | undefined =>
   data.tag === 'cell' ? concatSegments(data.content.value) : undefined;
 
 /** Read a little-endian `Uint<128>` (≤16 bytes; wire strips trailing/high-order zeros). */
@@ -362,7 +403,7 @@ const decodePayload = (eventType: LogEventType, raw: Uint8Array): PayloadMap[Log
  *
  * @category decoding
  */
-export const decode = (raw: LogEvent): ContractEvent => {
+export const decode = <E extends LogEvent>(raw: E): ContractEvent<E> => {
   // Construct the emitting address with the brand's *safe* variant: a malformed envelope address
   // (wrong length, non-hex, `0x`-prefixed) would otherwise throw a `Brand.BrandErrors`, breaking
   // the never-throw guarantee. A bad address is a degraded envelope — surface it best-effort (the
@@ -378,12 +419,12 @@ export const decode = (raw: LogEvent): ContractEvent => {
       degraded: true
     };
   }
-  const base: ContractEventBase = { version: raw.version, address: address.value, raw };
+  const base: ContractEventBase<E> = { version: raw.version, address: address.value, raw };
   const buf = raw.version === 0 ? undefined : flatten(raw.data);
   const payload = buf === undefined ? undefined : decodePayload(raw.eventType, buf);
   return payload === undefined
     ? { ...base, eventType: raw.eventType, payload: undefined, degraded: true }
-    : ({ ...base, eventType: raw.eventType, payload, degraded: false } as DecodedEvent);
+    : ({ ...base, eventType: raw.eventType, payload, degraded: false } as DecodedEvent<E>);
 };
 
 /**
@@ -397,7 +438,7 @@ export const decode = (raw: LogEvent): ContractEvent => {
  *
  * @category decoding
  */
-export const decodeAll = (events: readonly LogEvent[]): ContractEvent[] => events.map(decode);
+export const decodeAll = <E extends LogEvent>(events: readonly E[]): ContractEvent<E>[] => events.map(decode);
 
 /**
  * Derive the indexable fields of a decoded event, as raw byte values keyed by field name.

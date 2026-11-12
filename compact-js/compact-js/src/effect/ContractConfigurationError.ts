@@ -14,8 +14,21 @@
  */
 
 import * as Error from '@effect/platform/Error';
-import { type ContractState } from '@midnight-ntwrk/compact-runtime';
 import { hasProperty } from 'effect/Predicate';
+
+/**
+ * The contract state carried on a configuration error, as diagnostic payload.
+ *
+ * @remarks
+ * Deliberately `unknown` rather than the {@link CompactRuntime} seam's `ContractState`. This error
+ * is raised by the executable, which since midnight-sdk#387 exists once per era pair — so the state
+ * it carries is *whichever* era's, and naming one of them would tie this module (and with it the
+ * era-free surface both era entries share) back to a single ledger era.
+ *
+ * Nothing in the SDK reads it: it exists to be attached to a report. A consumer that wants to
+ * inspect it narrows through the era entry it built the executable from.
+ */
+export type ContractState = unknown;
 
 const TypeId: unique symbol = Symbol.for('compact-js/effect/ContractConfigurationError');
 type TypeId = typeof TypeId;

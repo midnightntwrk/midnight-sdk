@@ -1,0 +1,268 @@
+/*
+ * This file is part of midnight-sdk.
+ * Copyright (C) 2025 Midnight Foundation
+ * SPDX-License-Identifier: Apache-2.0
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * You may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+import { type Contract } from '@midnight-ntwrk/compact-js/effect';
+import type * as Era9Runtime from '@midnight-ntwrk/compact-runtime';
+import type * as Era8Runtime from 'compact-runtime-ledger8';
+import { describe, expect, it } from 'tstyche';
+
+/**
+ * The **era-free contract spine** (midnight-sdk#387/#388).
+ *
+ * @remarks
+ * `Contract.ts` describes the shape `compactc` generates: witnesses, circuits, `initialState`. Those
+ * signatures are written in terms of the compact-runtime types — and two of them, `CircuitContext`
+ * and `CircuitResults`, are exactly the ones that change between runtime lines. 0.16 hands a
+ * circuit a flat context (`currentPrivateState`, `currentQueryContext`, `currentZswapLocalState`)
+ * and returns `proofData` alongside the result; 0.20 hands it a call tree (`callContext`,
+ * `queryContexts`, `callProofDataTrace`, `events`) and keeps the proof data on the context. The two
+ * share nothing beyond `costModel` and `gasLimit`, so neither is assignable to the other in either
+ * direction.
+ *
+ * While the spine named the *bound* era's versions of those types, a contract compiled for the
+ * other era did not satisfy `Contract<PS>` — which is to say `/v8/effect` handed back a
+ * ledger-9-typed spine, and a ledger 8 consumer could not call `CompiledContract.make` at all. The
+ * era is a property of the *executable* (which binding partitions transcripts, converts states and
+ * signs maintenance updates), not of the contract description, so the spine is stated era-free and
+ * both eras' contracts satisfy it.
+ *
+ * The era 8 shapes are taken from `compact-runtime-ledger8` directly rather than from the compiled
+ * `managed-v8/` fixture, because a generated artifact's own `.d.ts` imports
+ * `@midnight-ntwrk/compact-runtime` by bare specifier: in this test program that resolves to 0.20,
+ * so the fixture would be typed against the wrong line and prove nothing. Tests are exempt from the
+ * seam's `no-restricted-imports` rule for this reason.
+ */
+
+type PrivateState = { readonly count: bigint };
+
+/** A contract as `compactc` generates it for the ledger 9 / runtime 0.20 pair. */
+type Era9Contract = {
+  witnesses: {
+    localSecretKey(context: Era9Runtime.WitnessContext<unknown, PrivateState>): [PrivateState, Uint8Array];
+  };
+  circuits: {
+    increment(
+      context: Era9Runtime.CircuitContext<PrivateState>,
+      amount: bigint
+    ): Promise<Era9Runtime.CircuitResults<PrivateState, bigint>>;
+  };
+  provableCircuits: {
+    increment(
+      context: Era9Runtime.CircuitContext<PrivateState>,
+      amount: bigint
+    ): Promise<Era9Runtime.CircuitResults<PrivateState, bigint>>;
+  };
+  initialState(
+    context: Era9Runtime.ConstructorContext<PrivateState>,
+    seed: Uint8Array
+  ): Promise<Era9Runtime.ConstructorResult<PrivateState>>;
+};
+
+/**
+ * A ledger 9 contract whose one circuit takes no arguments beyond the context.
+ *
+ * @remarks
+ * `compactc` generates these routinely (`counter.compact`'s `increment` and `reset` are both
+ * nullary), and they are the case a fix to the branded-key collapse is most likely to get wrong:
+ * the empty tuple has to stay `[]`, because a consumer's options type decides whether to require an
+ * `args` member at all by asking `CircuitParameters<…> extends []` (midnight-sdk#402).
+ */
+type Era9NullaryContract = {
+  witnesses: Era9Contract['witnesses'];
+  circuits: {
+    reset(context: Era9Runtime.CircuitContext<PrivateState>): Promise<Era9Runtime.CircuitResults<PrivateState, []>>;
+  };
+  provableCircuits: {
+    reset(context: Era9Runtime.CircuitContext<PrivateState>): Promise<Era9Runtime.CircuitResults<PrivateState, []>>;
+  };
+  initialState: Era9Contract['initialState'];
+};
+
+/**
+ * Two circuits differing in *both* argument list and return type, so an assertion that names one of
+ * them distinguishes "reads the circuit it names" from "reads the only circuit" — which the
+ * single-circuit fixtures above cannot.
+ */
+type Era9MultiCircuitContract = {
+  witnesses: Era9Contract['witnesses'];
+  circuits: Era9MultiCircuitContract['provableCircuits'];
+  provableCircuits: {
+    mint(
+      context: Era9Runtime.CircuitContext<PrivateState>,
+      recipient: Uint8Array,
+      amount: bigint
+    ): Promise<Era9Runtime.CircuitResults<PrivateState, Uint8Array>>;
+    receive(
+      context: Era9Runtime.CircuitContext<PrivateState>
+    ): Promise<Era9Runtime.CircuitResults<PrivateState, []>>;
+  };
+  initialState: Era9Contract['initialState'];
+};
+
+/**
+ * The same contract as `compactc` generates it for the ledger 8 / runtime 0.16 pair.
+ *
+ * @remarks
+ * **Synchronous**, and that is not a simplification — it is what compactc 0.31.1 emits. Compare
+ * `test/contract/managed-v8/counter/contract/index.d.ts` against its `managed/` twin: the whole
+ * difference between the two generated `Contract` classes is that 0.20's circuits and
+ * `initialState` return `Promise<…>` and 0.16's return the value. Wrap these in `Promise` and the
+ * suite agrees with the spine about a contract nobody compiles.
+ */
+type Era8Contract = {
+  witnesses: {
+    localSecretKey(context: Era8Runtime.WitnessContext<unknown, PrivateState>): [PrivateState, Uint8Array];
+  };
+  circuits: {
+    increment(
+      context: Era8Runtime.CircuitContext<PrivateState>,
+      amount: bigint
+    ): Era8Runtime.CircuitResults<PrivateState, bigint>;
+  };
+  provableCircuits: {
+    increment(
+      context: Era8Runtime.CircuitContext<PrivateState>,
+      amount: bigint
+    ): Era8Runtime.CircuitResults<PrivateState, bigint>;
+  };
+  initialState(
+    context: Era8Runtime.ConstructorContext<PrivateState>,
+    seed: Uint8Array
+  ): Era8Runtime.ConstructorResult<PrivateState>;
+};
+
+describe('the contract spine', () => {
+  it('accepts a contract compiled for the ledger 9 era', () => {
+    expect<Era9Contract>().type.toBeAssignableTo<Contract.Contract<PrivateState>>();
+  });
+
+  it('accepts a contract compiled for the ledger 8 era', () => {
+    // 0.16's flat `CircuitContext` is not assignable to 0.20's call-tree one in either direction,
+    // `CircuitResults.context` carries the same split, and the line is synchronous where 0.20 is
+    // not — so a spine naming either era's types rejects this.
+    expect<Era8Contract>().type.toBeAssignableTo<Contract.Contract<PrivateState>>();
+  });
+
+  it('accepts the multi-circuit fixture the narrowing tests below read', () => {
+    expect<Era9MultiCircuitContract>().type.toBeAssignableTo<Contract.Contract<PrivateState>>();
+  });
+
+  it('rejects an object that is not a contract at all', () => {
+    // The spine stays a constraint, not a rubber stamp: era-freedom is achieved by not naming the
+    // era-varying shapes, not by accepting anything.
+    expect<{ witnesses: object; circuits: object }>().type.not.toBeAssignableTo<Contract.Contract<PrivateState>>();
+  });
+});
+
+describe('the contract spine — inference', () => {
+  it('recovers the private state from either era', () => {
+    expect<Contract.Contract.PrivateState<Era9Contract>>().type.toBe<PrivateState>();
+    expect<Contract.Contract.PrivateState<Era8Contract>>().type.toBe<PrivateState>();
+  });
+
+  it('recovers a circuit\'s arguments from either era', () => {
+    // `CircuitParameters` drops the leading context and keeps the rest; it is what the CLI and
+    // `ContractExecutable.circuit` type their arguments by, so it has to survive the era split.
+    expect<Contract.Contract.CircuitParameters<Era9Contract, 'increment'>>().type.toBe<[bigint]>();
+    expect<Contract.Contract.CircuitParameters<Era8Contract, 'increment'>>().type.toBe<[bigint]>();
+  });
+
+  it('recovers a circuit\'s result type from either era', () => {
+    expect<Contract.Contract.CircuitReturnType<Era9Contract, 'increment'>>().type.toBe<bigint>();
+    expect<Contract.Contract.CircuitReturnType<Era8Contract, 'increment'>>().type.toBe<bigint>();
+  });
+
+  it('recovers both from a *branded* circuit id, which is the only kind the executable takes', () => {
+    // Goes red if `CircuitKey` is replaced by template-literal inference (evaluates to `never`) or
+    // by `keyof C['provableCircuits'] & K` (keeps the brand) — neither strips it.
+    expect<Contract.Contract.CircuitParameters<Era9Contract, Contract.ProvableCircuitId<Era9Contract>>>().type.toBe<
+      [bigint]
+    >();
+    expect<Contract.Contract.CircuitParameters<Era8Contract, Contract.ProvableCircuitId<Era8Contract>>>().type.toBe<
+      [bigint]
+    >();
+    expect<
+      Contract.Contract.CircuitReturnType<Era9Contract, Contract.ProvableCircuitId<Era9Contract>>
+    >().type.toBe<bigint>();
+    expect<
+      Contract.Contract.CircuitReturnType<Era8Contract, Contract.ProvableCircuitId<Era8Contract>>
+    >().type.toBe<bigint>();
+    expect<
+      Contract.Contract.CircuitParameters<Era9NullaryContract, Contract.ProvableCircuitId<Era9NullaryContract>>
+    >().type.toBe<[]>();
+  });
+
+  it('reads the circuit a narrowed brand names, not merely the only one', () => {
+    // `CallResult.result` is typed by `CircuitReturnType` (midnight-sdk#402).
+    expect<
+      Contract.Contract.CircuitParameters<
+        Era9MultiCircuitContract,
+        Contract.ProvableCircuitId<Era9MultiCircuitContract, 'mint'>
+      >
+    >().type.toBe<[Uint8Array, bigint]>();
+    expect<
+      Contract.Contract.CircuitReturnType<
+        Era9MultiCircuitContract,
+        Contract.ProvableCircuitId<Era9MultiCircuitContract, 'mint'>
+      >
+    >().type.toBe<Uint8Array>();
+    expect<
+      Contract.Contract.CircuitParameters<
+        Era9MultiCircuitContract,
+        Contract.ProvableCircuitId<Era9MultiCircuitContract, 'receive'>
+      >
+    >().type.toBe<[]>();
+    expect<
+      Contract.Contract.CircuitReturnType<
+        Era9MultiCircuitContract,
+        Contract.ProvableCircuitId<Era9MultiCircuitContract, 'receive'>
+      >
+    >().type.toBe<[]>();
+  });
+
+  it('reads the union over every circuit when the brand names no single one', () => {
+    expect<
+      Contract.Contract.CircuitParameters<
+        Era9MultiCircuitContract,
+        Contract.ProvableCircuitId<Era9MultiCircuitContract>
+      >
+    >().type.toBe<[Uint8Array, bigint] | []>();
+    expect<
+      Contract.Contract.CircuitReturnType<
+        Era9MultiCircuitContract,
+        Contract.ProvableCircuitId<Era9MultiCircuitContract>
+      >
+    >().type.toBe<Uint8Array | []>();
+  });
+
+  it('recovers the constructor arguments from either era', () => {
+    expect<Contract.Contract.InitializeParameters<Era9Contract>>().type.toBe<[Uint8Array]>();
+    expect<Contract.Contract.InitializeParameters<Era8Contract>>().type.toBe<[Uint8Array]>();
+  });
+});
+
+describe('the circuit id brand', () => {
+  it('rejects a circuit name the contract does not declare', () => {
+    // `toRaiseError` targets this type expression; a line-scoped `@ts-expect-error` would equally
+    // swallow a renamed fixture or a typo in `ProvableCircuitId` itself.
+    expect<Contract.ProvableCircuitId<Era9Contract, 'incremnt'>>().type.toRaiseError(
+      'does not satisfy the constraint'
+    );
+  });
+
+  it('accepts a circuit name the contract does declare', () => {
+    expect<Contract.ProvableCircuitId<Era9Contract, 'increment'>>().type.toBeAssignableTo<string>();
+  });
+});

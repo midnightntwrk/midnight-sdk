@@ -15,15 +15,13 @@
 
 import { type Command } from '@effect/cli';
 import { FileSystem } from '@effect/platform';
-import { type ContractExecutable, ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
+import { ContractRuntimeError } from '@midnight-ntwrk/compact-js/effect';
 import * as SigningKey from '@midnight-ntwrk/platform-js/effect/SigningKey';
-import { Intent } from '@midnightntwrk/ledger-v9';
-import { type ConfigError, Duration, Effect, Option } from 'effect';
+import { Effect, Option } from 'effect';
 
-import { type ConfigCompiler } from '../ConfigCompiler.js';
 import * as InternalArgs from './args.js';
 import * as InternalCommand from './command.js';
-import * as ContractState from './contractState.js';
+import type * as EraBinding from './era/binding.js';
 import * as InternalMaintainCommand from './maintainCommand.js';
 import * as InternalOptions from './options.js';
 
@@ -43,31 +41,43 @@ export const Options = {
   signingKey: InternalOptions.signingKey
 };
 
-/** @internal */
-export const handler: (
-  inputs: Args & Options,
-  moduleSpec: ConfigCompiler.ModuleSpec
-) => Effect.Effect<void, ContractExecutable.ContractExecutionError | ConfigError.ConfigError, FileSystem.FileSystem> = (
-  { address, inputFilePath, newSigningKey, outputFilePath },
-  moduleSpec
-) =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem;
-    const {
-      module: { default: contractModule }
-    } = moduleSpec;
-    const ledgerContractState = yield* fs
-      .readFile(inputFilePath)
-      .pipe(Effect.flatMap(ContractState.asLedgerContractStateFromBytes));
-    const result = yield* contractModule.contractExecutable.replaceContractMaintenanceAuthority(
-      Option.some(SigningKey.make(newSigningKey)),
-      {
-        address,
-        contractState: yield* ContractState.asContractState(ledgerContractState)
-      }
-    );
-    const intent = Intent.new(yield* InternalCommand.ttl(Duration.minutes(10))).addMaintenanceUpdate(
-      result.public.maintenanceUpdate
-    );
-    yield* fs.writeFile(outputFilePath, intent.serialize());
-  }).pipe(Effect.mapError((err) => ContractRuntimeError.make('Failed to apply maintenance operation', err)));
+/**
+ * Builds the `maintain contract` handler for one era.
+ *
+ * @param ledger The era's `Ledger` facade. This command touches no compact-runtime API of its own —
+ * the executable does that behind the maintenance call — so it takes only the ledger half.
+ *
+ * @internal
+ */
+export const makeHandler: (
+  ledger: EraBinding.CommandLedger
+) => InternalCommand.CommandHandler<Args & Options> = (ledger) => {
+  const { tryLedger, newIntent, serializeIntent } = InternalCommand.makeIntents(ledger);
+
+  return ({ address, inputFilePath, newSigningKey, outputFilePath }, moduleSpec) =>
+    Effect.gen(function* () {
+      const fs = yield* FileSystem.FileSystem;
+      const {
+        module: { default: contractModule }
+      } = moduleSpec;
+      const ledgerContractState = yield* fs
+        .readFile(inputFilePath)
+        .pipe(Effect.flatMap(ledger.contractStateFromBytes));
+      const result = yield* contractModule.contractExecutable.replaceContractMaintenanceAuthority(
+        Option.some(SigningKey.make(newSigningKey)),
+        {
+          address,
+          contractState: yield* ledger.toRuntimeContractState(ledgerContractState as never)
+        } satisfies EraBinding.CommandContractContext as never
+      );
+      const emptyIntent = yield* newIntent();
+      const intent = yield* tryLedger(
+        'Failed to add the maintenance update to the intent',
+        () => emptyIntent.addMaintenanceUpdate(result.public.maintenanceUpdate as never)
+      );
+      yield* fs.writeFile(
+        outputFilePath,
+        yield* serializeIntent(intent)
+      );
+    }).pipe(Effect.mapError((err) => ContractRuntimeError.make('Failed to apply maintenance operation', err)));
+};
