@@ -572,7 +572,7 @@ __metadata:
     "@effect/platform": "npm:^0.97.0"
     "@effect/vitest": "npm:^0.30.0"
     "@eslint/js": "npm:^10.0.1"
-    "@tsconfig/node22": "npm:^22.0.5"
+    "@tsconfig/node24": "npm:^24.0.0"
     "@types/node": "npm:^26.2.0"
     "@vitest/coverage-v8": "npm:^4.1.9"
     "@vitest/ui": "npm:^4.1.9"
@@ -816,10 +816,10 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@tsconfig/node22@npm:^22.0.5":
-  version: 22.0.5
-  resolution: "@tsconfig/node22@npm:22.0.5"
-  checksum: 10/2e21177946aa0bcd705e8303cd0844eb66d2abc1ceb9ca7bd7762443676e599bb11e7f7b257c027d8dec9d1c62cda114d1a3df5e38699c6b4943e6acadac261d
+"@tsconfig/node24@npm:^24.0.0":
+  version: 24.0.6
+  resolution: "@tsconfig/node24@npm:24.0.6"
+  checksum: 10/71dda851caf234c911be4e60def5f69de3e0f2583a4c015451c6f773c89fe6d8e727af4d9e41bdd85d2dcfd5b08fc692f7e40fbd8841b1f3cc7b3209655e7919
   languageName: node
   linkType: hard
 
